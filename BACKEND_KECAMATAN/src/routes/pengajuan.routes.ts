@@ -2,7 +2,7 @@ import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import type { AppConfig } from '../config/env.js';
 import type { PengajuanController } from '../controllers/pengajuan.controller.js';
 import { userDari, type AuthGuards } from '../plugins/auth.js';
-import { createdResponses, errorResponses, okResponses, PagingQuerySchema, PengajuanIdParamSchema } from '../schemas/common.schema.js';
+import { AntrianQuerySchema, createdResponses, errorResponses, okResponses, PagingQuerySchema, PengajuanIdParamSchema } from '../schemas/common.schema.js';
 import {
   AjukanBodySchema,
   KeputusanBodySchema,
@@ -84,7 +84,7 @@ export const pengajuanRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { co
         tags: ['Pengajuan – Petugas'],
         summary: 'Antrian kerja sesuai role (Kasi otomatis difilter per seksi)',
         security: bearer,
-        querystring: PagingQuerySchema,
+        querystring: AntrianQuerySchema,
       },
     },
     async (req) => controller.antrian(userDari(req), req.query),

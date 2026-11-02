@@ -4,8 +4,8 @@ export function maskNik(nik: string): string {
   return nik.slice(0, 4) + '*'.repeat(nik.length - 8) + nik.slice(-4);
 }
 
-/** 081200000001 → 0812****0001 */
+/** 080000000001 → 0800-xxxx-0001 */
 export function maskHp(hp: string): string {
-  if (hp.length < 8) return '*'.repeat(hp.length);
-  return hp.slice(0, 4) + '*'.repeat(hp.length - 8) + hp.slice(-4);
+  if (hp.length < 8) return 'x'.repeat(hp.length);
+  return `${hp.slice(0, 4)}-xxxx-${hp.slice(-4)}`;
 }

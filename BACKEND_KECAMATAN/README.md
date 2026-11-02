@@ -76,8 +76,10 @@ Semua endpoint diawali `/api/v1`. Format sukses `{ "data": ..., "meta"?: ... }`,
 | POST | `/pengajuan` | WARGA | Ajukan permohonan baru |
 | GET | `/pengajuan/saya` | WARGA | Pengajuan milik sendiri (`?page=&limit=`) |
 | PATCH | `/pengajuan/:id/revisi` | WARGA | Kirim perbaikan saat `PERLU_REVISI` |
+| POST | `/berkas/unggah?nama_file=` | WARGA | Unggah satu file (body = isi file, PDF/JPG/PNG), hasilnya `file_id` |
+| GET | `/berkas/:id/file` | login | Isi berkas, hanya untuk pemilik dan petugas yang berhak |
 | GET | `/pengajuan/:id` | login | Detail (warga: miliknya; Kasi: seksinya; Admin/Camat: semua) |
-| GET | `/pengajuan/antrian` | ADMIN/KASI/CAMAT | Antrian kerja sesuai role |
+| GET | `/pengajuan/antrian` | ADMIN/KASI/CAMAT | Antrian kerja sesuai role. Admin bisa memakai `?semua=true` |
 | GET | `/pengajuan/statistik` | ADMIN/KASI/CAMAT | Jumlah per status & durasi tiap tahap |
 | PATCH | `/pengajuan/:id/verifikasi` | ADMIN | `SETUJUI` / `MINTA_REVISI` / `TOLAK` |
 | PATCH | `/pengajuan/:id/paraf-kasi` | KASI | `SETUJUI` / `KEMBALIKAN` / `TOLAK` |
@@ -86,6 +88,12 @@ Semua endpoint diawali `/api/v1`. Format sukses `{ "data": ..., "meta"?: ... }`,
 
 Setiap aksi PATCH wajib menyertakan `version` (nilai terakhir dari respons detail). Jika dua petugas
 memproses berkas yang sama bersamaan, yang kedua mendapat `409 VERSI_KEDALUWARSA`.
+
+### Unggah berkas
+
+Unggah tiap file ke `POST /berkas/unggah`, lalu sertakan `file_id` hasilnya di item `berkas` saat `POST /pengajuan`
+atau `PATCH /pengajuan/:id/revisi`. Isi file dicek berdasarkan tanda tangan file, bukan Content-Type dari klien.
+File disimpan di `data/uploads/`, sedangkan daftarnya masih di memori, jadi tautan file hilang saat server dimulai ulang.
 
 ### Contoh mengajukan permohonan
 

@@ -34,7 +34,7 @@ export function ringkasPengajuan(p: PengajuanPelayanan, layanan: JenisLayanan | 
     tgl_pengajuan: p.tgl_pengajuan,
     tgl_diperbarui: p.tgl_diperbarui,
     version: p.version,
-    ...(pemohon ? { pemohon: { nama_lengkap: pemohon.nama_lengkap, nik_tersamar: maskNik(pemohon.nik) } } : {}),
+    ...(pemohon ? { pemohon: { nama_lengkap: pemohon.nama_lengkap, nik_tersamar: maskNik(pemohon.nik), no_hp_tersamar: maskHp(pemohon.no_hp) } } : {}),
   };
 }
 
@@ -96,7 +96,7 @@ export function detailPengajuan(
           id_user: pemohon.id_user,
           nama_lengkap: pemohon.nama_lengkap,
           nik: pemohon.nik,
-          no_hp: pemohon.no_hp,
+          no_hp_tersamar: maskHp(pemohon.no_hp),
           email: pemohon.email,
           alamat: pemohon.alamat,
           id_kelurahan: pemohon.id_kelurahan,
@@ -110,7 +110,7 @@ export function detailPengajuan(
       nama_file: b.nama_file,
       mime_type: b.mime_type,
       ukuran_byte: b.ukuran_byte,
-      file_url: b.file_url,
+      file_url: b.file_url.startsWith('unggah://') ? `/api/v1/berkas/${b.id_berkas}/file` : null,
       status_berkas: b.status_berkas,
       catatan_admin: b.catatan_admin,
       diunggah_pada: b.diunggah_pada,

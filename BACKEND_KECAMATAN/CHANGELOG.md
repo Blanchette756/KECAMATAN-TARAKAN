@@ -1,5 +1,12 @@
 # Changelog
 
+## Belum dirilis
+
+- Unggah file sungguhan: `POST /berkas/unggah`, `GET /berkas/:id/file`, dan kolom `file_id` pada berkas.
+- `GET /pengajuan/antrian?semua=true` untuk layar Berkas Masuk admin.
+- Ringkasan pengajuan menyertakan nomor HP tersamar.
+- Semua layanan kini `AMBIL_DI_KANTOR` sesuai alur Figma (perlu dikonfirmasi ke kecamatan).
+
 ## 0.2.0: perbaikan hasil security audit run-1
 
 Sumber: `cloudflare/security-audit-skill`, profil `quick`, scope `src/` + `data/`,

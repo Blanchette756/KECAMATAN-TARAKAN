@@ -19,7 +19,7 @@ describe('Lacak publik', () => {
     expect(d.status_pengajuan).toBe('DIAJUKAN');
     expect(d.riwayat).toHaveLength(1);
     const teks = res.body;
-    for (const rahasia of ['Budi', '6571019900000001', '081200000001', 'warga1@example.com', 'id_pengajuan', 'id_user', 'data_formulir']) {
+    for (const rahasia of ['Budi', '6571019900000001', '080000000001', 'warga1@example.com', 'id_pengajuan', 'id_user', 'data_formulir']) {
       expect(teks).not.toContain(rahasia);
     }
   });

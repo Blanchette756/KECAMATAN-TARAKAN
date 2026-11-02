@@ -19,6 +19,16 @@ export const PagingQuerySchema = Type.Object(
 );
 export type PagingQuery = Static<typeof PagingQuerySchema>;
 
+export const AntrianQuerySchema = Type.Object(
+  {
+    page: Type.Optional(Type.Integer({ minimum: 1, maximum: 10_000, default: 1 })),
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, default: 20 })),
+    semua: Type.Optional(Type.Boolean({ description: 'Admin: tampilkan semua berkas masuk, bukan hanya antrian kerjanya' })),
+  },
+  { additionalProperties: false },
+);
+export type AntrianQuery = Static<typeof AntrianQuerySchema>;
+
 export const LayananIdParamSchema = Type.Object({ id: Type.String({ pattern: '^LAYANAN-[0-9]{3}$' }) });
 export type LayananIdParam = Static<typeof LayananIdParamSchema>;
 

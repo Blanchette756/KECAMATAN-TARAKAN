@@ -23,7 +23,7 @@ export async function buildApp(container: Container): Promise<FastifyInstance> {
             redact: ['req.headers.authorization', 'req.headers.cookie'],
           },
     trustProxy: config.trustProxy,
-    // Fase 1 hanya menerima metadata berkas (JSON kecil), bukan file.
+    // Batas umum untuk JSON. Rute unggah berkas memakai batas sendiri.
     bodyLimit: 256 * 1024,
   }).withTypeProvider<TypeBoxTypeProvider>();
 

@@ -1,10 +1,10 @@
 import type { Services } from '../container.js';
 import type { Halaman } from '../repositories/interfaces.js';
-import type { PagingQuery } from '../schemas/common.schema.js';
+import type { AntrianQuery, PagingQuery } from '../schemas/common.schema.js';
 import type { AjukanBody, KeputusanBody, LacakBody, RevisiBody, SerahkanBody, VerifikasiBody } from '../schemas/pengajuan.schema.js';
 import type { User } from '../types/user.js';
 
-const paging = (q: PagingQuery) => ({ page: q.page ?? 1, limit: q.limit ?? 20 });
+const paging = (q: PagingQuery | AntrianQuery) => ({ page: q.page ?? 1, limit: q.limit ?? 20 });
 
 function denganMeta<T>(hal: Halaman<T>, ekstra: Record<string, unknown> = {}) {
   return {
@@ -25,8 +25,8 @@ export class PengajuanController {
     return denganMeta(await this.s.pengajuan.listSaya(user, paging(q)));
   }
 
-  async antrian(user: User, q: PagingQuery) {
-    const { status_antrian, ...hal } = await this.s.pengajuan.antrian(user, paging(q));
+  async antrian(user: User, q: AntrianQuery) {
+    const { status_antrian, ...hal } = await this.s.pengajuan.antrian(user, paging(q), q.semua);
     return denganMeta(hal, { status_antrian });
   }
 

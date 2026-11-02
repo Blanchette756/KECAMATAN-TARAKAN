@@ -1,0 +1,220 @@
+import { useState } from 'react';
+import { Icon } from '../components/Icon';
+import { SiteFooter } from '../components/SiteFooter';
+import { SiteHeader } from '../components/SiteHeader';
+import { FotoPlaceholder, PageBanner, SectionHeading } from '../components/ui';
+import { KELURAHAN } from '../data/kelurahan';
+
+const BAGIAN = [
+  { id: 'gambaran-umum', label: 'Gambaran Umum' },
+  { id: 'sejarah', label: 'Sejarah' },
+  { id: 'visi-misi', label: 'Visi & Misi' },
+  { id: 'wilayah', label: 'Wilayah' },
+  { id: 'struktur-organisasi', label: 'Struktur Organisasi' },
+];
+
+const FAKTA = [
+  { label: 'Provinsi', nilai: 'Kalimantan Utara' },
+  { label: 'Kota', nilai: 'Tarakan' },
+  { label: 'Jumlah kelurahan', nilai: '7 kelurahan' },
+  { label: 'Pusat pemerintahan', nilai: 'Kelurahan Kampung Empat' },
+];
+
+const SEJARAH = [
+  {
+    tahun: '1981',
+    judul: 'Menjadi kecamatan di Kota Administratif Tarakan',
+    deskripsi: 'PP No. 47 Tahun 1981 membagi Kota Administratif Tarakan menjadi dua kecamatan: Tarakan Barat dan Tarakan Timur.',
+  },
+  {
+    tahun: '1997',
+    judul: 'Bagian dari Kotamadya Tarakan',
+    deskripsi: 'UU No. 29 Tahun 1997 menetapkan Tarakan Timur sebagai salah satu kecamatan Kotamadya Tarakan, dengan pusat pemerintahan di Kelurahan Kampung Empat.',
+  },
+  {
+    tahun: '1999',
+    judul: 'Penataan menjadi empat kecamatan',
+    deskripsi: 'Wilayah Kota Tarakan ditata menjadi empat kecamatan: Tarakan Timur, Tarakan Barat, Tarakan Tengah, dan Tarakan Utara.',
+  },
+  {
+    tahun: '2012',
+    judul: 'Pembentukan dua kelurahan baru',
+    deskripsi: 'Perda Kota Tarakan No. 7 Tahun 2012 membentuk Kelurahan Pantai Amal dan Kelurahan Mamburungan Timur di wilayah Kecamatan Tarakan Timur.',
+  },
+];
+
+// Teks dalam kurung siku adalah placeholder Figma yang menunggu data resmi.
+const MISI = [1, 2, 3, 4].map((nomor) => `[Misi ke-${nomor} sesuai dokumen Renstra kecamatan]`);
+
+const KEPALA_SEKSI = ['Kasi Tata Pemerintahan', 'Kasi Ketenteraman & Ketertiban Umum', 'Kasi Ekonomi & Pembangunan', 'Kasi Kesejahteraan Sosial'];
+
+function KartuKelurahan({ nama }: { nama: string }) {
+  return (
+    <article className="tile tile--auto">
+      <span className="tile__icon">
+        <Icon name="map-pin-md" />
+      </span>
+      <h3 className="tile__title">Kelurahan {nama}</h3>
+      <p className="tile__desc">Kantor: [alamat kantor kelurahan]</p>
+      <a className="link" href="/kontak#kontak-kelurahan">
+        Lihat kontak
+      </a>
+    </article>
+  );
+}
+
+function KartuJabatan({ jabatan, nama = '[Nama Pejabat]' }: { jabatan: string; nama?: string }) {
+  return (
+    <div className="org-card">
+      <span className="org-card__avatar">
+        <Icon name="user" />
+      </span>
+      <p className="org-card__jabatan">{jabatan}</p>
+      <p className="org-card__nama">{nama}</p>
+    </div>
+  );
+}
+
+export function ProfilKecamatan() {
+  const [bagianAktif, setBagianAktif] = useState(BAGIAN[0].id);
+
+  return (
+    <>
+      <SiteHeader aktif="Profil Kecamatan" />
+      <main>
+        <PageBanner
+          halaman="Profil Kecamatan"
+          overline="Mengenal Tarakan Timur"
+          judul="Profil Kecamatan Tarakan Timur"
+          deskripsi="Gambaran umum, sejarah singkat, visi dan misi, wilayah kelurahan, serta struktur organisasi Kecamatan Tarakan Timur."
+        />
+
+        <nav className="section-nav" aria-label="Bagian halaman">
+          {BAGIAN.map(({ id, label }) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              className={`section-nav__item${id === bagianAktif ? ' section-nav__item--active' : ''}`}
+              aria-current={id === bagianAktif ? 'true' : undefined}
+              onClick={() => setBagianAktif(id)}
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+
+        <section className="profil-umum" id="gambaran-umum">
+          <FotoPlaceholder keterangan="Foto kantor Kecamatan Tarakan Timur (placeholder)" className="profil-umum__foto" />
+          <div className="profil-umum__teks">
+            <p className="overline">Gambaran umum</p>
+            <h2 className="heading__title">Kecamatan di pesisir timur Pulau Tarakan</h2>
+            <p className="teks-sekunder">
+              Kecamatan Tarakan Timur adalah salah satu dari empat kecamatan di Kota Tarakan, Provinsi Kalimantan Utara. Wilayahnya terdiri atas tujuh kelurahan, sebagian di antaranya berada di kawasan pesisir yang berbatasan dengan Laut Sulawesi.
+            </p>
+            <p className="teks-sekunder">
+              Kantor kecamatan menyelenggarakan pelayanan administrasi masyarakat, koordinasi pemerintahan kelurahan, ketenteraman dan ketertiban umum, serta pemberdayaan masyarakat.
+            </p>
+            <dl className="fakta">
+              {FAKTA.map(({ label, nilai }) => (
+                <div className="fakta__baris" key={label}>
+                  <dt>{label}</dt>
+                  <dd>{nilai}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
+
+        <section className="sejarah" id="sejarah">
+          <div className="sejarah__judul">
+            <p className="overline">Sejarah singkat</p>
+            <h2 className="heading__title">Perjalanan Tarakan Timur</h2>
+            <p className="heading__desc">
+              <span className="only-desktop">Ringkasan berdasarkan peraturan pembentukan wilayah. Lengkapi dengan narasi sejarah resmi kecamatan.</span>
+              <span className="only-mobile">Ringkasan berdasarkan peraturan pembentukan wilayah.</span>
+            </p>
+          </div>
+          <ol className="timeline">
+            {SEJARAH.map(({ tahun, judul, deskripsi }) => (
+              <li className="timeline__item" key={tahun}>
+                <span className="timeline__rail">
+                  <img src="/icons/timeline-dot.svg" alt="" width={14} height={14} />
+                </span>
+                <div className="timeline__isi">
+                  <p className="timeline__tahun">{tahun}</p>
+                  <h3 className="timeline__judul">{judul}</h3>
+                  <p className="teks-sekunder">{deskripsi}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="section section--visi" id="visi-misi">
+          <SectionHeading overline="Arah pembangunan" judul="Visi & Misi" deskripsi={
+              <>
+                <span className="only-desktop">Isi sesuai dokumen Rencana Strategis (Renstra) Kecamatan Tarakan Timur yang berlaku.</span>
+                <span className="only-mobile">Isi sesuai dokumen Renstra kecamatan yang berlaku.</span>
+              </>
+            } />
+          <div className="visi-misi">
+            <div className="visi">
+              <p className="overline overline--accent">Visi</p>
+              <p className="visi__teks">“[Tuliskan visi resmi Kecamatan Tarakan Timur sesuai dokumen Renstra]”</p>
+            </div>
+            <div className="misi">
+              <p className="overline">Misi</p>
+              <ol className="misi__daftar">
+                {MISI.map((misi, urutan) => (
+                  <li key={misi}>
+                    <span className="misi__nomor">{urutan + 1}</span>
+                    <span className="teks-sekunder">{misi}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <section className="section" id="wilayah">
+          <SectionHeading overline="Wilayah administrasi" judul="7 Kelurahan di Tarakan Timur" deskripsi={<span className="only-desktop">Setiap kelurahan memiliki kantor pelayanan untuk layanan administrasi tingkat kelurahan.</span>} />
+          <div className="wilayah-grid">
+            {KELURAHAN.map((nama) => (
+              <KartuKelurahan key={nama} nama={nama} />
+            ))}
+            <FotoPlaceholder keterangan="Peta wilayah (placeholder)" className="wilayah-grid__peta only-desktop" />
+          </div>
+        </section>
+
+        <section className="section section--page section--struktur" id="struktur-organisasi">
+          <SectionHeading
+            overline="Struktur organisasi"
+            judul="Perangkat Kecamatan"
+            deskripsi={
+              <>
+                <span className="only-desktop">Susunan jabatan di bawah ini contoh. Sesuaikan dengan peraturan wali kota tentang susunan organisasi kecamatan.</span>
+                <span className="only-mobile">Susunan jabatan bersifat contoh.</span>
+              </>
+            }
+          />
+          <div className="bagan">
+            <KartuJabatan jabatan="Camat" nama="Boby Dean Marten, ST, M.Pd.Si" />
+            <span className="bagan__garis" />
+            <KartuJabatan jabatan="Sekretaris Camat" nama="[Nama Sekretaris]" />
+            <span className="bagan__garis" />
+            <span className="bagan__garis-datar" />
+            <div className="bagan__seksi">
+              {KEPALA_SEKSI.map((jabatan) => (
+                <div className="bagan__cabang" key={jabatan}>
+                  <span className="bagan__garis bagan__garis--pendek" />
+                  <KartuJabatan jabatan={jabatan} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+      <SiteFooter />
+    </>
+  );
+}

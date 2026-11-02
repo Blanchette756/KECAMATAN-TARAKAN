@@ -50,6 +50,7 @@ export interface PengajuanRepository {
 }
 
 export interface BerkasRepository {
+  findById(idBerkas: string): Promise<BerkasPengajuan | null>;
   createMany(items: BerkasPengajuan[]): Promise<void>;
   listByPengajuan(idPengajuan: string): Promise<BerkasPengajuan[]>;
   update(item: BerkasPengajuan): Promise<void>;

@@ -8,6 +8,7 @@ import type { ServiceDeps } from './services/deps.js';
 import { LayananService } from './services/layanan.service.js';
 import { PengajuanService } from './services/pengajuan.service.js';
 import { StatistikService } from './services/statistik.service.js';
+import { UnggahService } from './services/unggah.service.js';
 import { WorkflowService } from './services/workflow.service.js';
 
 export interface Services {
@@ -16,6 +17,7 @@ export interface Services {
   pengajuan: PengajuanService;
   workflow: WorkflowService;
   statistik: StatistikService;
+  unggah: UnggahService;
 }
 
 export interface Container {
@@ -37,14 +39,16 @@ export function createContainer(config: AppConfig, opts: ContainerOptions = {}):
   const store = new MemoryStore(master);
   const repos = createMemoryRepositories(store, config);
   const deps: ServiceDeps = { repos, config, now: opts.now ?? (() => new Date()) };
+  const unggah = new UnggahService(config);
 
   const workflow = new WorkflowService(deps);
   const services: Services = {
     auth: new AuthService(deps),
     layanan: new LayananService(deps),
-    pengajuan: new PengajuanService(deps, workflow),
+    pengajuan: new PengajuanService(deps, workflow, unggah),
     workflow,
     statistik: new StatistikService(deps),
+    unggah,
   };
   return { config, repos, services, store };
 }

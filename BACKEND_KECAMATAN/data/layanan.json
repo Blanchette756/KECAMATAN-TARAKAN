@@ -19,7 +19,7 @@
       "biaya": "Gratis",
       "output_dokumen": "Surat Keterangan Hak Milik Kapal",
       "deskripsi": "Surat keterangan dari Camat yang menerangkan kepemilikan kapal oleh pemohon, baik kapal yang dibuat, dibeli, maupun diperoleh melalui hibah.",
-      "mode_penyerahan": "UNDUH",
+      "mode_penyerahan": "AMBIL_DI_KANTOR",
       "jumlah_rangkap": null,
       "aktif": true,
       "form_fields": [
@@ -67,7 +67,7 @@
       "biaya": "Gratis",
       "output_dokumen": "Surat Dispensasi Nikah",
       "deskripsi": "Surat dispensasi dari Camat untuk pelaksanaan pernikahan.",
-      "mode_penyerahan": "UNDUH",
+      "mode_penyerahan": "AMBIL_DI_KANTOR",
       "jumlah_rangkap": null,
       "aktif": true,
       "form_fields": [
@@ -113,7 +113,7 @@
       "biaya": "Gratis",
       "output_dokumen": "Legalisasi Surat Keterangan Ahli Waris",
       "deskripsi": "Pengesahan oleh Camat atas Surat Keterangan Ahli Waris yang dikeluarkan Kelurahan.",
-      "mode_penyerahan": "UNDUH",
+      "mode_penyerahan": "AMBIL_DI_KANTOR",
       "jumlah_rangkap": null,
       "aktif": true,
       "form_fields": [
@@ -151,7 +151,7 @@
       "biaya": "Gratis",
       "output_dokumen": "Surat Keterangan Tukang",
       "deskripsi": "Pengesahan oleh Camat atas Surat Keterangan Tukang pembuat kapal.",
-      "mode_penyerahan": "UNDUH",
+      "mode_penyerahan": "AMBIL_DI_KANTOR",
       "jumlah_rangkap": null,
       "aktif": true,
       "form_fields": [
@@ -183,7 +183,7 @@
       "biaya": "Gratis",
       "output_dokumen": "Surat Keterangan",
       "deskripsi": "Surat keterangan dari Camat sesuai keperluan pemohon, termasuk keterangan kehilangan alas hak tanah.",
-      "mode_penyerahan": "UNDUH",
+      "mode_penyerahan": "AMBIL_DI_KANTOR",
       "jumlah_rangkap": null,
       "aktif": true,
       "form_fields": [
@@ -227,7 +227,7 @@
       "biaya": "Gratis",
       "output_dokumen": "Surat Rekomendasi",
       "deskripsi": "Surat rekomendasi dari Camat sesuai keperluan pemohon.",
-      "mode_penyerahan": "UNDUH",
+      "mode_penyerahan": "AMBIL_DI_KANTOR",
       "jumlah_rangkap": null,
       "aktif": true,
       "form_fields": [
@@ -259,7 +259,7 @@
       "biaya": "Gratis",
       "output_dokumen": "Surat Pengantar",
       "deskripsi": "Surat pengantar dari Camat sesuai keperluan pemohon.",
-      "mode_penyerahan": "UNDUH",
+      "mode_penyerahan": "AMBIL_DI_KANTOR",
       "jumlah_rangkap": null,
       "aktif": true,
       "form_fields": [

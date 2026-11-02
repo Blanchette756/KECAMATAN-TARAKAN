@@ -1,0 +1,50 @@
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/inter/800.css';
+import { StrictMode, useEffect, type JSX } from 'react';
+import { createRoot } from 'react-dom/client';
+import './styles/tokens.css';
+import './styles/halaman.css';
+import './styles/portal.css';
+import './styles/components.css';
+import { Admin } from './pages/Admin';
+import { Ajukan } from './pages/Ajukan';
+import { Beranda } from './pages/Beranda';
+import { DataMonografi } from './pages/DataMonografi';
+import { InformasiPublik } from './pages/InformasiPublik';
+import { Kontak } from './pages/Kontak';
+import { Masuk } from './pages/Masuk';
+import { MasukPetugas } from './pages/MasukPetugas';
+import { Pelayanan } from './pages/Pelayanan';
+import { PermohonanSaya } from './pages/PermohonanSaya';
+import { ProfilKecamatan } from './pages/ProfilKecamatan';
+
+const RUTE: Record<string, () => JSX.Element | null> = {
+  '/profil-kecamatan': ProfilKecamatan,
+  '/informasi-publik': InformasiPublik,
+  '/pelayanan': Pelayanan,
+  '/data-monografi': DataMonografi,
+  '/kontak': Kontak,
+  '/masuk': Masuk,
+  '/masuk-petugas': MasukPetugas,
+  '/ajukan': Ajukan,
+  '/permohonan': PermohonanSaya,
+  '/admin': Admin,
+};
+
+const Halaman = RUTE[window.location.pathname] ?? Beranda;
+
+function Aplikasi() {
+  // Tujuan tautan seperti /#layanan baru ada setelah React merender, jadi browser tidak bisa menggulir sendiri.
+  useEffect(() => {
+    document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ behavior: 'instant' });
+  }, []);
+  return <Halaman />;
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <Aplikasi />
+  </StrictMode>,
+);

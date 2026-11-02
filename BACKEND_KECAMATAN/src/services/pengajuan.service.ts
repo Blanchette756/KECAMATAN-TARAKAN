@@ -13,6 +13,7 @@ import type { ServiceDeps } from './deps.js';
 import { rapikanNamaFile, syaratBerlaku, validasiBerkas, validasiFormulir, validasiSatuBerkas } from './form-validator.js';
 import { detailPengajuan, ringkasPengajuan } from './presenter.js';
 import { generateNoRegistrasi } from './registrasi.js';
+import type { UnggahService } from './unggah.service.js';
 import type { WorkflowService } from './workflow.service.js';
 
 export interface InputPengajuan {
@@ -49,6 +50,7 @@ export class PengajuanService {
   constructor(
     private readonly deps: ServiceDeps,
     private readonly workflow: WorkflowService,
+    private readonly unggah: UnggahService,
   ) {
     const { maxGagal, menit } = deps.config.lacakLockout;
     this.lacakLimiter = new AttemptLimiter(maxGagal, menit * 60_000);
@@ -81,18 +83,19 @@ export class PengajuanService {
     }
   }
 
-  private buatBerkas(idPengajuan: string, input: BerkasInput[], iso: string): BerkasPengajuan[] {
+  private buatBerkas(user: User, idPengajuan: string, input: BerkasInput[], iso: string): BerkasPengajuan[] {
     return input.map((b) => {
       const id_berkas = newId('BRK');
+      const file = b.file_id ? this.unggah.milik(user, b.file_id) : null;
       return {
         id_berkas,
         id_pengajuan: idPengajuan,
         id_syarat: b.id_syarat,
         nama_file: rapikanNamaFile(b.nama_file),
-        mime_type: b.mime_type as MimeDiizinkan,
-        ukuran_byte: b.ukuran_byte,
-        // Fase 1: tautan dummy. Fase 2: path privat di storage, diakses lewat endpoint ber-otorisasi.
-        file_url: `dummy://berkas/${id_berkas}`,
+        // Tipe dan ukuran file sungguhan diambil dari hasil unggah, bukan dari klien.
+        mime_type: file?.mime_type ?? (b.mime_type as MimeDiizinkan),
+        ukuran_byte: file?.ukuran_byte ?? b.ukuran_byte,
+        file_url: file ? `unggah://${file.file_id}` : `dummy://berkas/${id_berkas}`,
         status_berkas: 'MENUNGGU',
         catatan_admin: null,
         diunggah_pada: iso,
@@ -172,7 +175,7 @@ export class PengajuanService {
       version: 1,
     };
     await repos.pengajuan.create(p);
-    await repos.berkas.createMany(this.buatBerkas(p.id_pengajuan, input.berkas, iso));
+    await repos.berkas.createMany(this.buatBerkas(user, p.id_pengajuan, input.berkas, iso));
     await repos.riwayat.add({
       id_riwayat: newId('RWT'),
       id_pengajuan: p.id_pengajuan,
@@ -243,7 +246,7 @@ export class PengajuanService {
     for (const b of lama) {
       if (!tetap.includes(b)) await repos.berkas.delete(b.id_berkas);
     }
-    await repos.berkas.createMany(this.buatBerkas(p.id_pengajuan, input.berkas, iso));
+    await repos.berkas.createMany(this.buatBerkas(user, p.id_pengajuan, input.berkas, iso));
     return this.detailUntuk(user, diperbarui);
   }
 
@@ -302,12 +305,21 @@ export class PengajuanService {
 
   // ------------------------------------------------------------------ petugas
 
-  async antrian(user: User, paging: Paging) {
+  /** Isi file hanya untuk yang berhak melihat pengajuannya (sama dengan aturan detail). */
+  async bacaFileBerkas(user: User, idBerkas: string) {
+    const berkas = await this.deps.repos.berkas.findById(idBerkas);
+    if (!berkas) throw notFound('Berkas tidak ditemukan');
+    await this.ambilDenganAkses(user, berkas.id_pengajuan);
+    if (!berkas.file_url.startsWith('unggah://')) throw notFound('Data contoh tidak memiliki file');
+    return this.unggah.baca(berkas.file_url.slice('unggah://'.length));
+  }
+
+  async antrian(user: User, paging: Paging, semua = false) {
     const { repos } = this.deps;
     if (user.role === 'WARGA') throw forbidden();
     // Kasi tanpa seksi ditolak (fail closed), jangan sampai filter kosong = melihat semua.
     if (user.role === 'KASI' && user.seksi === null) throw forbidden('Akun Kasi belum memiliki seksi');
-    const statuses = ANTRIAN_PER_ROLE[user.role];
+    const statuses = semua && user.role === 'ADMIN' ? (Object.keys(STATUS_LABEL) as (keyof typeof STATUS_LABEL)[]) : ANTRIAN_PER_ROLE[user.role];
     const filter = user.role === 'KASI' && user.seksi !== null ? { seksi: user.seksi } : {};
     const hal = await repos.pengajuan.listByStatus(statuses, filter, paging);
     const layanan = new Map((await repos.master.listLayanan()).map((l) => [l.id_layanan, l]));

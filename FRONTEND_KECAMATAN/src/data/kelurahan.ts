@@ -1,0 +1,1 @@
+export const KELURAHAN = ['Gunung Lingkas', 'Kampung Empat', 'Kampung Enam', 'Lingkas Ujung', 'Mamburungan', 'Mamburungan Timur', 'Pantai Amal'];

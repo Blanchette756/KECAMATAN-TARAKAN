@@ -5,6 +5,7 @@ import { LayananController } from '../controllers/layanan.controller.js';
 import { PengajuanController } from '../controllers/pengajuan.controller.js';
 import { createAuthGuards } from '../plugins/auth.js';
 import { authRoutes } from './auth.routes.js';
+import { berkasRoutes } from './berkas.routes.js';
 import { layananRoutes } from './layanan.routes.js';
 import { pengajuanRoutes } from './pengajuan.routes.js';
 
@@ -21,6 +22,7 @@ export const apiRoutes: FastifyPluginAsyncTypebox<{ container: Container }> = as
   }));
 
   await app.register(authRoutes, { controller: new AuthController(services), guards, config });
+  await app.register(berkasRoutes, { services, guards, config });
   await app.register(layananRoutes, { controller: new LayananController(services) });
   await app.register(pengajuanRoutes, { controller: new PengajuanController(services), guards, config });
 };

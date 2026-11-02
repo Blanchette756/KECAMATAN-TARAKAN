@@ -154,21 +154,20 @@ describe('Pengajuan: alur lengkap state machine', () => {
 
     res = await patch(ctx.app, tCamat, url(p.id_pengajuan, 'tte-camat'), { aksi: 'SETUJUI', version: p.version });
     p = res.json().data;
-    expect(p.status_pengajuan).toBe('SELESAI');
+    // Semua layanan diambil di kantor, jadi setelah TTE statusnya SIAP_DIAMBIL.
+    expect(p.status_pengajuan).toBe('SIAP_DIAMBIL');
     expect(p.nomor_surat).toMatch(/^DUMMY\/SP\/0001\/CTT\/\d{4}$/);
     expect(p.qr_code_tte).toMatch(/^SIMULASI-TTE-/);
-    expect(p.file_surat_selesai).toMatch(/^dummy:\/\/surat\//);
-    expect(p.tgl_selesai).not.toBeNull();
     expect(p.riwayat.map((r: { ke: string }) => r.ke)).toEqual([
       'DIAJUKAN',
       'PERLU_REVISI',
       'DIAJUKAN',
       'MENUNGGU_PARAF_KASI',
       'MENUNGGU_TTE_CAMAT',
-      'SELESAI',
+      'SIAP_DIAMBIL',
     ]);
 
-    // Status akhir: tidak bisa diproses lagi
+    // Sudah melewati Camat: tidak bisa ditandatangani lagi
     res = await patch(ctx.app, tCamat, url(p.id_pengajuan, 'tte-camat'), { aksi: 'SETUJUI', version: p.version });
     expect(res.statusCode).toBe(409);
   });
@@ -186,10 +185,10 @@ describe('Pengajuan: alur lengkap state machine', () => {
     expect(res.json().data.status_pengajuan).toBe('SELESAI');
   });
 
-  it('serahkan ditolak untuk layanan yang diunduh daring', async () => {
+  it('serahkan ditolak sebelum surat siap diambil', async () => {
     const p = await ajukan(ctx, tWarga, 'LAYANAN-007', DATA_PENGANTAR);
     const res = await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'serahkan'), { version: p.version });
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(409);
   });
 
   it('Kasi & Camat dapat MENGEMBALIKAN ke admin; catatannya tidak terlihat oleh warga', async () => {

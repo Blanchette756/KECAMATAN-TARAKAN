@@ -4,8 +4,7 @@ export type MimeDiizinkan = (typeof MIME_DIIZINKAN)[number];
 export type StatusBerkas = 'MENUNGGU' | 'VALID' | 'PERLU_PERBAIKAN';
 
 /**
- * Fase 1: hanya METADATA berkas yang disimpan; file_url adalah tautan dummy.
- * Fase 2: unggah sungguhan (multipart) + cek magic bytes + penyimpanan privat.
+ * `file_url` berisi `unggah://<file_id>` untuk file sungguhan, atau `dummy://...` untuk data contoh.
  */
 export interface BerkasPengajuan {
   id_berkas: string;
@@ -26,4 +25,6 @@ export interface BerkasInput {
   nama_file: string;
   mime_type: string;
   ukuran_byte: number;
+  /** Hasil POST /berkas/unggah. Kosong hanya untuk klien lama dan data contoh. */
+  file_id?: string;
 }

@@ -5,6 +5,11 @@ import type { BerkasRepository } from './interfaces.js';
 export class MemoryBerkasRepository implements BerkasRepository {
   constructor(private readonly store: MemoryStore) {}
 
+  async findById(idBerkas: string): Promise<BerkasPengajuan | null> {
+    const b = this.store.berkas.get(idBerkas);
+    return b ? structuredClone(b) : null;
+  }
+
   async createMany(items: BerkasPengajuan[]): Promise<void> {
     for (const b of items) this.store.berkas.set(b.id_berkas, structuredClone(b));
   }

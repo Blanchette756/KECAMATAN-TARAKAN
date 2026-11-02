@@ -14,6 +14,7 @@ export const BerkasInputSchema = Type.Object(
     nama_file: Type.String({ minLength: 1, maxLength: 150 }),
     mime_type: Type.String({ maxLength: 100, description: 'application/pdf, image/jpeg, atau image/png' }),
     ukuran_byte: Type.Integer({ minimum: 1 }),
+    file_id: Type.Optional(Type.String({ pattern: '^FIL-[0-9a-f-]+$', description: 'Hasil POST /berkas/unggah' })),
   },
   { additionalProperties: false },
 );
