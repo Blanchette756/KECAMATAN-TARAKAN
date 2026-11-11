@@ -17,43 +17,33 @@ const izin = (): Record<string, string> => {
   return sesi ? { authorization: `Bearer ${sesi.token}` } : {};
 };
 
-async function panggil<T>(path: string, init?: RequestInit): Promise<T> {
+interface Respons<T> {
+  data: T;
+  meta?: { page: number; limit: number; total: number; total_halaman: number };
+}
+
+async function panggilLengkap<T>(path: string, init?: RequestInit): Promise<Respons<T>> {
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, { ...init, headers: { ...izin(), ...init?.headers } });
   } catch {
     throw new ApiError('Server tidak dapat dihubungi. Coba lagi beberapa saat lagi.');
   }
-  // Token tidak berlaku lagi, misalnya setelah backend dimulai ulang.
-  if (res.status === 401 && ambilSesi()) {
+  // Token tidak berlaku lagi, misalnya setelah backend dimulai ulang. Petugas kembali ke halaman masuk petugas.
+  const sesi = ambilSesi();
+  if (res.status === 401 && sesi) {
     hapusSesi();
-    window.location.assign(`/masuk?ke=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+    window.location.assign(sesi.user.role === 'WARGA' ? `/masuk?ke=${encodeURIComponent(window.location.pathname + window.location.search)}` : '/masuk-petugas');
   }
   const body = await res.json().catch(() => null);
   if (!res.ok || body === null) {
     const rincian = Array.isArray(body?.error?.details) ? `: ${body.error.details.join('; ')}` : '';
     throw new ApiError(`${body?.error?.message ?? 'Terjadi kesalahan pada server. Coba lagi beberapa saat lagi.'}${rincian}`, res.status);
   }
-  return body.data as T;
+  return body as Respons<T>;
 }
 
-export interface HasilLacak {
-  no_registrasi: string;
-  nama_layanan: string;
-  status_pengajuan: string;
-  label_status: string;
-  pesan: string | null;
-  tgl_pengajuan: string;
-  tgl_diperbarui: string;
-  riwayat: { status: string; label: string; waktu: string }[];
-}
-
-export const lacakPengajuan = (no_registrasi: string, last_4_digit_hp: string) =>
-  panggil<HasilLacak>('/pengajuan/lacak', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ no_registrasi, last_4_digit_hp }),
-  });
+const panggil = async <T>(path: string, init?: RequestInit): Promise<T> => (await panggilLengkap<T>(path, init)).data;
 
 export interface Persyaratan {
   id_syarat: string;
@@ -163,7 +153,15 @@ export const kirimPengajuan = (id_layanan: string, data_formulir: Record<string,
 export const pengajuanSaya = () => panggil<Ringkas[]>('/pengajuan/saya?limit=50');
 export const detailPengajuan = (id: string) => panggil<DetailPengajuan>(`/pengajuan/${id}`);
 export const kirimRevisi = (id: string, berkas: BerkasKirim[], version: number) => kirimJson<DetailPengajuan>('PATCH', `/pengajuan/${id}/revisi`, { berkas, version });
-export const ambilAntrian = (semua: boolean) => panggil<Ringkas[]>(`/pengajuan/antrian?limit=50${semua ? '&semua=true' : ''}`);
+/** Backend membatasi 50 berkas per halaman, jadi semua halaman diambil agar daftar dan angka dashboard lengkap. */
+export async function ambilAntrian(semua: boolean): Promise<Ringkas[]> {
+  const hasil: Ringkas[] = [];
+  for (let halaman = 1; ; halaman++) {
+    const { data, meta } = await panggilLengkap<Ringkas[]>(`/pengajuan/antrian?limit=50&page=${halaman}${semua ? '&semua=true' : ''}`);
+    hasil.push(...data);
+    if (!meta || data.length === 0 || halaman >= meta.total_halaman) return hasil;
+  }
+}
 export const aksiPengajuan = (id: string, aksi: 'verifikasi' | 'paraf-kasi' | 'tte-camat' | 'serahkan', data: Record<string, unknown>) =>
   kirimJson<DetailPengajuan>('PATCH', `/pengajuan/${id}/${aksi}`, data);
 

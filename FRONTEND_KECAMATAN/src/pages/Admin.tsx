@@ -4,6 +4,7 @@ import { Icon, type IconName } from '../components/Icon';
 import { BarisData, Galat, Kartu, Riwayat, tanggal, ukuranFile } from '../components/portal';
 import { Button, Logo, SelectField } from '../components/ui';
 import { LAYANAN } from '../data/layanan';
+import { CAMAT } from '../data/pejabat';
 import { ambilSesi, hapusSesi, inisial, type Pengguna } from '../sesi';
 
 const PERAN: Record<string, string> = { ADMIN: 'Petugas Pelayanan', KASI: 'Kasi Tata Pemerintahan', CAMAT: 'Camat' };
@@ -382,12 +383,7 @@ function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () 
       <Topbar
         kecil={`Berkas Masuk › ${data.no_registrasi}`}
         judul="Verifikasi Berkas"
-        kanan={
-          <>
-            <Badge status={data.status_pengajuan} />
-            <Button label="Hubungi Pemohon (WA)" style="secondary" size="small" disabled />
-          </>
-        }
+        kanan={<Badge status={data.status_pengajuan} />}
       />
       <div className="admin__dua">
         <div className="admin__kiri">
@@ -675,7 +671,8 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
                   <div className="draf__ttd">
                     <p className="baris__meta">Camat Tarakan Timur</p>
                     <p className="draf__area">Tanda tangan di sini</p>
-                    <p className="baris__judul">Boby Dean Marten, ST, M.Pd.Si</p>
+                    <p className="baris__judul">{CAMAT.nama}</p>
+                    <p className="baris__meta">NIP. {CAMAT.nip}</p>
                   </div>
                 </div>
               </div>

@@ -5,6 +5,7 @@ import { Galat } from '../components/portal';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button } from '../components/ui';
+import { WHATSAPP } from '../data/kontak';
 import { ambilSesi, inisial, simpanSesi, type Pengguna } from '../sesi';
 
 const KEUNGGULAN = ['Masuk cepat dengan akun Google, aman dengan kode OTP WhatsApp', 'Ajukan 9 layanan administrasi dan unggah berkas dari HP', 'Pantau status: diperiksa, divalidasi, ditandatangani, selesai'];
@@ -145,7 +146,7 @@ export function Masuk() {
                   <p className="tile__desc">3. Isi kode OTP yang dikirim ke WhatsApp</p>
                 </div>
                 <p className="baris__meta">Belum punya akun Google? Buat akun Gmail secara gratis, lalu kembali ke halaman ini.</p>
-                <p className="baris__meta">Butuh bantuan? WhatsApp 0852-1168-6871</p>
+                <p className="baris__meta">Butuh bantuan? WhatsApp {WHATSAPP}</p>
                 <p className="baris__meta">
                   Petugas kecamatan? <a className="tautan-polos" href="/masuk-petugas">Masuk sebagai petugas</a>
                 </p>

@@ -196,9 +196,6 @@ export function NewsCard({ tanggal, judul, ringkasan, className = '' }: NewsCard
         <p className="overline">{tanggal}</p>
         <h3 className="news__title">{judul}</h3>
         <p className="news__desc">{ringkasan}</p>
-        <a className="link" href="#">
-          Baca selengkapnya
-        </a>
       </div>
     </article>
   );

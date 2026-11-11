@@ -346,7 +346,7 @@ export function Ajukan() {
               <Icon name="check" ukuran={28} />
             </span>
             <h1 className="info-judul__teks">Permohonan berhasil dikirim</h1>
-            <p className="heading__desc">Simpan kode permohonan di bawah ini untuk melacak status tanpa login.</p>
+            <p className="heading__desc">Simpan kode permohonan di bawah ini. Statusnya bisa dipantau kapan saja di halaman Permohonan Saya.</p>
             <div className="berhasil__kode">
               <p className="baris__meta">Kode permohonan</p>
               <p className="berhasil__nomor">{kode}</p>
@@ -379,7 +379,7 @@ export function Ajukan() {
               </li>
             </ol>
             <div className="berhasil__aksi">
-              <Button label="Lacak Status" arrow href="/permohonan" />
+              <Button label="Lihat Permohonan Saya" arrow href="/permohonan" />
               <Button label="Kembali ke Beranda" style="secondary" href="/" />
             </div>
           </div>

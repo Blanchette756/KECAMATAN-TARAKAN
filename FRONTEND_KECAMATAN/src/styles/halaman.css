@@ -388,6 +388,34 @@
   background: var(--color-bg-muted);
 }
 
+.batang__jalur {
+  overflow: hidden;
+}
+
+.batang__isi {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}
+
+/* Cincin donat berisi: bagian laki-laki (primer) lalu perempuan (aksen), sesuai variabel --laki. */
+.donat__cincin--isi {
+  position: relative;
+  border-color: transparent;
+  color: var(--color-text-primary);
+  font-size: 18px;
+}
+
+.donat__cincin--isi::before {
+  content: '';
+  position: absolute;
+  inset: -24px;
+  border-radius: var(--radius-full);
+  background: conic-gradient(var(--color-primary) 0 var(--laki), var(--color-accent) var(--laki) 100%);
+  mask: radial-gradient(farthest-side, transparent calc(100% - 24px), #000 calc(100% - 23px));
+}
+
 .batang__nilai {
   color: var(--color-text-muted);
   font-size: 13px;
@@ -468,23 +496,23 @@
 }
 
 .tabel th:nth-child(1) {
-  width: 35%;
+  width: 34%;
 }
 
 .tabel th:nth-child(2) {
-  width: 13.3%;
+  width: 14%;
 }
 
 .tabel th:nth-child(3) {
-  width: 14.2%;
+  width: 17%;
 }
 
 .tabel th:nth-child(4) {
-  width: 11.7%;
+  width: 14%;
 }
 
 .tabel th:nth-child(5) {
-  width: 10.2%;
+  width: 21%;
 }
 
 .tabel th,

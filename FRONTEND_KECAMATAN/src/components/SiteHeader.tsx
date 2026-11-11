@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Icon } from './Icon';
+import { JAM_PELAYANAN, JAM_PELAYANAN_SINGKAT } from '../data/kontak';
 import { ambilSesi, inisial } from '../sesi';
 import { Button, Logo } from './ui';
 
@@ -38,7 +39,7 @@ export function SiteHeader({ aktif }: { aktif: string }) {
         </span>
         <span className="utility__item only-desktop">
           <Icon name="clock" />
-          Jam Pelayanan: Senin–Kamis 08.00–16.00 · Jumat 08.00–11.00 WITA
+          Jam Pelayanan: {JAM_PELAYANAN}
         </span>
         <span className="utility__item only-mobile">
           <Icon name="shield-sm" />
@@ -46,7 +47,7 @@ export function SiteHeader({ aktif }: { aktif: string }) {
         </span>
         <span className="utility__item only-mobile">
           <Icon name="clock-sm" />
-          Sen–Jum · 08.00 WITA
+          {JAM_PELAYANAN_SINGKAT}
         </span>
       </div>
 

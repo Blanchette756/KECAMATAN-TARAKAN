@@ -580,57 +580,10 @@
   line-height: 28px;
 }
 
-.tracker {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 28px;
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg-page);
-  box-shadow: var(--shadow-medium);
-}
-
-.tracker__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.tracker__text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.tracker__title {
-  font-size: 24px;
-  font-weight: 800;
-  line-height: 32px;
-  letter-spacing: -0.24px;
-}
-
 .tracker__desc {
   color: var(--color-text-muted);
   font-size: 13px;
   line-height: 20px;
-}
-
-.tracker__secure {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-primary);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 18px;
-  white-space: nowrap;
-}
-
-.tracker__form {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-12);
 }
 
 .tracker__error {
@@ -640,20 +593,6 @@
   line-height: 20px;
 }
 
-.result {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  padding-top: 18px;
-  border-top: 1px solid var(--color-border-default);
-}
-
-.result__status {
-  color: var(--color-primary);
-  font-weight: 700;
-}
-
-.result__history,
 .dialog__list {
   display: flex;
   flex-direction: column;
@@ -663,12 +602,10 @@
   list-style: decimal;
 }
 
-.result__history li,
 .dialog__list li {
   padding-left: var(--space-4);
 }
 
-.result__history span,
 .dialog__list span {
   display: block;
 }
@@ -1055,6 +992,11 @@
   width: min(792px, calc(75% - 6px));
   height: 2px;
   background: var(--color-border-strong);
+}
+
+/* Lima cabang: garis menghubungkan titik tengah kartu pertama dan terakhir (80% lebar + 4/5 jarak antarkartu). */
+.bagan__garis-datar--lima {
+  width: min(845px, calc(80% + 19px));
 }
 
 .bagan__seksi {
@@ -1526,21 +1468,6 @@
 
   .hero__cta {
     width: 100%;
-  }
-
-  .tracker {
-    padding: var(--space-20);
-  }
-
-  .tracker__head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-8);
-  }
-
-  .tracker__form {
-    flex-direction: column;
-    align-items: stretch;
   }
 
   .field {

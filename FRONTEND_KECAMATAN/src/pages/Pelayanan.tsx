@@ -4,7 +4,7 @@ import { Icon, type IconName } from '../components/Icon';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button, PageBanner, SectionHeading } from '../components/ui';
-import { TAUTAN_WA } from '../data/kontak';
+import { TAUTAN_WA, WHATSAPP } from '../data/kontak';
 import { LAYANAN } from '../data/layanan';
 
 const INFO: { ikon: IconName; judul: string; deskripsi: string }[] = [
@@ -145,8 +145,8 @@ export function Pelayanan() {
             judul="Alur Pelayanan"
             deskripsi={
               <>
-                <span className="only-desktop">Enam langkah sederhana. Setiap langkah bisa dipantau di menu Lacak Status.</span>
-                <span className="only-mobile">Enam langkah sederhana, bisa dipantau di menu Lacak Status.</span>
+                <span className="only-desktop">Enam langkah sederhana. Setiap langkah bisa dipantau di halaman Permohonan Saya.</span>
+                <span className="only-mobile">Enam langkah sederhana, bisa dipantau di Permohonan Saya.</span>
               </>
             }
           />
@@ -226,7 +226,7 @@ export function Pelayanan() {
           <div className="bantuan">
             <div className="bantuan__teks">
               <h3 className="tile__title">Masih bingung soal persyaratan?</h3>
-              <p className="ppid__desc">Tanya petugas lewat WhatsApp 0852-1168-6871 atau datang ke kantor kecamatan pada jam pelayanan.</p>
+              <p className="ppid__desc">Tanya petugas lewat WhatsApp {WHATSAPP} atau datang ke kantor kecamatan pada jam pelayanan.</p>
             </div>
             <Button label="Chat Petugas" style="accent" arrow href={TAUTAN_WA} luar className="bantuan__tombol" />
           </div>

@@ -1,5 +1,5 @@
 import { Icon } from './Icon';
-import { TAUTAN_PETA } from '../data/kontak';
+import { ALAMAT, EMAIL, MEDIA_SOSIAL, TAUTAN_PETA, TELEPON, WHATSAPP } from '../data/kontak';
 import { Logo } from './ui';
 
 const TAUTAN = [
@@ -20,16 +20,16 @@ export function SiteFooter() {
             <Logo variant="footer" />
             Kecamatan Tarakan Timur
           </div>
-          <p>Jl. Sei Mahakam RT.10 No. 01, Kelurahan Kampung Empat, Kecamatan Tarakan Timur, Kota Tarakan, Kalimantan Utara</p>
+          <p>{ALAMAT}, Kalimantan Utara</p>
           <p className="footer__contact">
             <Icon name="phone" />
-            (0551) 22490 · WA 0852-1168-6871
+            {TELEPON} · WA {WHATSAPP}
           </p>
           <p className="footer__contact">
             <Icon name="mail" />
-            kecamatan.tarakantimur@gmail.com
+            {EMAIL}
           </p>
-          <p className="footer__social">{'Instagram  •  Facebook  •  YouTube'}</p>
+          <p className="footer__social">{MEDIA_SOSIAL}</p>
         </div>
 
         <div className="footer__column">
@@ -45,10 +45,10 @@ export function SiteFooter() {
 
         <div className="footer__column footer__column--hours">
           <p className="footer__title">Jam Pelayanan</p>
-          <p className="only-desktop">Senin–Kamis: 08.00–16.00 WITA</p>
-          <p className="only-desktop">Jumat: 08.00–11.00 WITA</p>
+          <p className="only-desktop">Pagi: 07.30–12.00 WITA</p>
+          <p className="only-desktop">Siang: 13.00–16.30 WITA</p>
           <p className="only-desktop">Sabtu, Minggu &amp; hari libur: tutup</p>
-          <p className="only-mobile">Senin–Kamis 08.00–16.00 · Jumat 08.00–11.00 WITA</p>
+          <p className="only-mobile">07.30–12.00 · 13.00–16.30 WITA</p>
         </div>
 
         <div className="footer__column footer__column--map">

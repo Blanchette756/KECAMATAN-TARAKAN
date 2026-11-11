@@ -3,15 +3,15 @@ import { Icon, type IconName } from '../components/Icon';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button, InputField, PageBanner, SectionHeading, SelectField, TextareaField } from '../components/ui';
-import { KELURAHAN } from '../data/kelurahan';
-import { ALAMAT, TAUTAN_PETA, TAUTAN_WA } from '../data/kontak';
+import { KANTOR_KELURAHAN } from '../data/kelurahan';
+import { ALAMAT, EMAIL, JAM_PELAYANAN, MEDIA_SOSIAL, TAUTAN_PETA, TAUTAN_WA, TELEPON, tautanPeta, WHATSAPP } from '../data/kontak';
 
 const INFO: { ikon: IconName; judul: string; isi: string }[] = [
   { ikon: 'map-pin-22', judul: 'Alamat Kantor', isi: ALAMAT },
-  { ikon: 'phone-22', judul: 'Telepon', isi: '(0551) 22490 · WhatsApp 0852-1168-6871' },
-  { ikon: 'mail-22', judul: 'Email', isi: 'kecamatan.tarakantimur@gmail.com' },
-  { ikon: 'clock-22', judul: 'Jam Pelayanan', isi: 'Senin–Kamis 08.00–16.00 WITA · Jumat 08.00–11.00 WITA' },
-  { ikon: 'globe-22', judul: 'Media Sosial', isi: 'Instagram · Facebook · YouTube [akun resmi]' },
+  { ikon: 'phone-22', judul: 'Telepon', isi: `${TELEPON} · WhatsApp ${WHATSAPP}` },
+  { ikon: 'mail-22', judul: 'Email', isi: EMAIL },
+  { ikon: 'clock-22', judul: 'Jam Pelayanan', isi: JAM_PELAYANAN },
+  { ikon: 'globe-22', judul: 'Media Sosial', isi: MEDIA_SOSIAL },
 ];
 
 const KATEGORI = ['Pertanyaan', 'Saran', 'Pengaduan Layanan'];
@@ -66,7 +66,7 @@ export function Kontak() {
             </div>
             <div className="kontak__peta">
               <Icon name="map-pin-32" />
-              <p>Peta lokasi kantor (sematan Google Maps)</p>
+              <p>Kantor Kecamatan Tarakan Timur, Kelurahan Kampung Empat</p>
               <Button label="Buka di Google Maps" style="accent" size="small" arrow href={TAUTAN_PETA} luar />
             </div>
           </div>
@@ -113,18 +113,22 @@ export function Kontak() {
         <section className="section section--page" id="kontak-kelurahan">
           <SectionHeading overline="Kantor kelurahan" judul="Kontak Kelurahan" deskripsi={<span className="only-desktop">Hubungi kantor kelurahan untuk layanan administrasi tingkat kelurahan.</span>} />
           <div className="wilayah-grid">
-            {KELURAHAN.map((nama) => (
+            {KANTOR_KELURAHAN.map(({ nama, lurah, alamat, whatsapp, email, lat, lng }) => (
               <article className="tile tile--auto" key={nama}>
                 <span className="tile__icon">
                   <Icon name="map-pin-md" />
                 </span>
                 <h3 className="tile__title">Kelurahan {nama}</h3>
                 <p className="tile__desc">
-                  Alamat: [alamat kantor]
+                  Lurah: {lurah}
                   <br />
-                  Telepon: [nomor telepon]
+                  Alamat: {alamat}
+                  <br />
+                  WhatsApp: {whatsapp ?? 'belum tersedia'}
+                  <br />
+                  Email: {email}
                 </p>
-                <a className="link" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`Kantor Kelurahan ${nama} Tarakan`)}`} target="_blank" rel="noreferrer">
+                <a className="link" href={tautanPeta(lat, lng)} target="_blank" rel="noreferrer">
                   Petunjuk arah
                 </a>
               </article>
@@ -132,7 +136,7 @@ export function Kontak() {
             <div className="ppid">
               <p className="overline overline--accent">Bantuan cepat</p>
               <h3 className="tile__title">Tanya layanan lewat WhatsApp</h3>
-              <p className="ppid__desc">WhatsApp layanan: 0852-1168-6871</p>
+              <p className="ppid__desc">WhatsApp layanan: {WHATSAPP}</p>
               <Button label="Chat Petugas" style="accent" size="small" arrow href={TAUTAN_WA} luar />
             </div>
           </div>

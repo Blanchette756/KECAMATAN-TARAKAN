@@ -5,6 +5,7 @@ import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button, NewsCard, SectionHeading, ServiceTile, StatCard } from '../components/ui';
 import { BERITA } from '../data/berita';
+import { angka, desimal, SUMBER_MONOGRAFI, TAHUN_MONOGRAFI, TOTAL_LUAS, TOTAL_PENDUDUK } from '../data/monografi';
 
 // Judul dan deskripsi mengikuti Figma; `id` menunjuk layanan di backend.
 const LAYANAN: { id: string; ikon: IconName; judul: string; deskripsi: string }[][] = [
@@ -77,13 +78,13 @@ export function Beranda() {
           <SectionHeading
             overline="Tarakan Timur dalam angka"
             judul="Data Demografi"
-            deskripsi="Data publik semester I tahun 2026 • Sumber: Kecamatan Tarakan Timur"
+            deskripsi={`Data tahun ${TAHUN_MONOGRAFI} • Sumber: ${SUMBER_MONOGRAFI}`}
             tautan="Lihat Data Monografi"
             tautanHref="/data-monografi"
           />
           <div className="stat-row">
-            <StatCard angka="82.743" satuan="Jiwa" label="Jumlah Penduduk" />
-            <StatCard angka="58,20" satuan="km²" label="Luas Wilayah" />
+            <StatCard angka={angka(TOTAL_PENDUDUK)} satuan="Jiwa" label="Jumlah Penduduk" />
+            <StatCard angka={desimal(TOTAL_LUAS)} satuan="km²" label="Luas Wilayah" />
             <StatCard angka="7" satuan="Kelurahan" label="Jumlah Kelurahan" />
           </div>
         </section>

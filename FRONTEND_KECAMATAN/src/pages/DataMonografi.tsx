@@ -1,13 +1,45 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button, PageBanner, SectionHeading, SelectField, StatCard } from '../components/ui';
 import { KELURAHAN } from '../data/kelurahan';
+import {
+  angka,
+  desimal,
+  MONOGRAFI,
+  PENDUDUK_LAKI,
+  PENDUDUK_PEREMPUAN,
+  persen,
+  SUMBER_MONOGRAFI,
+  TAHUN_MONOGRAFI,
+  TOTAL_LUAS,
+  TOTAL_PENDUDUK,
+} from '../data/monografi';
 
-const KOLOM = ['Luas Wilayah (km²)', 'Jumlah Penduduk', 'Jumlah KK', 'Jumlah RT', 'Kepadatan (Jiwa/km²)'];
-const KOSONG = '—';
+const KOLOM = ['Luas (km²)', 'Penduduk (jiwa)', 'Persentase', 'Kepadatan (jiwa/km²)'];
+const PENDUDUK_TERBANYAK = Math.max(...Object.values(MONOGRAFI).map((k) => k.penduduk));
+const PERSEN_LAKI = (PENDUDUK_LAKI / (PENDUDUK_LAKI + PENDUDUK_PEREMPUAN)) * 100;
 
-// Data per kelurahan belum ada; tanda "—" mengikuti Figma sampai data monografi resmi tersedia.
+const nilaiKolom = (luas: number, penduduk: number) => [desimal(luas), angka(penduduk), persen((penduduk / TOTAL_PENDUDUK) * 100), angka(penduduk / luas)];
+
+// Pemisah ";" dan koma desimal supaya langsung terbaca rapi oleh Excel berbahasa Indonesia.
+function unduhCsv() {
+  const baris = [
+    ['Kelurahan', ...KOLOM],
+    ...KELURAHAN.map((nama) => [nama, ...nilaiKolom(MONOGRAFI[nama].luas, MONOGRAFI[nama].penduduk)]),
+    ['Total Kecamatan Tarakan Timur', ...nilaiKolom(TOTAL_LUAS, TOTAL_PENDUDUK)],
+    [],
+    [`Sumber: ${SUMBER_MONOGRAFI}`],
+  ];
+  const isi = '﻿' + baris.map((b) => b.map((sel) => `"${sel.replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  const tautan = document.createElement('a');
+  tautan.href = URL.createObjectURL(new Blob([isi], { type: 'text/csv;charset=utf-8' }));
+  tautan.download = `data-monografi-tarakan-timur-${TAHUN_MONOGRAFI}.csv`;
+  tautan.click();
+  // Dilepas belakangan: sebagian browser baru membaca berkas setelah klik selesai diproses.
+  window.setTimeout(() => URL.revokeObjectURL(tautan.href), 1000);
+}
+
 export function DataMonografi() {
   const [kelurahan, setKelurahan] = useState('');
   const baris = kelurahan ? [kelurahan] : KELURAHAN;
@@ -25,22 +57,21 @@ export function DataMonografi() {
 
         <div className="toolbar toolbar--filter">
           <div className="filter">
-            <SelectField nama="periode" pilihan={['Periode: Semester I 2026']} />
+            <SelectField nama="periode" pilihan={[`Periode: Tahun ${TAHUN_MONOGRAFI}`]} />
             <SelectField nama="kelurahan" placeholder="Semua kelurahan" pilihan={KELURAHAN} nilai={kelurahan} onUbah={setKelurahan} />
           </div>
-          <div className="filter__unduh" title="Berkas belum tersedia sampai data resmi diisi">
-            <Button label="Unduh PDF" style="secondary" className="only-desktop" />
-            <Button label="Unduh Data (XLSX)" />
+          <div className="filter__unduh">
+            <Button label="Unduh Data (CSV)" onClick={unduhCsv} />
           </div>
         </div>
 
         <section className="section section--demografi section--ringkasan">
-          <SectionHeading overline="Ringkasan" judul="Data Demografi" deskripsi="Data publik semester I tahun 2026 • Sumber: Kecamatan Tarakan Timur" />
+          <SectionHeading overline="Ringkasan" judul="Data Demografi" deskripsi={`Data tahun ${TAHUN_MONOGRAFI} • Sumber: ${SUMBER_MONOGRAFI}`} />
           <div className="stat-row">
-            <StatCard angka="82.743" satuan="Jiwa" label="Jumlah Penduduk" />
-            <StatCard angka="58,20" satuan="km²" label="Luas Wilayah" />
+            <StatCard angka={angka(TOTAL_PENDUDUK)} satuan="Jiwa" label="Jumlah Penduduk" />
+            <StatCard angka={desimal(TOTAL_LUAS)} satuan="km²" label="Luas Wilayah" />
             <StatCard angka="7" satuan="Kelurahan" label="Jumlah Kelurahan" />
-            <StatCard angka={KOSONG} satuan="KK" label="Jumlah Kepala Keluarga" />
+            <StatCard angka={angka(TOTAL_PENDUDUK / TOTAL_LUAS)} satuan="Jiwa/km²" label="Kepadatan Penduduk" />
           </div>
         </section>
 
@@ -48,31 +79,35 @@ export function DataMonografi() {
           <div className="grafik__kartu">
             <div className="grafik__judul">
               <h2 className="tile__title">Penduduk per Kelurahan</h2>
-              <p className="baris__meta">Grafik terisi otomatis dari data monografi resmi.</p>
+              <p className="baris__meta">Jumlah jiwa tahun {TAHUN_MONOGRAFI}.</p>
             </div>
             {baris.map((nama) => (
               <div className="batang" key={nama}>
                 <span className="batang__nama">{nama}</span>
-                <span className="batang__jalur" />
-                <span className="batang__nilai">{KOSONG}</span>
+                <span className="batang__jalur">
+                  <span className="batang__isi" style={{ width: `${(MONOGRAFI[nama].penduduk / PENDUDUK_TERBANYAK) * 100}%` }} />
+                </span>
+                <span className="batang__nilai">{angka(MONOGRAFI[nama].penduduk)}</span>
               </div>
             ))}
           </div>
           <div className="grafik__kartu grafik__kartu--donat">
             <div className="grafik__judul">
               <h2 className="tile__title">Komposisi Jenis Kelamin</h2>
-              <p className="baris__meta">Persentase penduduk laki-laki dan perempuan.</p>
+              <p className="baris__meta">Persentase penduduk laki-laki dan perempuan se-kecamatan.</p>
             </div>
             <div className="donat">
-              <span className="donat__cincin">{KOSONG}</span>
+              <span className="donat__cincin donat__cincin--isi" style={{ '--laki': `${PERSEN_LAKI}%` } as CSSProperties}>
+                {angka(TOTAL_PENDUDUK)}
+              </span>
               <ul className="donat__legenda">
                 <li>
                   <span className="titik titik--primer" />
-                  Laki-laki <strong>— %</strong>
+                  Laki-laki <strong>{persen(PERSEN_LAKI)}</strong> ({angka(PENDUDUK_LAKI)})
                 </li>
                 <li>
                   <span className="titik titik--aksen" />
-                  Perempuan <strong>— %</strong>
+                  Perempuan <strong>{persen(100 - PERSEN_LAKI)}</strong> ({angka(PENDUDUK_PEREMPUAN)})
                 </li>
               </ul>
             </div>
@@ -85,7 +120,7 @@ export function DataMonografi() {
             judul="Rincian Wilayah"
             deskripsi={
               <>
-                <span className="only-desktop">Angka diisi dari data monografi resmi semester berjalan.</span>
+                <span className="only-desktop">Luas daratan, jumlah penduduk, dan kepadatan setiap kelurahan.</span>
                 <span className="only-mobile">Jumlah penduduk per kelurahan.</span>
               </>
             }
@@ -106,8 +141,8 @@ export function DataMonografi() {
                 {baris.map((nama) => (
                   <tr key={nama}>
                     <th scope="row">{nama}</th>
-                    {KOLOM.map((kolom) => (
-                      <td key={kolom}>{KOSONG}</td>
+                    {nilaiKolom(MONOGRAFI[nama].luas, MONOGRAFI[nama].penduduk).map((nilai, urutan) => (
+                      <td key={KOLOM[urutan]}>{nilai}</td>
                     ))}
                   </tr>
                 ))}
@@ -116,8 +151,8 @@ export function DataMonografi() {
                 <tfoot>
                   <tr>
                     <th scope="row">Total Kecamatan Tarakan Timur</th>
-                    {KOLOM.map((kolom) => (
-                      <td key={kolom}>{KOSONG}</td>
+                    {nilaiKolom(TOTAL_LUAS, TOTAL_PENDUDUK).map((nilai, urutan) => (
+                      <td key={KOLOM[urutan]}>{nilai}</td>
                     ))}
                   </tr>
                 </tfoot>
@@ -128,11 +163,13 @@ export function DataMonografi() {
             {baris.map((nama) => (
               <div className="fakta__baris" key={nama}>
                 <dt>{nama}</dt>
-                <dd>— jiwa</dd>
+                <dd>{angka(MONOGRAFI[nama].penduduk)} jiwa</dd>
               </div>
             ))}
           </dl>
-          <p className="baris__meta">Sumber: [instansi sumber data] · Periode: Semester I 2026 · Diperbarui: [tanggal]</p>
+          <p className="baris__meta">
+            Sumber: {SUMBER_MONOGRAFI} · Periode: Tahun {TAHUN_MONOGRAFI}
+          </p>
         </section>
       </main>
       <SiteFooter />

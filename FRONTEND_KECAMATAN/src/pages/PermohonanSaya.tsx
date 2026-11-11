@@ -5,7 +5,7 @@ import { BarisData, Galat, jumlahTahapSelesai, Kartu, StatusBadge, TahapPermohon
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button } from '../components/ui';
-import { TAUTAN_WA } from '../data/kontak';
+import { ALAMAT_SINGKAT, JAM_PELAYANAN, TAUTAN_WA, WHATSAPP } from '../data/kontak';
 import { ambilSesi, hapusSesi } from '../sesi';
 
 const DIPROSES = ['DIAJUKAN', 'DIKEMBALIKAN_KE_ADMIN', 'MENUNGGU_PARAF_KASI', 'MENUNGGU_TTE_CAMAT'];
@@ -282,12 +282,12 @@ function Detail({ id }: { id: string }) {
           <Kartu judul="Pengambilan surat">
             <dl>
               <BarisData label="Lokasi" nilai="Kantor Kecamatan Tarakan Timur" />
-              <BarisData label="Alamat" nilai="Jl. Sei Mahakam RT.10 No. 01, Kel. Kampung Empat" />
-              <BarisData label="Jam" nilai="Sen–Kam 08.00–16.00, Jum 08.00–11.00 WITA" />
+              <BarisData label="Alamat" nilai={ALAMAT_SINGKAT} />
+              <BarisData label="Jam" nilai={JAM_PELAYANAN} />
               <BarisData label="Bawa" nilai="Dokumen asli & KTP" />
             </dl>
             <a className="baris__meta" href={TAUTAN_WA} target="_blank" rel="noreferrer">
-              Ada pertanyaan? WhatsApp 0852-1168-6871
+              Ada pertanyaan? WhatsApp {WHATSAPP}
             </a>
           </Kartu>
         </aside>

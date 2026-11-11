@@ -3,7 +3,9 @@ import { Icon } from '../components/Icon';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { FotoPlaceholder, PageBanner, SectionHeading } from '../components/ui';
-import { KELURAHAN } from '../data/kelurahan';
+import { KANTOR_KELURAHAN, type KantorKelurahan } from '../data/kelurahan';
+import { angka, desimal, TAHUN_MONOGRAFI, TOTAL_LUAS, TOTAL_PENDUDUK } from '../data/monografi';
+import { CAMAT, PEJABAT_STRUKTURAL, SEKRETARIS } from '../data/pejabat';
 
 const BAGIAN = [
   { id: 'gambaran-umum', label: 'Gambaran Umum' },
@@ -18,6 +20,8 @@ const FAKTA = [
   { label: 'Kota', nilai: 'Tarakan' },
   { label: 'Jumlah kelurahan', nilai: '7 kelurahan' },
   { label: 'Pusat pemerintahan', nilai: 'Kelurahan Kampung Empat' },
+  { label: 'Luas wilayah', nilai: `${desimal(TOTAL_LUAS)} km²` },
+  { label: `Jumlah penduduk (${TAHUN_MONOGRAFI})`, nilai: `${angka(TOTAL_PENDUDUK)} jiwa` },
 ];
 
 const SEJARAH = [
@@ -46,16 +50,18 @@ const SEJARAH = [
 // Teks dalam kurung siku adalah placeholder Figma yang menunggu data resmi.
 const MISI = [1, 2, 3, 4].map((nomor) => `[Misi ke-${nomor} sesuai dokumen Renstra kecamatan]`);
 
-const KEPALA_SEKSI = ['Kasi Tata Pemerintahan', 'Kasi Ketenteraman & Ketertiban Umum', 'Kasi Ekonomi & Pembangunan', 'Kasi Kesejahteraan Sosial'];
-
-function KartuKelurahan({ nama }: { nama: string }) {
+function KartuKelurahan({ nama, lurah, alamat }: KantorKelurahan) {
   return (
     <article className="tile tile--auto">
       <span className="tile__icon">
         <Icon name="map-pin-md" />
       </span>
       <h3 className="tile__title">Kelurahan {nama}</h3>
-      <p className="tile__desc">Kantor: [alamat kantor kelurahan]</p>
+      <p className="tile__desc">
+        Lurah: {lurah}
+        <br />
+        Kantor: {alamat}
+      </p>
       <a className="link" href="/kontak#kontak-kelurahan">
         Lihat kontak
       </a>
@@ -63,7 +69,7 @@ function KartuKelurahan({ nama }: { nama: string }) {
   );
 }
 
-function KartuJabatan({ jabatan, nama = '[Nama Pejabat]' }: { jabatan: string; nama?: string }) {
+function KartuJabatan({ jabatan, nama }: { jabatan: string; nama: string }) {
   return (
     <div className="org-card">
       <span className="org-card__avatar">
@@ -179,8 +185,8 @@ export function ProfilKecamatan() {
         <section className="section" id="wilayah">
           <SectionHeading overline="Wilayah administrasi" judul="7 Kelurahan di Tarakan Timur" deskripsi={<span className="only-desktop">Setiap kelurahan memiliki kantor pelayanan untuk layanan administrasi tingkat kelurahan.</span>} />
           <div className="wilayah-grid">
-            {KELURAHAN.map((nama) => (
-              <KartuKelurahan key={nama} nama={nama} />
+            {KANTOR_KELURAHAN.map((kelurahan) => (
+              <KartuKelurahan key={kelurahan.nama} {...kelurahan} />
             ))}
             <FotoPlaceholder keterangan="Peta wilayah (placeholder)" className="wilayah-grid__peta only-desktop" />
           </div>
@@ -192,22 +198,22 @@ export function ProfilKecamatan() {
             judul="Perangkat Kecamatan"
             deskripsi={
               <>
-                <span className="only-desktop">Susunan jabatan di bawah ini contoh. Sesuaikan dengan peraturan wali kota tentang susunan organisasi kecamatan.</span>
-                <span className="only-mobile">Susunan jabatan bersifat contoh.</span>
+                <span className="only-desktop">Pejabat Kantor Kecamatan Tarakan Timur tahun 2026.</span>
+                <span className="only-mobile">Pejabat kecamatan tahun 2026.</span>
               </>
             }
           />
           <div className="bagan">
-            <KartuJabatan jabatan="Camat" nama="Boby Dean Marten, ST, M.Pd.Si" />
+            <KartuJabatan jabatan="Camat" nama={CAMAT.nama} />
             <span className="bagan__garis" />
-            <KartuJabatan jabatan="Sekretaris Camat" nama="[Nama Sekretaris]" />
+            <KartuJabatan jabatan="Sekretaris Camat" nama={SEKRETARIS} />
             <span className="bagan__garis" />
-            <span className="bagan__garis-datar" />
+            <span className="bagan__garis-datar bagan__garis-datar--lima" />
             <div className="bagan__seksi">
-              {KEPALA_SEKSI.map((jabatan) => (
+              {PEJABAT_STRUKTURAL.map(({ jabatan, nama }) => (
                 <div className="bagan__cabang" key={jabatan}>
                   <span className="bagan__garis bagan__garis--pendek" />
-                  <KartuJabatan jabatan={jabatan} />
+                  <KartuJabatan jabatan={jabatan} nama={nama} />
                 </div>
               ))}
             </div>

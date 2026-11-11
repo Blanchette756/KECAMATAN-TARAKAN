@@ -1,11 +1,11 @@
 {
-  "_catatan": "Kontak pengaduan sesuai SP CCTI. Jam layanan belum ditetapkan, menunggu data kecamatan. SP Surat Pengantar mencantumkan WA berbeda (081349431856) – perlu konfirmasi nomor yang benar.",
+  "_catatan": "Sumber: berkas '09. Kontak.xlsx' (kontak resmi kecamatan, 2026). Telepon kantor dari Standar Pelayanan 2026. Catatan: SP 2026 masih mencantumkan WA 085211686871 dan email kecamatan.tarakantimur@gmail.com.",
   "kontak": {
     "nama_instansi": "Kantor Kecamatan Tarakan Timur",
-    "alamat": "Jl. Sei Mahakam RT.10 No. 01, Kel. Kampung Empat, Kec. Tarakan Timur, Kota Tarakan, Kalimantan Utara",
+    "alamat": "Jl. Sei Mahakam RT 10 No. 01, Kel. Kampung Empat, Kec. Tarakan Timur, Kota Tarakan 77125, Kalimantan Utara",
     "telepon": "(0551) 22490",
-    "whatsapp": "085211686871",
-    "email": "kecamatan.tarakantimur@gmail.com",
-    "jam_layanan": "Menunggu data dari kecamatan"
+    "whatsapp": "085711061099",
+    "email": "ctt@tarakankota.go.id",
+    "jam_layanan": "07.30–12.00 dan 13.00–16.30 WITA"
   }
 }

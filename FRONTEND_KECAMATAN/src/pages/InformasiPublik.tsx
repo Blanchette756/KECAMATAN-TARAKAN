@@ -99,9 +99,6 @@ export function InformasiPublik() {
                   <p className="overline">{utama.tanggal}</p>
                   <h2 className="sorotan__judul">{utama.judul}</h2>
                   <p className="teks-sekunder">{utama === BERITA[0] ? RINGKASAN_UTAMA : utama.ringkasan}</p>
-                  <a className="link" href="#">
-                    Baca selengkapnya
-                  </a>
                 </div>
               </article>
 
