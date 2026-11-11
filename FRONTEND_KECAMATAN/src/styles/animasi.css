@@ -1,0 +1,208 @@
+/*
+ * Animasi ringan untuk seluruh situs.
+ * Hanya memakai opacity, transform, warna, dan bayangan (murah untuk browser), tanpa library.
+ * Pengguna yang mematikan animasi di sistem operasinya (prefers-reduced-motion) tidak melihat gerakan apa pun.
+ */
+:root {
+  --gerak-cepat: 160ms;
+  --gerak: 260ms;
+  --gerak-muncul: 520ms;
+  --kurva: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes naik {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes pudar {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes tampil {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes turun {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* 1. Saat halaman dibuka: isi hero dan banner naik bergantian. */
+.hero__pill,
+.hero__title,
+.hero__lead,
+.hero__cta,
+.breadcrumb,
+.banner__title,
+.banner__desc {
+  animation: naik var(--gerak-muncul) var(--kurva) backwards;
+}
+
+.hero__title,
+.banner__title {
+  animation-delay: 80ms;
+}
+
+.hero__lead,
+.banner__desc {
+  animation-delay: 160ms;
+}
+
+.hero__cta {
+  animation-delay: 240ms;
+}
+
+/* 2. Saat di-scroll: kartu dan judul bagian muncul pelan (kelas dipasang oleh src/animasi.ts). */
+.muncul {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+.muncul.muncul--tampil {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--gerak-muncul) var(--kurva),
+    transform var(--gerak-muncul) var(--kurva);
+}
+
+/* 3. Umpan balik saat kursor di atas atau saat ditekan. */
+.btn {
+  transition:
+    background-color var(--gerak-cepat) ease,
+    box-shadow var(--gerak-cepat) ease,
+    transform var(--gerak-cepat) ease;
+}
+
+.btn:not(:disabled):hover {
+  box-shadow: 0 6px 16px rgba(26, 26, 26, 0.14);
+  transform: translateY(-1px);
+}
+
+.btn:not(:disabled):active {
+  box-shadow: none;
+  transform: translateY(0) scale(0.98);
+}
+
+.btn > .icon:last-child,
+.link::after {
+  transition: transform var(--gerak-cepat) ease;
+}
+
+.btn:not(:disabled):hover > .icon:last-child,
+.link:hover::after {
+  transform: translateX(3px);
+}
+
+.tile,
+.news,
+.layanan-item,
+.antrean,
+.info-kartu {
+  transition:
+    border-color var(--gerak) ease,
+    box-shadow var(--gerak) ease,
+    background-color var(--gerak) ease;
+}
+
+.tile:hover,
+.news:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-medium);
+}
+
+.layanan-item:not(.layanan-item--aktif):hover,
+.antrean:not(.antrean--aktif):hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-muted);
+}
+
+.nav__item,
+.drawer__link,
+.chip,
+.page,
+.nilai,
+.sidebar__item,
+.tautan-polos,
+.field__input,
+.tabel-admin tbody tr {
+  transition:
+    color var(--gerak-cepat) ease,
+    background-color var(--gerak-cepat) ease,
+    border-color var(--gerak-cepat) ease;
+}
+
+.nav__item:hover,
+.drawer__link:hover {
+  color: var(--color-primary);
+}
+
+.chip:not(.chip--selected):hover,
+.page:not(.page--active):hover {
+  border-color: var(--color-border-strong);
+}
+
+.sidebar__item:not(.sidebar__item--aktif):hover {
+  background: rgba(249, 246, 238, 0.08);
+}
+
+.tabel-admin tbody tr:hover {
+  background: var(--color-bg-muted);
+}
+
+.penampil__panah {
+  transition:
+    opacity var(--gerak-cepat) ease,
+    transform var(--gerak-cepat) ease;
+}
+
+.penampil__panah:not(:disabled):hover {
+  transform: translateY(-50%) scale(1.06);
+}
+
+/* 4. Dialog, menu HP, dan pergantian berkas. */
+.dialog[open] {
+  animation: tampil var(--gerak) var(--kurva);
+}
+
+.dialog[open]::backdrop,
+.penampil[open],
+.penampil__media {
+  animation: pudar var(--gerak) ease;
+}
+
+.drawer--open {
+  animation: turun var(--gerak) var(--kurva);
+}
+
+.admin__utama > * {
+  animation: pudar var(--gerak) ease;
+}
+
+@media (max-width: 1099px) {
+  .penampil__panah:not(:disabled):hover {
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  ::backdrop {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+}

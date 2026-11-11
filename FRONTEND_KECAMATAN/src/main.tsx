@@ -8,6 +8,8 @@ import './styles/tokens.css';
 import './styles/halaman.css';
 import './styles/portal.css';
 import './styles/components.css';
+import './styles/animasi.css';
+import { pasangAnimasiMuncul } from './animasi';
 import { Admin } from './pages/Admin';
 import { Ajukan } from './pages/Ajukan';
 import { Beranda } from './pages/Beranda';
@@ -43,7 +45,10 @@ function Aplikasi() {
   return <Halaman />;
 }
 
-createRoot(document.getElementById('root')!).render(
+const akar = document.getElementById('root')!;
+pasangAnimasiMuncul(akar);
+
+createRoot(akar).render(
   <StrictMode>
     <Aplikasi />
   </StrictMode>,
