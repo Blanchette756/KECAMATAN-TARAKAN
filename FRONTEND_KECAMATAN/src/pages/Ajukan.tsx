@@ -100,10 +100,17 @@ function SlotUnggah({ syarat, file, onPilih, sibuk }: { syarat: SyaratLengkap; f
   );
 }
 
+/** Layanan dari tautan "Ajukan Online" (?layanan=...). null bila tidak ada atau tidak dikenal. */
+function layananDariAlamat(): string | null {
+  const id = new URLSearchParams(window.location.search).get('layanan');
+  return LAYANAN.some((item) => item.id === id) ? id : null;
+}
+
 export function Ajukan() {
   const sesi = ambilSesi();
-  const [langkah, setLangkah] = useState(0);
-  const [idLayanan, setIdLayanan] = useState(new URLSearchParams(window.location.search).get('layanan') ?? LAYANAN[0].id);
+  // Datang dari tombol Ajukan Online: layanan sudah dipilih, jadi langsung ke langkah Unggah Berkas.
+  const [langkah, setLangkah] = useState(() => (layananDariAlamat() ? 1 : 0));
+  const [idLayanan, setIdLayanan] = useState(() => layananDariAlamat() ?? LAYANAN[0].id);
   const [layanan, setLayanan] = useState<DetailLayananApi | null>(null);
   const [isian, setIsian] = useState<Record<string, string>>({});
   const [berkas, setBerkas] = useState<Record<string, HasilUnggah>>({});
@@ -115,18 +122,25 @@ export function Ajukan() {
   useCegahBukaFile();
 
   useEffect(() => {
-    if (!sesi) window.location.replace(`/masuk?ke=${encodeURIComponent(`/ajukan?layanan=${idLayanan}`)}`);
+    // Kembali ke alamat yang sama setelah masuk/melengkapi profil, termasuk ?layanan= bila ada.
+    const kembali = encodeURIComponent(window.location.pathname + window.location.search);
+    if (!sesi) window.location.replace(`/masuk?ke=${kembali}`);
     else if (sesi.user.role !== 'WARGA') window.location.replace('/admin');
-    else if (!sesi.user.profil_lengkap) window.location.replace(`/profil?ke=${encodeURIComponent(`/ajukan?layanan=${idLayanan}`)}`);
+    else if (!sesi.user.profil_lengkap) window.location.replace(`/profil?ke=${kembali}`);
   }, []);
 
   useEffect(() => {
     setLayanan(null);
     setIsian({});
     setBerkas({});
+    // Bila layanan diganti cepat, jawaban yang datang terlambat untuk layanan lama diabaikan.
+    let batal = false;
     ambilLayanan(idLayanan)
-      .then(setLayanan)
-      .catch((error: Error) => setGalat(error.message));
+      .then((data) => !batal && setLayanan(data))
+      .catch((error: Error) => !batal && setGalat(error.message));
+    return () => {
+      batal = true;
+    };
   }, [idLayanan]);
 
   if (!sesi) return null;
@@ -254,8 +268,14 @@ export function Ajukan() {
         {langkah === 1 && layanan && (
           <div className="portal__dua">
             <div className="portal__utama">
-              <Kartu>
-                <h2 className="tile__title">Unggah berkas — {dipilih.judul}</h2>
+              <Kartu
+                judul={`Unggah berkas — ${dipilih.judul}`}
+                aksi={
+                  <button type="button" className="tautan-polos" onClick={() => setLangkah(0)}>
+                    Ganti layanan
+                  </button>
+                }
+              >
                 <p className="heading__desc">Gunakan foto atau scan yang jelas dan seluruh tulisan terbaca. Berkas bertanda Wajib harus diunggah.</p>
                 {fields.length > 0 && (
                   <div className="isian">
