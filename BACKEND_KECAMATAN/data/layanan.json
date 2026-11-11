@@ -293,10 +293,7 @@
       "mode_penyerahan": "AMBIL_DI_KANTOR",
       "jumlah_rangkap": null,
       "aktif": true,
-      "form_fields": [
-        { "key": "jenis_dokumen", "label": "Jenis Dokumen yang Dilegalisasi", "tipe": "teks", "wajib": true, "panjang_maks": 150 },
-        { "key": "jumlah_dokumen", "label": "Jumlah Dokumen", "tipe": "angka", "wajib": true, "min": 1, "maks": 20 }
-      ],
+      "form_fields": [],
       "persyaratan": [
         { "id_syarat": "SYR-008-01", "nama_syarat": "Fotokopi KTP Pemohon", "wajib": true },
         { "id_syarat": "SYR-008-02", "nama_syarat": "Fotokopi Kartu Keluarga Pemohon", "wajib": true },
