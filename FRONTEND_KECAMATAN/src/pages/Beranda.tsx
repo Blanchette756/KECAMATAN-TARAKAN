@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { IconName } from '../components/Icon';
-import { LacakStatus } from '../components/LacakStatus';
 import { PersyaratanDialog } from '../components/PersyaratanDialog';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
@@ -36,9 +35,6 @@ export function Beranda() {
             <h1 className="hero__title">Selamat Datang di Portal Resmi Pelayanan Publik Kecamatan Tarakan Timur</h1>
             <p className="hero__lead">Akses informasi, pengajuan administrasi, dan layanan masyarakat secara mudah, transparan, dan terpercaya.</p>
             <Button label="Jelajahi Layanan Publik" style="accent" arrow href="#layanan" className="hero__cta" />
-          </div>
-          <div className="hero__tracker">
-            <LacakStatus />
           </div>
         </section>
 
