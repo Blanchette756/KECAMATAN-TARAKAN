@@ -37,13 +37,12 @@ const hariIni = (iso: string) => new Date(iso).toDateString() === new Date().toD
 function Sidebar({ user, data, tab, keTab }: { user: Pengguna; data: Ringkas[]; tab: string; keTab: (label: string) => void }) {
   const hitung = (label: string) => data.filter((item) => TAB.find((t) => t.label === label)!.status.includes(item.status_pengajuan)).length;
   const antrianKerja = user.role === 'ADMIN' ? hitung('Perlu Diperiksa') : data.length;
-  const menu: { label: string; ikon: IconName; ikonAktif?: IconName; jumlah?: number; tab?: string; href?: string }[] = [
+  const menu: { label: string; ikon: IconName; ikonAktif?: IconName; jumlah?: number; tab: string }[] = [
     { label: 'Ringkasan', ikon: 'nav-grid', tab: 'Semua' },
     { label: 'Berkas Masuk', ikon: 'nav-file', ikonAktif: 'nav-inbox-aktif', jumlah: antrianKerja, tab: 'Perlu Diperiksa' },
     { label: 'Menunggu Paraf Kasi', ikon: 'nav-clipboard', jumlah: hitung('Menunggu Paraf'), tab: 'Menunggu Paraf' },
     { label: 'Menunggu TTD Camat', ikon: 'nav-pen', jumlah: hitung('Menunggu TTD'), tab: 'Menunggu TTD' },
     { label: 'Selesai', ikon: 'nav-selesai', tab: 'Selesai' },
-    { label: 'Layanan & Persyaratan', ikon: 'nav-file', href: '/pelayanan' },
   ];
   const keluar = async () => {
     await keluarAkun();
@@ -60,23 +59,13 @@ function Sidebar({ user, data, tab, keTab }: { user: Pengguna; data: Ringkas[]; 
         </span>
       </a>
       <nav className="sidebar__menu" aria-label="Menu admin">
-        {menu.map(({ label, ikon, ikonAktif, jumlah, tab: tujuan, href }) => {
+        {menu.map(({ label, ikon, ikonAktif, jumlah, tab: tujuan }) => {
           const aktif = tujuan === tab && label !== 'Ringkasan';
-          const isi = (
-            <>
+          return (
+            <button key={label} type="button" className={`sidebar__item${aktif ? ' sidebar__item--aktif' : ''}`} onClick={() => keTab(tujuan)}>
               <Icon name={aktif && ikonAktif ? ikonAktif : ikon} />
               <span className="sidebar__label">{label}</span>
               {jumlah !== undefined && user.role === 'ADMIN' && <span className="sidebar__jumlah">{jumlah}</span>}
-            </>
-          );
-          const kelas = `sidebar__item${aktif ? ' sidebar__item--aktif' : ''}`;
-          return href ? (
-            <a key={label} className={kelas} href={href}>
-              {isi}
-            </a>
-          ) : (
-            <button key={label} type="button" className={kelas} onClick={() => tujuan && keTab(tujuan)}>
-              {isi}
             </button>
           );
         })}
