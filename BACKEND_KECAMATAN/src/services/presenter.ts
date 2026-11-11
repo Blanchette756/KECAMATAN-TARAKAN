@@ -5,10 +5,7 @@ import type { PengajuanPelayanan, RiwayatStatus } from '../types/pengajuan.js';
 import type { User, UserPublik } from '../types/user.js';
 import { maskHp, maskNik } from '../utils/mask.js';
 
-/**
- * Mengubah data internal menjadi bentuk respons API.
- * Di sinilah keputusan "siapa boleh melihat apa" diterapkan pada level field.
- */
+/** Mengubah data internal menjadi respons API, termasuk menentukan field mana yang boleh dilihat siapa. */
 
 export function toUserPublik(u: User): UserPublik {
   return {
@@ -39,10 +36,8 @@ export function ringkasPengajuan(p: PengajuanPelayanan, layanan: JenisLayanan | 
 }
 
 /**
- * ALLOWLIST aksi yang catatannya memang ditujukan ke pemohon.
- * Aksi lain (SETUJUI/PARAF/TTE/KEMBALIKAN) dianggap catatan antar-petugas dan disembunyikan.
- * Sengaja allowlist, bukan denylist: aksi baru otomatis tersembunyi sampai diputuskan lain
- * (temuan audit run-1 #4).
+ * Aksi yang catatannya ditujukan ke pemohon. Catatan aksi lain (setujui, paraf, TTE, kembalikan)
+ * dianggap catatan antar-petugas dan disembunyikan. Aksi baru ikut tersembunyi sampai ditambahkan di sini.
  */
 const AKSI_CATATAN_UNTUK_PEMOHON: ReadonlySet<string> = new Set([
   'AJUKAN',

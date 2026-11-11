@@ -1,17 +1,14 @@
 import type { JenisLayanan, KontakKecamatan } from '../types/layanan.js';
 import type { Kelurahan, User } from '../types/user.js';
 import type { AuditLog, PengajuanPelayanan, RiwayatStatus, Sesi } from '../types/pengajuan.js';
-import type { BerkasPengajuan } from '../types/berkas.js';
+import type { BerkasPengajuan, FileUnggahan } from '../types/berkas.js';
 import type { Berita } from '../types/berita.js';
 import type { StatusPengajuan } from '../constants/workflow.js';
 import type { Seksi } from '../types/common.js';
 
 /**
- * Kontrak akses data. Service HANYA bergantung pada interface ini,
- * bukan pada MemoryStore. Untuk pindah ke MySQL (Fase 2), cukup buat
- * implementasi baru dari interface yang sama di repositories/mysql/.
- *
- * Semua method async supaya tanda tangannya sudah cocok dengan driver database.
+ * Kontrak akses data. Service hanya bergantung pada interface ini, dengan dua implementasi:
+ * memori (repositories/) dan MySQL (repositories/mysql/).
  */
 
 export interface Halaman<T> {
@@ -71,7 +68,7 @@ export interface RiwayatRepository {
 }
 
 export interface AuditRepository {
-  /** Implementasi wajib membatasi retensi (Fase 1: ring buffer; Fase 2: tabel + kebijakan retensi). */
+  /** Implementasi wajib membatasi jumlah entri yang disimpan. */
   add(a: AuditLog): Promise<void>;
   listByTarget(targetId: string): Promise<AuditLog[]>;
 }
@@ -83,6 +80,13 @@ export interface BeritaRepository {
   update(b: Berita): Promise<void>;
   /** false jika berita tidak ada. */
   delete(id: string): Promise<boolean>;
+}
+
+/** File unggahan warga, isi dan metadatanya. */
+export interface FileRepository {
+  create(f: FileUnggahan, isi: Buffer): Promise<void>;
+  findMeta(fileId: string): Promise<FileUnggahan | null>;
+  baca(fileId: string): Promise<{ info: FileUnggahan; data: Buffer } | null>;
 }
 
 export interface SesiRepository {
@@ -102,4 +106,5 @@ export interface Repositories {
   audit: AuditRepository;
   sesi: SesiRepository;
   berita: BeritaRepository;
+  files: FileRepository;
 }

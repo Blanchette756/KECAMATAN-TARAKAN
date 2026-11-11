@@ -4,6 +4,16 @@ import path from 'node:path';
 
 export type NodeEnv = 'development' | 'test' | 'production';
 export type AuthMode = 'mock';
+/** memory: data hilang saat restart. mysql: database MySQL/MariaDB. */
+export type DbDriver = 'memory' | 'mysql';
+
+export interface DbConfig {
+  host: string;
+  port: number;
+  name: string;
+  user: string;
+  password: string;
+}
 
 export interface AppConfig {
   nodeEnv: NodeEnv;
@@ -31,6 +41,9 @@ export interface AppConfig {
   /** Kunci lacak per nomor registrasi setelah sejumlah percobaan gagal. */
   lacakLockout: { maxGagal: number; menit: number };
   seedDemoPengajuan: boolean;
+  dbDriver: DbDriver;
+  /** null bila dbDriver = memory. */
+  db: DbConfig | null;
   dataDir: string;
   /**
    * File tempat berita disimpan agar tetap ada saat server dimulai ulang.
@@ -129,7 +142,7 @@ export function loadConfig(env: Env = process.env): AppConfig {
 
   const authModeRaw = str(env, 'AUTH_MODE', 'mock');
   if (authModeRaw !== 'mock') {
-    throw new ConfigError(`AUTH_MODE "${authModeRaw}" belum didukung di Fase 1 (hanya "mock")`);
+    throw new ConfigError(`AUTH_MODE "${authModeRaw}" belum didukung (saat ini hanya "mock")`);
   }
   const authMode: AuthMode = authModeRaw;
   const allowMockAuthInProduction = bool(env, 'ALLOW_MOCK_AUTH_IN_PRODUCTION', false);
@@ -159,6 +172,29 @@ export function loadConfig(env: Env = process.env): AppConfig {
 
   const dataDir = path.resolve(str(env, 'DATA_DIR', 'data'));
 
+  const dbDriverRaw = str(env, 'DB_DRIVER', 'memory');
+  if (dbDriverRaw !== 'memory' && dbDriverRaw !== 'mysql') {
+    throw new ConfigError(`DB_DRIVER harus "memory" atau "mysql", didapat "${dbDriverRaw}"`);
+  }
+  const dbDriver: DbDriver = dbDriverRaw;
+  let db: DbConfig | null = null;
+  if (dbDriver === 'mysql') {
+    const wajib = (key: string) => {
+      const v = env[key];
+      if (v === undefined || v.trim() === '') throw new ConfigError(`${key} wajib diisi bila DB_DRIVER=mysql`);
+      return v.trim();
+    };
+    db = {
+      host: str(env, 'DB_HOST', '127.0.0.1'),
+      port: int(env, 'DB_PORT', 3306, 1, 65535),
+      name: wajib('DB_NAME'),
+      user: wajib('DB_USER'),
+      // Tidak di-trim karena spasi bisa jadi bagian password.
+      password: env.DB_PASSWORD ?? '',
+    };
+    if (db.password === '') throw new ConfigError('DB_PASSWORD wajib diisi bila DB_DRIVER=mysql');
+  }
+
   return {
     nodeEnv,
     nodeEnvEksplisit: (env.NODE_ENV ?? '').trim() !== '',
@@ -184,8 +220,10 @@ export function loadConfig(env: Env = process.env): AppConfig {
       maxGagal: int(env, 'LACAK_MAX_GAGAL', 5, 1, 1000),
       menit: int(env, 'LACAK_KUNCI_MENIT', 15, 1, 24 * 60),
     },
-    // Data contoh hanya otomatis di development; di production harus diminta eksplisit.
-    seedDemoPengajuan: bool(env, 'SEED_DEMO_PENGAJUAN', nodeEnv === 'development'),
+    // Data contoh otomatis hanya di development dengan data di memori, tidak pernah ke MySQL.
+    seedDemoPengajuan: bool(env, 'SEED_DEMO_PENGAJUAN', nodeEnv === 'development' && dbDriver === 'memory'),
+    dbDriver,
+    db,
     dataDir,
     beritaFile: nodeEnv === 'test' ? null : path.resolve(str(env, 'BERITA_FILE', path.join(dataDir, 'runtime', 'berita.json'))),
     logLevel: str(env, 'LOG_LEVEL', nodeEnv === 'test' ? 'silent' : 'info'),

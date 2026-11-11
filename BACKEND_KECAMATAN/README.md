@@ -1,33 +1,34 @@
 # API Pelayanan Publik Kecamatan Tarakan Timur
 
 Backend REST API untuk 9 layanan resmi (SP CCTI) Kecamatan Tarakan Timur.
-**Fase 1: dummy-first.** Data disimpan di memori dan login masih tiruan (mock), tetapi alur kerja,
-validasi, dan keamanannya sudah seperti versi produksi.
+Data disimpan di MySQL (Hostinger) atau di memori untuk pengembangan. Login masih tiruan (mock),
+tetapi alur kerja, validasi, dan keamanannya sudah seperti versi produksi.
 
-**Teknologi:** Node.js 20+ (disarankan 24) · TypeScript strict · Fastify 5 · TypeBox · Vitest
+Teknologi: Node.js 20+ (disarankan 24), TypeScript strict, Fastify 5, TypeBox, MySQL/MariaDB, Vitest.
 
 ---
 
 ## 1. Menjalankan di komputer (Windows / PowerShell)
 
 ```powershell
-cd C:\KECAMATAN\kecamatan-tarakan-timur-api
+cd C:\KECAMATAN\BACKEND_KECAMATAN
 npm install
 copy .env.example .env      # opsional, nilai default sudah bisa dipakai
 npm run dev
 ```
 
 Buka:
-- **http://localhost:3000/docs** → dokumentasi API interaktif (Swagger), bisa langsung dicoba
-- **http://localhost:3000/api/v1/layanan** → daftar 9 layanan
+- http://localhost:3000/docs: dokumentasi API interaktif (Swagger), bisa langsung dicoba
+- http://localhost:3000/api/v1/layanan: daftar 9 layanan
 
-Saat start, server otomatis membuat **7 contoh pengajuan** di berbagai status. Nomor registrasinya
-tercetak di log (`contoh_lacak`), bisa dipakai untuk mencoba fitur lacak.
+Dengan `DB_DRIVER=memory` (bawaan), server membuat 7 contoh pengajuan di berbagai status saat start.
+Nomor registrasinya tercetak di log (`contoh_lacak`) dan bisa dipakai untuk mencoba fitur lacak.
+Data contoh tidak pernah diisi ke MySQL.
 
 | Perintah | Fungsi |
 |---|---|
 | `npm run dev` | Mode pengembangan, auto-reload saat file diubah |
-| `npm test` | Menjalankan semua tes otomatis (65 tes) |
+| `npm test` | Menjalankan semua tes otomatis (82 tes, memakai data di memori) |
 | `npm run typecheck` | Cek tipe TypeScript |
 | `npm run validate-data` | Cek isi folder `data/` (jalankan setiap kali data diubah) |
 | `npm run check` | Ketiganya sekaligus, jalankan sebelum commit |
@@ -52,7 +53,7 @@ Di Swagger: jalankan login, salin token, klik tombol **Authorize**.
 | `kasi.kesra@example.com` | KASI | Seksi Kesra, untuk menguji bahwa Kasi tidak bisa melihat seksi lain |
 | `camat@example.com` | CAMAT | |
 
-Semua nama, NIK, email, dan nomor HP di atas **fiktif**.
+Semua nama, NIK, email, dan nomor HP di atas fiktif.
 
 ---
 
@@ -93,7 +94,7 @@ memproses berkas yang sama bersamaan, yang kedua mendapat `409 VERSI_KEDALUWARSA
 
 Unggah tiap file ke `POST /berkas/unggah`, lalu sertakan `file_id` hasilnya di item `berkas` saat `POST /pengajuan`
 atau `PATCH /pengajuan/:id/revisi`. Isi file dicek berdasarkan tanda tangan file, bukan Content-Type dari klien.
-File disimpan di `data/uploads/`, sedangkan daftarnya masih di memori, jadi tautan file hilang saat server dimulai ulang.
+Dengan `DB_DRIVER=mysql` isi file disimpan di tabel `file_unggahan`, jadi tetap ada setelah restart atau deploy.
 
 ### Contoh mengajukan permohonan
 
@@ -140,21 +141,21 @@ WARGA ──AJUKAN──▶ DIAJUKAN ──MINTA_REVISI (admin)──▶ PERLU_R
 Admin, Kasi, dan Camat masing-masing juga bisa TOLAK ──▶ DITOLAK (wajib dengan alasan)
 ```
 
-Satu-satunya sumber aturan ini adalah tabel `TRANSISI` di `src/constants/workflow.ts`.
-Transisi yang tidak tercantum di tabel itu otomatis ditolak.
+Aturan ini diambil dari tabel `TRANSISI` di `src/constants/workflow.ts`. Transisi yang tidak
+tercantum di tabel itu ditolak. Saat ini semua layanan `AMBIL_DI_KANTOR`.
 
 ---
 
 ## 5. Mengganti data dummy dengan data asli
 
-Semua data master ada di folder **`data/`** dan **tidak perlu menyentuh kode TypeScript**:
+Semua data master ada di folder `data/`, jadi kode TypeScript tidak perlu disentuh:
 
 | File | Isi |
 |---|---|
 | `data/layanan.json` | 9 layanan: persyaratan, isian formulir, dasar hukum, mode penyerahan, jumlah rangkap |
 | `data/kelurahan.json` | Daftar kelurahan |
 | `data/kontak.json` | Alamat, telepon, WA, email, jam layanan |
-| `data/users.json` | Akun dummy (khusus pengembangan, **jangan** diisi data warga asli) |
+| `data/users.json` | Akun dummy, disalin ke tabel `users` setiap start. Jangan diisi data warga asli |
 
 Langkah:
 1. Ubah file JSON yang perlu.
@@ -162,7 +163,7 @@ Langkah:
    ada, ID ganda, atau nama kolom salah, semua masalah ditampilkan sekaligus beserta lokasinya.
 3. Jalankan `npm test`, lalu restart server.
 
-Server **menolak start** jika data tidak valid, jadi data yang rusak tidak akan pernah sampai ke pengguna.
+Server menolak start jika data tidak valid, jadi data yang rusak tidak sampai ke pengguna.
 
 **Persyaratan bersyarat.** Tambahkan `kondisi` pada syarat:
 ```json
@@ -194,10 +195,10 @@ Untuk beberapa nilai, pakai `"salah_satu": ["A", "B"]`.
   - Kode registrasi acak (bukan berurutan).
   - Wajib 4 digit HP, dibandingkan dengan perbandingan *constant-time*.
   - Pesan error identik untuk "tidak ada" dan "HP salah".
-  - Rate limit 10/menit per IP, **dan** kunci per nomor registrasi: setelah 5 kali HP salah,
+  - Rate limit 10/menit per IP, ditambah kunci per nomor registrasi: setelah 5 kali HP salah,
     nomor itu dikunci 15 menit walau penyerang memakai banyak IP (`LACAK_MAX_GAGAL`, `LACAK_KUNCI_MENIT`).
   - Body dibatasi 1 KiB.
-  - Respons dibatasi skema, sehingga data pribadi tidak mungkin ikut terkirim.
+  - Respons dibatasi skema, jadi data pribadi tidak ikut terkirim.
 - **Validasi ketat.** Field tak dikenal ditolak (cegah *mass assignment*). Tipe, panjang, opsi,
   dan tanggal diperiksa. Berkas hanya PDF/JPG/PNG, dengan ekstensi yang harus cocok, batas ukuran,
   dan penolakan nama file berbahaya seperti `../`, nama berawalan titik, serta karakter tersembunyi
@@ -205,9 +206,9 @@ Untuk beberapa nilai, pakai `"salah_satu": ["A", "B"]`.
 - **Regex aman.** Semua pola untuk input dari luar berjalan linear (lihat `src/constants/pola.ts`).
 - **State machine terpusat**, dengan *optimistic locking* (`version`) dan riwayat setiap perubahan status.
 - **Jejak audit.** Setiap respons yang memberi petugas data pribadi pemohon tercatat (detail maupun
-  hasil aksi). Fase 1 menyimpan maksimal 10.000 entri terbaru (`AUDIT_LOG_MAX`).
+  hasil aksi). Yang disimpan maksimal 10.000 entri terbaru (`AUDIT_LOG_MAX`).
 - **Data pribadi disamarkan** di daftar dan profil (`6571********0001`).
-- **Catatan antar-petugas tidak pernah ditampilkan ke warga.** Warga hanya melihat catatan revisi dan
+- **Catatan antar-petugas tidak ditampilkan ke warga.** Warga hanya melihat catatan revisi dan
   alasan penolakan (allowlist di `src/services/presenter.ts`). Catatan pada SETUJUI/paraf/TTE/KEMBALIKAN
   hanya untuk petugas.
 - **Kasi hanya melihat seksinya sendiri**, termasuk di antrian dan statistik.
@@ -222,8 +223,8 @@ Untuk beberapa nilai, pakai `"salah_satu": ["A", "B"]`.
   Token disensor dari log.
 - **Dokumentasi `/docs`** dan **data contoh** otomatis mati di production. `/health` tidak menyebut
   mode auth di production.
-- **Dependensi:** `npm audit` = 0 kerentanan saat repositori dibuat.
-- **Diaudit** dengan `cloudflare/security-audit-skill` (run-1). Temuan dan perbaikannya ada di `CHANGELOG.md`.
+- **Dependensi:** `npm audit` menunjukkan 0 kerentanan saat repositori dibuat.
+- **Diaudit** dengan `cloudflare/security-audit-skill` (run-1). Tes regresinya ada di `test/audit-run1.test.ts`.
 
 ---
 
@@ -238,19 +239,31 @@ Untuk beberapa nilai, pakai `"salah_satu": ["A", "B"]`.
   NODE_ENV=production
   CORS_ORIGINS=https://domain-frontend-kalian
   TRUST_PROXY=loopback
-  ALLOW_MOCK_AUTH_IN_PRODUCTION=true   # HANYA selama masih server demo berisi data dummy
+  ALLOW_MOCK_AUTH_IN_PRODUCTION=true   # hanya selama masih server demo berisi data dummy
+  DB_DRIVER=mysql
+  DB_HOST=127.0.0.1                    # database di server yang sama
+  DB_PORT=3306
+  DB_NAME=...                          # dari hPanel > Databases
+  DB_USER=...
+  DB_PASSWORD=...                      # cukup di hPanel, jangan di-commit
   ```
+- Tabel database dipasang otomatis saat server start (`src/database/mysql/migrasi.ts`). Akun dari
+  `data/users.json` disalin ke tabel `users` setiap start, dan berita awal dimuat sekali. Perubahan skema
+  ditambahkan sebagai versi baru di akhir `MIGRASI`; versi yang sudah pernah jalan jangan diubah.
+- Untuk menguji dari laptop, daftarkan IP laptop di hPanel > Databases > Remote MySQL, lalu isi `DB_HOST`
+  di `.env` lokal dengan host remote (`srvNNNN.hstgr.io`). Kalau koneksi IPv6 ditolak karena yang
+  didaftarkan IPv4, isi `DB_HOST` dengan alamat IPv4 host itu.
 - **Memastikan `TRUST_PROXY` benar** (sekali saja, setelah deploy):
   1. Deploy dengan `TRUST_PROXY=loopback`.
   2. Buka `https://api.domain-kalian/api/v1/health` dari HP (jaringan seluler).
   3. Lihat log aplikasi di hPanel. Nilai `remoteAddress` pada baris `incoming request` harus berisi
-     **IP HP kamu**, bukan 127.0.0.1.
+     IP HP kamu, bukan 127.0.0.1.
   4. Kalau isinya IP lain (misalnya IP internal Hostinger seperti `10.x.x.x`), tambahkan rentangnya:
      `TRUST_PROXY=loopback,uniquelocal`. Kalau memakai Cloudflare, tambahkan juga rentang IP Cloudflare
      dari https://www.cloudflare.com/ips/ (dipisah koma).
   5. Jangan pernah mengisi `true`: server akan menolak start.
-- Hostinger menjalankan `domain.tld` dan `www.domain.tld` sebagai **dua proses terpisah**. Dengan store
-  in-memory, keduanya akan punya data berbeda. Taruh API di **subdomain sendiri** (misalnya
+- Hostinger menjalankan `domain.tld` dan `www.domain.tld` sebagai dua proses terpisah. Dengan
+  `DB_DRIVER=memory`, keduanya punya data berbeda. Taruh API di subdomain sendiri (misalnya
   `api.domain`) dan jangan diakses lewat dua host.
 - Hostinger tidak mendukung WebSocket masuk. Frontend memantau status dengan *polling* berkala.
 
@@ -263,20 +276,20 @@ data/                  Data master JSON (bisa diganti tanpa ubah kode)
 src/
 ├── server.ts          Entry point (PORT dari env, default 3000)
 ├── app.ts             Rakit Fastify: keamanan, Swagger, route
-├── container.ts       Rakit store → repository → service
+├── container.ts       Rakit penyimpanan, repository, dan service sesuai DB_DRIVER
 ├── config/env.ts      Baca & validasi environment variable
 ├── constants/         Tabel state machine, format penomoran
 ├── types/             Tipe & skema data (User, Layanan, Pengajuan, Berkas)
-├── database/          memory-store, pemuat & validator data/, seed contoh
-├── repositories/      Akses data (interface + implementasi in-memory)
+├── database/          memory-store, pemuat dan validator data/, seed contoh, mysql/ (koneksi, skema)
+├── repositories/      Akses data: interface, implementasi memori, dan mysql/
 ├── services/          Logika bisnis, validasi formulir, state machine, statistik
-├── controllers/       Penghubung HTTP ↔ service
+├── controllers/       Membungkus hasil service menjadi respons HTTP
 ├── routes/            Definisi endpoint + skema request/response
 ├── schemas/           Skema TypeBox untuk validasi request
 ├── plugins/           Keamanan, autentikasi, penanganan error
 ├── scripts/           validate-data
 └── utils/             Error, ID acak, masking
-test/                  65 tes otomatis (alur, otorisasi/IDOR, lacak, data, konfigurasi, regresi audit)
+test/                  82 tes otomatis (alur, otorisasi/IDOR, lacak, unggah, data, konfigurasi, regresi audit)
 ```
 
 ---
@@ -285,8 +298,8 @@ test/                  65 tes otomatis (alur, otorisasi/IDOR, lacak, data, konfi
 
 1. **Jumlah rangkap** berkas tiap layanan (belum ada di SP; saat ini `null`).
 2. **"dan/atau"** pada SP Ahli Waris: apakah KK Pewaris dan KK Ahli Waris wajib? (saat ini opsional)
-3. **Mode penyerahan:** apakah Legalisasi SK Ahli Waris & SK Tukang juga harus diambil fisik di kantor?
-   (saat ini `UNDUH`; ubah ke `AMBIL_DI_KANTOR` di `data/layanan.json` bila ya)
+3. **Mode penyerahan:** semua layanan saat ini `AMBIL_DI_KANTOR` (surat diambil di kantor). Perlu
+   dipastikan apakah ada layanan yang suratnya boleh diunduh (`UNDUH` di `data/layanan.json`).
 4. **Nomor WhatsApp** yang benar (SP Surat Pengantar mencantumkan nomor berbeda).
 5. **Jam layanan** dan **format nomor surat** resmi.
 6. **Daftar kelurahan** resmi.

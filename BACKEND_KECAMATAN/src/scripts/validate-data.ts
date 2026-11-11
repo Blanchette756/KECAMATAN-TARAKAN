@@ -1,6 +1,6 @@
 /**
- * Cek data master tanpa menjalankan server:  npm run validate-data
- * Jalankan setiap kali file di folder data/ diubah (mis. saat data asli kecamatan masuk).
+ * Cek data master tanpa menjalankan server: `npm run validate-data`.
+ * Jalankan setiap kali file di folder data/ diubah.
  */
 import { loadConfig, loadDotEnvFile } from '../config/env.js';
 import { muatBeritaAwal } from '../database/berita-loader.js';

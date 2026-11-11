@@ -5,14 +5,12 @@ import type { FastifyInstance } from 'fastify';
 import type { AppConfig } from '../config/env.js';
 
 /**
- * Lapisan keamanan HTTP:
- * - Helmet: header keamanan standar (HSTS, nosniff, frameguard, CSP, dst.)
- * - CORS: hanya origin frontend yang terdaftar; token lewat header (bukan cookie) → kebal CSRF
- * - Rate limit: global per IP + batas lebih ketat di endpoint login & lacak (lihat route config)
- * - Cache-Control: respons berisi data pribadi tidak boleh disimpan cache browser/proxy
+ * Keamanan HTTP: header Helmet, CORS hanya untuk origin frontend yang terdaftar, rate limit per IP
+ * (lebih ketat di login dan lacak), dan Cache-Control supaya data pribadi tidak disimpan cache.
+ * Token dikirim lewat header, bukan cookie, jadi tidak rentan CSRF.
  *
- * Catatan Hostinger: tidak ada Redis, jadi rate limit memakai memori proses.
- * Ini akurat karena aplikasi berjalan sebagai satu proses.
+ * Hostinger tidak menyediakan Redis, jadi rate limit memakai memori proses. Ini cukup karena
+ * aplikasi berjalan sebagai satu proses.
  */
 export async function registerSecurity(app: FastifyInstance, config: AppConfig): Promise<void> {
   const isProd = config.nodeEnv === 'production';
@@ -20,7 +18,7 @@ export async function registerSecurity(app: FastifyInstance, config: AppConfig):
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        // Halaman /docs (Swagger UI) memerlukan style inline & gambar data:
+        // Swagger UI di /docs butuh style inline dan gambar data:
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:'],
         scriptSrc: ["'self'"],

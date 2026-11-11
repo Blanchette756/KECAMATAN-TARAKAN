@@ -23,7 +23,7 @@ interface Opts {
 const bearer = [{ bearerAuth: [] }];
 
 export const pengajuanRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { controller, guards, config }) => {
-  // ---------------------------------------------------------------- publik
+  // Publik
   app.post(
     '/pengajuan/lacak',
     {
@@ -40,7 +40,7 @@ export const pengajuanRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { co
     async (req) => controller.lacak(req.body),
   );
 
-  // ---------------------------------------------------------------- warga
+  // Warga
   app.post(
     '/pengajuan',
     {
@@ -75,7 +75,7 @@ export const pengajuanRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { co
     async (req) => controller.revisi(userDari(req), req.params.id, req.body),
   );
 
-  // ---------------------------------------------------------------- petugas
+  // Petugas
   app.get(
     '/pengajuan/antrian',
     {
@@ -163,7 +163,7 @@ export const pengajuanRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { co
     async (req) => controller.serahkan(userDari(req), req.params.id, req.body),
   );
 
-  // ---------------------------------------------------------------- semua role
+  // Semua role
   app.get(
     '/pengajuan/:id',
     {

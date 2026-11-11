@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { ANTRIAN_PER_ROLE, STATUS_AKHIR, STATUS_LABEL, type AksiWorkflow } from '../constants/workflow.js';
 import { MAKS_PENGAJUAN_AKTIF_PER_WARGA } from '../constants/penomoran.js';
 import type { Paging } from '../repositories/interfaces.js';
-import type { BerkasInput, BerkasPengajuan, MimeDiizinkan } from '../types/berkas.js';
+import type { BerkasInput, BerkasPengajuan, FileUnggahan, MimeDiizinkan } from '../types/berkas.js';
 import type { JenisLayanan } from '../types/layanan.js';
 import type { PengajuanPelayanan } from '../types/pengajuan.js';
 import type { User } from '../types/user.js';
@@ -56,7 +56,7 @@ export class PengajuanService {
     this.lacakLimiter = new AttemptLimiter(maxGagal, menit * 60_000);
   }
 
-  // ------------------------------------------------------------------ helpers
+  // Fungsi bantu
 
   private async layananAtauGagal(id: string): Promise<JenisLayanan> {
     const l = await this.deps.repos.master.findLayanan(id);
@@ -83,10 +83,23 @@ export class PengajuanService {
     }
   }
 
-  private buatBerkas(user: User, idPengajuan: string, input: BerkasInput[], iso: string): BerkasPengajuan[] {
+  /**
+   * Ambil semua file yang dirujuk. Dipanggil sebelum menyimpan apa pun, supaya file yang tidak ada
+   * atau milik orang lain tidak meninggalkan pengajuan tanpa berkas.
+   */
+  private async cariFile(user: User, input: BerkasInput[]): Promise<Map<string, FileUnggahan>> {
+    const hasil = new Map<string, FileUnggahan>();
+    for (const b of input) {
+      if (b.file_id && !hasil.has(b.file_id)) hasil.set(b.file_id, await this.unggah.milik(user, b.file_id));
+    }
+    return hasil;
+  }
+
+  private buatBerkas(idPengajuan: string, input: BerkasInput[], files: Map<string, FileUnggahan>, iso: string): BerkasPengajuan[] {
     return input.map((b) => {
       const id_berkas = newId('BRK');
-      const file = b.file_id ? this.unggah.milik(user, b.file_id) : null;
+      const file = b.file_id ? files.get(b.file_id) : undefined;
+      if (b.file_id && !file) throw new Error(`File ${b.file_id} belum dicari lewat cariFile()`);
       return {
         id_berkas,
         id_pengajuan: idPengajuan,
@@ -116,8 +129,7 @@ export class PengajuanService {
       repos.riwayat.listByPengajuan(p.id_pengajuan),
     ]);
     if (user.role !== 'WARGA') {
-      // Jejak audit setiap kali petugas menerima data pribadi pemohon
-      // (detail maupun respons aksi verifikasi/paraf/TTE/serahkan).
+      // Catat audit setiap kali petugas menerima data pribadi pemohon, termasuk lewat respons aksi.
       await repos.audit.add({
         id_log: newId('LOG'),
         waktu: this.deps.now().toISOString(),
@@ -130,7 +142,7 @@ export class PengajuanService {
     return detailPengajuan(p, layanan, pemohon, berkas, riwayat, user.role === 'WARGA' ? 'PEMOHON' : 'PETUGAS');
   }
 
-  // ------------------------------------------------------------------ warga
+  // Warga
 
   async ajukan(user: User, input: InputPengajuan) {
     const { repos, config, now } = this.deps;
@@ -148,6 +160,7 @@ export class PengajuanService {
     if (aktif >= MAKS_PENGAJUAN_AKTIF_PER_WARGA) {
       throw conflict('BATAS_PENGAJUAN', `Anda masih memiliki ${aktif} pengajuan yang sedang diproses. Tunggu hingga selesai sebelum mengajukan lagi.`);
     }
+    const files = await this.cariFile(user, input.berkas);
 
     const waktu = now();
     const iso = waktu.toISOString();
@@ -174,8 +187,9 @@ export class PengajuanService {
       tgl_diperbarui: iso,
       version: 1,
     };
+    const berkasBaru = this.buatBerkas(p.id_pengajuan, input.berkas, files, iso);
     await repos.pengajuan.create(p);
-    await repos.berkas.createMany(this.buatBerkas(user, p.id_pengajuan, input.berkas, iso));
+    await repos.berkas.createMany(berkasBaru);
     await repos.riwayat.add({
       id_riwayat: newId('RWT'),
       id_pengajuan: p.id_pengajuan,
@@ -239,18 +253,21 @@ export class PengajuanService {
     }
     if (adaSetelah.size > this.deps.config.maxFilesPerPengajuan) masalah.push('berkas: jumlah berkas melebihi batas');
     if (masalah.length > 0) throw validationFailed('Perbaikan belum lengkap atau tidak valid', masalah);
+    // Cek file dulu, supaya status dan berkas lama tidak berubah kalau ada file yang ditolak.
+    const files = await this.cariFile(user, input.berkas);
+    const iso = now().toISOString();
+    const berkasBaru = this.buatBerkas(p.id_pengajuan, input.berkas, files, iso);
 
     // 4) Simpan perubahan status dulu (dijaga versi), baru ganti berkas.
-    const iso = now().toISOString();
     const diperbarui = await this.workflow.jalankan(user, { ...p, data_formulir: dataBaru }, layanan, 'KIRIM_REVISI', null, input.version);
     for (const b of lama) {
       if (!tetap.includes(b)) await repos.berkas.delete(b.id_berkas);
     }
-    await repos.berkas.createMany(this.buatBerkas(user, p.id_pengajuan, input.berkas, iso));
+    await repos.berkas.createMany(berkasBaru);
     return this.detailUntuk(user, diperbarui);
   }
 
-  // ------------------------------------------------------------------ umum
+  // Umum
 
   async detail(user: User, id: string) {
     const p = await this.ambilDenganAkses(user, id);
@@ -262,7 +279,7 @@ export class PengajuanService {
     const { repos, now } = this.deps;
     const nomor = noRegistrasi.trim().toUpperCase();
     const nowMs = now().getTime();
-    // Dicek SEBELUM mencari data, jadi perilakunya sama untuk nomor yang ada maupun tidak (tanpa oracle).
+    // Dicek sebelum mencari data, jadi perilakunya sama untuk nomor yang ada maupun tidak.
     if (this.lacakLimiter.terkunci(nomor, nowMs)) {
       throw new AppError(
         429,
@@ -276,7 +293,7 @@ export class PengajuanService {
       p !== null &&
       pemohon !== null &&
       timingSafeEqual(Buffer.from(pemohon.no_hp.slice(-4).padStart(4, '#')), Buffer.from(last4.padStart(4, '#').slice(-4)));
-    // Pesan & status sama untuk "tidak ada" dan "HP salah", agar tidak bisa dipakai menebak.
+    // Pesan dan status sama untuk "tidak ada" dan "HP salah", supaya tidak bisa dipakai menebak.
     if (!p || !cocok) {
       this.lacakLimiter.catatGagal(nomor, nowMs);
       throw new AppError(404, 'NOT_FOUND', PESAN_LACAK_GAGAL);
@@ -303,7 +320,7 @@ export class PengajuanService {
     };
   }
 
-  // ------------------------------------------------------------------ petugas
+  // Petugas
 
   /** Isi file hanya untuk yang berhak melihat pengajuannya (sama dengan aturan detail). */
   async bacaFileBerkas(user: User, idBerkas: string) {
@@ -317,7 +334,7 @@ export class PengajuanService {
   async antrian(user: User, paging: Paging, semua = false) {
     const { repos } = this.deps;
     if (user.role === 'WARGA') throw forbidden();
-    // Kasi tanpa seksi ditolak (fail closed), jangan sampai filter kosong = melihat semua.
+    // Kasi tanpa seksi ditolak, supaya filter kosong tidak berarti melihat semua.
     if (user.role === 'KASI' && user.seksi === null) throw forbidden('Akun Kasi belum memiliki seksi');
     const semuaBerkas = semua && user.role === 'ADMIN';
     const statuses = semuaBerkas ? (Object.keys(STATUS_LABEL) as (keyof typeof STATUS_LABEL)[]) : ANTRIAN_PER_ROLE[user.role];

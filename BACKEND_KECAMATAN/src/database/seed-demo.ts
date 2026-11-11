@@ -24,8 +24,8 @@ export interface ContohLacak {
 }
 
 /**
- * Mengisi contoh pengajuan di berbagai status, LEWAT service yang sama dengan API,
- * sehingga semua data contoh pasti lolos validasi & state machine.
+ * Mengisi contoh pengajuan di berbagai status lewat service yang sama dengan API,
+ * jadi data contoh pasti lolos validasi dan alur status.
  */
 export async function seedDemoPengajuan(c: Container): Promise<ContohLacak[]> {
   const { repos, services } = c;
@@ -58,7 +58,7 @@ export async function seedDemoPengajuan(c: Container): Promise<ContohLacak[]> {
   const a = await ajukan(w1, 'LAYANAN-002', { nama_calon_pasangan: 'Calon Dummy', tanggal_rencana_nikah: '2026-12-12', status_perkawinan: 'BELUM_KAWIN' });
   await catat(w1, a.id_pengajuan);
 
-  // 2. Selesai penuh (unduh)
+  // 2. Sudah ditandatangani, siap diambil
   let b = await ajukan(w1, 'LAYANAN-007', { perihal: 'Pengantar keperluan administrasi bank', ditujukan_kepada: 'Bank Contoh Cabang Tarakan' });
   b = await services.pengajuan.verifikasi(admin, b.id_pengajuan, { aksi: 'SETUJUI', version: b.version });
   b = await services.pengajuan.parafKasi(kasi, b.id_pengajuan, { aksi: 'SETUJUI', version: b.version });

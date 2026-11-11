@@ -21,9 +21,8 @@ function ringkas(nilaiMenit: number[]): Durasi {
 const menitAntara = (a: string, b: string) => (new Date(b).getTime() - new Date(a).getTime()) / 60_000;
 
 /**
- * Statistik layanan, dihitung langsung dari riwayat_status.
- * Dipakai untuk mengukur indikator capaian di proposal
- * (mis. waktu verifikasi admin < 5 menit, waktu persetujuan berkurang 30%).
+ * Statistik layanan dari riwayat_status, untuk mengukur indikator capaian di proposal
+ * (misalnya waktu verifikasi admin di bawah 5 menit dan waktu persetujuan berkurang 30%).
  */
 export class StatistikService {
   constructor(private readonly deps: ServiceDeps) {}
@@ -35,7 +34,7 @@ export class StatistikService {
       repos.riwayat.listAll(),
       repos.master.listLayanan(),
     ]);
-    // Kasi hanya melihat statistik seksinya sendiri; Admin & Camat melihat seluruh kecamatan.
+    // Kasi hanya melihat statistik seksinya sendiri; Admin dan Camat melihat seluruh kecamatan.
     const lingkup = user.role === 'KASI' ? user.seksi : null;
     const semua = lingkup === null ? semuaRaw : semuaRaw.filter((p) => p.seksi === lingkup);
     const idDalamLingkup = new Set(semua.map((p) => p.id_pengajuan));

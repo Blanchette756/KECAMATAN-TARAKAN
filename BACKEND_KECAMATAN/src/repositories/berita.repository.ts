@@ -7,9 +7,8 @@ import type { BeritaRepository } from './interfaces.js';
 const CATATAN_FILE = 'Ditulis otomatis oleh server setiap petugas menambah, mengubah, atau menghapus berita. Jangan disunting manual.';
 
 /**
- * Berita disimpan di memori, dan (kecuali saat tes) ditulis ulang ke file JSON setiap ada perubahan,
- * sehingga tetap ada walau server dimulai ulang. Ini jembatan Fase 1; di Fase 2 diganti tabel MySQL
- * dengan interface yang sama.
+ * Berita untuk DB_DRIVER=memory. Disimpan di memori dan, kecuali saat tes, ditulis ulang ke file JSON
+ * setiap ada perubahan supaya tetap ada setelah restart. Dengan mysql dipakai MysqlBeritaRepository.
  */
 export class FileBeritaRepository implements BeritaRepository {
   private readonly data = new Map<string, Berita>();

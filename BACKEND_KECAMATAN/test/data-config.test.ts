@@ -103,3 +103,21 @@ describe('Konfigurasi', () => {
     expect(() => loadConfig({ APP_TIMEZONE: 'Mars/Olympus' })).toThrow(ConfigError);
   });
 });
+
+describe('Konfigurasi database (DB_DRIVER)', () => {
+  it('bawaan memory; mysql wajib DB_NAME, DB_USER, DB_PASSWORD', () => {
+    expect(loadConfig({ NODE_ENV: 'test' }).dbDriver).toBe('memory');
+    expect(loadConfig({ NODE_ENV: 'test' }).db).toBeNull();
+    expect(() => loadConfig({ NODE_ENV: 'test', DB_DRIVER: 'postgres' })).toThrow(ConfigError);
+    expect(() => loadConfig({ NODE_ENV: 'test', DB_DRIVER: 'mysql', DB_USER: 'u', DB_PASSWORD: 'p' })).toThrow(/DB_NAME/);
+    expect(() => loadConfig({ NODE_ENV: 'test', DB_DRIVER: 'mysql', DB_NAME: 'd', DB_PASSWORD: 'p' })).toThrow(/DB_USER/);
+    expect(() => loadConfig({ NODE_ENV: 'test', DB_DRIVER: 'mysql', DB_NAME: 'd', DB_USER: 'u' })).toThrow(/DB_PASSWORD/);
+    const c = loadConfig({ NODE_ENV: 'test', DB_DRIVER: 'mysql', DB_NAME: 'd', DB_USER: 'u', DB_PASSWORD: 'p' });
+    expect(c.db).toEqual({ host: '127.0.0.1', port: 3306, name: 'd', user: 'u', password: 'p' });
+  });
+
+  it('data contoh tidak otomatis diisi ke database MySQL', () => {
+    expect(loadConfig({ NODE_ENV: 'development' }).seedDemoPengajuan).toBe(true);
+    expect(loadConfig({ NODE_ENV: 'development', DB_DRIVER: 'mysql', DB_NAME: 'd', DB_USER: 'u', DB_PASSWORD: 'p' }).seedDemoPengajuan).toBe(false);
+  });
+});

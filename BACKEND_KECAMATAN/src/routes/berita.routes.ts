@@ -10,7 +10,7 @@ interface Opts {
 }
 
 const bearer = [{ bearerAuth: [] }];
-/** Berita cukup kecil; batas body mencegah kiriman raksasa sebelum divalidasi. */
+/** Batas body untuk berita, supaya kiriman besar ditolak sebelum divalidasi. */
 const BODY_LIMIT_BERITA = 8 * 1024;
 
 export const beritaRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { controller, guards }) => {

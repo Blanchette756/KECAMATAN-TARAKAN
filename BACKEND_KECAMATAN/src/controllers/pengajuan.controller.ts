@@ -13,7 +13,7 @@ function denganMeta<T>(hal: Halaman<T>, ekstra: Record<string, unknown> = {}) {
   };
 }
 
-/** Penghubung HTTP ↔ service: bentuk respons { data, meta? }. Logika bisnis ada di service. */
+/** Membungkus hasil service menjadi respons { data, meta }. Logika bisnis ada di service. */
 export class PengajuanController {
   constructor(private readonly s: Services) {}
 

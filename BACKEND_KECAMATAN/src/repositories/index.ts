@@ -7,9 +7,10 @@ import { MemoryPengajuanRepository } from './pengajuan.repository.js';
 import { MemoryBerkasRepository } from './berkas.repository.js';
 import { MemoryAuditRepository, MemoryRiwayatRepository, MemorySesiRepository } from './log.repository.js';
 import { FileBeritaRepository } from './berita.repository.js';
+import { MemoryFileRepository } from './file.repository.js';
 import { muatBerita } from '../database/berita-loader.js';
 
-/** Satu-satunya tempat yang perlu diubah saat pindah ke MySQL (Fase 2). */
+/** Repository di memori (DB_DRIVER=memory). Versi MySQL ada di ./mysql/. */
 export function createMemoryRepositories(store: MemoryStore, config: Pick<AppConfig, 'auditLogMax' | 'dataDir' | 'beritaFile'>): Repositories {
   return {
     users: new MemoryUserRepository(store),
@@ -20,5 +21,6 @@ export function createMemoryRepositories(store: MemoryStore, config: Pick<AppCon
     audit: new MemoryAuditRepository(store, config.auditLogMax),
     sesi: new MemorySesiRepository(store),
     berita: new FileBeritaRepository(muatBerita(config.dataDir, config.beritaFile), config.beritaFile),
+    files: new MemoryFileRepository(store),
   };
 }

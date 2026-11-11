@@ -71,3 +71,42 @@ describe('Unggah berkas', () => {
     expect((await ctx.app.inject({ method: 'GET', url: '/api/v1/pengajuan/antrian?semua=true', headers: bearer(tWarga) })).statusCode).toBe(403);
   });
 });
+
+describe('File unggahan dicek sebelum data disimpan', () => {
+  const FILE_TIDAK_ADA = 'FIL-00000000-0000-4000-8000-000000000000';
+
+  it('ajukan dengan file yang tidak ada: ditolak dan TIDAK meninggalkan pengajuan tanpa berkas', async () => {
+    const layanan = await ctx.c.services.layanan.detail('LAYANAN-007');
+    const berkas = contohBerkas(layanan, DATA_PENGANTAR).map((b, i) => (i === 0 ? { ...b, file_id: FILE_TIDAK_ADA } : b));
+    const res = await ctx.app.inject({ method: 'POST', url: '/api/v1/pengajuan', headers: bearer(tWarga), payload: { id_layanan: 'LAYANAN-007', data_formulir: DATA_PENGANTAR, berkas } });
+    expect(res.statusCode).toBe(422);
+    expect(await ctx.c.repos.pengajuan.listAll()).toHaveLength(0);
+  });
+
+  it('revisi dengan file milik warga lain: ditolak, status dan berkas lama tetap utuh', async () => {
+    const p = (await ajukanDenganFile(tWarga)).json().data;
+    const ktp = p.berkas.find((b: { id_syarat: string }) => b.id_syarat === 'SYR-007-01');
+    const revisi = await ctx.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/pengajuan/${p.id_pengajuan}/verifikasi`,
+      headers: bearer(tAdmin),
+      payload: { aksi: 'MINTA_REVISI', catatan: 'KTP buram, mohon unggah ulang', berkas: [{ id_berkas: ktp.id_berkas, status: 'PERLU_PERBAIKAN', catatan: 'Buram' }], version: p.version },
+    });
+    const perluRevisi = revisi.json().data;
+    expect(perluRevisi.status_pengajuan).toBe('PERLU_REVISI');
+
+    const fileOrangLain = (await unggah(tWarga2, PNG)).json().data.file_id as string;
+    const res = await ctx.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/pengajuan/${p.id_pengajuan}/revisi`,
+      headers: bearer(tWarga),
+      payload: { berkas: [{ id_syarat: 'SYR-007-01', nama_file: 'ktp.png', mime_type: 'image/png', ukuran_byte: PNG.length, file_id: fileOrangLain }], version: perluRevisi.version },
+    });
+    expect(res.statusCode).toBe(422);
+
+    const sesudah = await ctx.c.services.pengajuan.detail(await ctx.c.repos.users.findByEmail(EMAIL.warga1).then((u) => u!), p.id_pengajuan);
+    expect(sesudah.status_pengajuan).toBe('PERLU_REVISI');
+    expect(sesudah.version).toBe(perluRevisi.version);
+    expect(sesudah.berkas.map((b) => b.id_berkas).sort()).toEqual(perluRevisi.berkas.map((b: { id_berkas: string }) => b.id_berkas).sort());
+  });
+});

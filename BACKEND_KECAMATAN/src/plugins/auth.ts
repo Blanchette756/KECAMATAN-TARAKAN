@@ -21,9 +21,8 @@ export function ambilToken(req: FastifyRequest): string | null {
 }
 
 /**
- * Membuat hook autentikasi & otorisasi.
- * Dipasang di `onRequest` (tahap paling awal) sehingga permintaan tanpa login ditolak
- * SEBELUM body dibaca & divalidasi.  Pemakaian di route:  onRequest: guards.wajibRole('ADMIN')
+ * Hook autentikasi dan otorisasi. Dipasang di `onRequest`, jadi permintaan tanpa login ditolak
+ * sebelum body dibaca. Contoh di route: `onRequest: guards.wajibRole('ADMIN')`.
  */
 export function createAuthGuards(authService: AuthService) {
   const wajibLogin: onRequestAsyncHookHandler = async (req: FastifyRequest, _reply: FastifyReply) => {

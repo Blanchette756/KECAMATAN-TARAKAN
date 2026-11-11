@@ -7,12 +7,9 @@ import { KelurahanSchema, UserSchema, type Kelurahan, type User } from '../types
 import type { Kondisi } from '../types/common.js';
 
 /**
- * Pemuat data master dari folder `data/`.
- *
- * Data dummy sengaja dipisah dari kode: saat data asli dari kecamatan masuk,
- * cukup ganti file JSON-nya. Loader ini memvalidasi bentuk (skema) DAN
- * konsistensi isi (ID unik, kondisi merujuk field yang ada, dst.), lalu
- * mengumpulkan SEMUA kesalahan sekaligus agar mudah diperbaiki.
+ * Pemuat data master dari folder `data/`. Saat data asli kecamatan masuk, cukup ganti file JSON-nya.
+ * Loader memeriksa skema dan konsistensi isi (ID unik, kondisi merujuk field yang ada, dan sebagainya),
+ * lalu melaporkan semua kesalahan sekaligus.
  */
 
 const LayananFileSchema = Type.Object({ _catatan: Type.Optional(Type.String()), layanan: Type.Array(JenisLayananSchema, { minItems: 1 }) }, { additionalProperties: false });
@@ -96,7 +93,7 @@ function cekKondisi(
   }
 }
 
-/** Validasi data mentah (sudah di-parse) → MasterData. Melempar DataValidationError. */
+/** Validasi data mentah yang sudah di-parse menjadi MasterData. Melempar DataValidationError. */
 export function validateMasterData(raw: RawMasterData): MasterData {
   const masalah: string[] = [];
 
@@ -116,7 +113,7 @@ export function validateMasterData(raw: RawMasterData): MasterData {
   const kelurahan = fKelurahan.kelurahan;
   const users = fUsers.users;
 
-  // ---- Layanan ----
+  // Layanan
   for (const d of duplikat(layananData.map((l) => l.id_layanan))) masalah.push(`layanan.json: id_layanan ganda "${d}"`);
   for (const d of duplikat(layananData.map((l) => l.kode))) masalah.push(`layanan.json: kode ganda "${d}"`);
   const semuaSyarat = layananData.flatMap((l) => l.persyaratan.map((p) => p.id_syarat));
@@ -153,11 +150,11 @@ export function validateMasterData(raw: RawMasterData): MasterData {
     }
   }
 
-  // ---- Kelurahan ----
+  // Kelurahan
   for (const d of duplikat(kelurahan.map((k) => k.id_kelurahan))) masalah.push(`kelurahan.json: id_kelurahan ganda "${d}"`);
   const idKelurahan = new Set(kelurahan.map((k) => k.id_kelurahan));
 
-  // ---- Users ----
+  // Users
   for (const d of duplikat(users.map((u) => u.id_user))) masalah.push(`users.json: id_user ganda "${d}"`);
   for (const d of duplikat(users.map((u) => u.email.toLowerCase()))) masalah.push(`users.json: email ganda "${d}"`);
   for (const d of duplikat(users.map((u) => u.nik))) masalah.push(`users.json: NIK ganda "${d}"`);
@@ -193,7 +190,7 @@ export function readRawMasterData(dataDir: string): RawMasterData {
   return raw;
 }
 
-/** Baca + validasi seluruh data master dari folder. */
+/** Baca dan validasi seluruh data master dari folder. */
 export function loadMasterData(dataDir: string): MasterData {
   return validateMasterData(readRawMasterData(dataDir));
 }

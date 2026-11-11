@@ -9,5 +9,4 @@ coverage/
 Thumbs.db
 .vscode/
 .idea/
-data/uploads/
 data/runtime/

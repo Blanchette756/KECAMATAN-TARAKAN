@@ -1,9 +1,8 @@
 import type { Role } from '../types/common.js';
 
 /**
- * Status pengajuan. Alur mengikuti SP CCTI Kecamatan Tarakan Timur:
- * Petugas pelayanan memeriksa berkas → Kasi Tata Pemerintahan paraf → Camat tanda tangan
- * → petugas memberi nomor & menyerahkan surat.
+ * Status pengajuan, mengikuti SP CCTI Kecamatan Tarakan Timur: petugas pelayanan memeriksa berkas,
+ * Kasi Tata Pemerintahan memaraf, Camat menandatangani, lalu petugas memberi nomor dan menyerahkan surat.
  */
 export const STATUS = [
   'DIAJUKAN', // menunggu verifikasi Admin Pelayanan
@@ -48,15 +47,12 @@ export interface Transisi {
   aksi: AksiWorkflow;
   role: Role;
   dari: readonly StatusPengajuan[];
-  /** 'AUTO' = ditentukan oleh mode penyerahan layanan (SELESAI atau SIAP_DIAMBIL). */
+  /** AUTO_SELESAI: SELESAI atau SIAP_DIAMBIL, tergantung mode penyerahan layanan. */
   ke: StatusPengajuan | 'AUTO_SELESAI';
   wajibCatatan: boolean;
 }
 
-/**
- * Tabel transisi: SATU-SATUNYA sumber kebenaran alur kerja.
- * Transisi yang tidak tercantum di sini otomatis ditolak oleh WorkflowService.
- */
+/** Tabel transisi alur kerja. Transisi yang tidak tercantum di sini ditolak WorkflowService. */
 export const TRANSISI: readonly Transisi[] = [
   { aksi: 'KIRIM_REVISI', role: 'WARGA', dari: ['PERLU_REVISI'], ke: 'DIAJUKAN', wajibCatatan: false },
 

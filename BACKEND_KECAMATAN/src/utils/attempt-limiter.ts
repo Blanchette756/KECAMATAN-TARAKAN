@@ -1,9 +1,7 @@
 /**
- * Penghitung percobaan gagal per kunci (mis. per nomor registrasi) dengan jendela waktu.
- * Melengkapi rate limit per-IP: walaupun penyerang memakai banyak IP, satu nomor
- * registrasi tetap hanya bisa dicoba `maxGagal` kali per jendela (audit run-1 #2, defence in depth).
- *
- * Jumlah kunci yang dilacak dibatasi `kapasitas` agar memori tidak tumbuh tanpa batas.
+ * Penghitung percobaan gagal per kunci (misalnya per nomor registrasi) dalam jendela waktu.
+ * Melengkapi rate limit per IP: walaupun penyerang memakai banyak IP, satu nomor registrasi
+ * hanya bisa dicoba `maxGagal` kali per jendela. Jumlah kunci yang dilacak dibatasi `kapasitas`.
  */
 export class AttemptLimiter {
   private readonly data = new Map<string, { gagal: number; sampai: number }>();

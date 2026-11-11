@@ -127,7 +127,7 @@ describe('Pengajuan: alur lengkap state machine', () => {
     expect(p.status_pengajuan).toBe('PERLU_REVISI');
     expect(p.catatan_revisi).toContain('KTP buram');
 
-    // Warga kirim revisi TANPA mengganti KTP → ditolak
+    // Warga kirim revisi tanpa mengganti KTP: ditolak
     res = await patch(ctx.app, tWarga, url(p.id_pengajuan, 'revisi'), { berkas: [], version: p.version });
     expect(res.statusCode).toBe(422);
 

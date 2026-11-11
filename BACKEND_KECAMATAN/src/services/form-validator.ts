@@ -4,9 +4,9 @@ import type { FormField, JenisLayanan, Persyaratan } from '../types/layanan.js';
 import { MIME_DIIZINKAN, type BerkasInput, type MimeDiizinkan } from '../types/berkas.js';
 
 /**
- * Validasi isian formulir & berkas berdasarkan definisi layanan di data/layanan.json.
- * Semua aturan (wajib, kondisi, opsi, batas panjang) dibaca dari data, bukan di-hardcode,
- * sehingga mengganti data layanan otomatis mengganti aturan validasinya.
+ * Validasi isian formulir dan berkas berdasarkan definisi layanan di data/layanan.json.
+ * Aturan wajib, kondisi, opsi, dan batas panjang dibaca dari data, jadi mengubah data layanan
+ * langsung mengubah aturannya.
  */
 
 const PANJANG_MAKS_DEFAULT = { teks: 200, paragraf: 1000 } as const;
@@ -124,7 +124,7 @@ export interface AturanBerkas {
 /** Validasi satu metadata berkas (tipe, ukuran, nama file). */
 export function validasiSatuBerkas(b: BerkasInput, lok: string, aturan: AturanBerkas): string[] {
   const masalah: string[] = [];
-  // Validasi nama yang SAMA dengan yang akan disimpan (setelah trim), bukan nama mentah.
+  // Validasi nama yang akan disimpan (sesudah trim), bukan nama mentah.
   const nama = b.nama_file.trim();
   if (!(MIME_DIIZINKAN as readonly string[]).includes(b.mime_type)) {
     masalah.push(`${lok}: tipe file harus PDF, JPG, atau PNG`);
@@ -151,8 +151,8 @@ export function validasiSatuBerkas(b: BerkasInput, lok: string, aturan: AturanBe
 }
 
 /**
- * Validasi daftar berkas terhadap persyaratan layanan.
- * `lengkap = true` (saat submit) → semua syarat wajib yang berlaku harus ada.
+ * Validasi daftar berkas terhadap persyaratan layanan. Dengan `lengkap` (saat submit),
+ * semua syarat wajib yang berlaku harus ada.
  */
 export function validasiBerkas(
   layanan: JenisLayanan,

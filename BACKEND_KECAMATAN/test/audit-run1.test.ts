@@ -1,6 +1,6 @@
 /**
  * Tes regresi untuk temuan security audit run-1 (cloudflare/security-audit-skill, profil quick).
- * Nama setiap describe = fingerprint temuan, supaya audit berikutnya mudah mencocokkan.
+ * Nama setiap describe sama dengan fingerprint temuannya.
  */
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
@@ -55,7 +55,7 @@ describe('src/config/env.ts:loadConfig:trustProxy-boolean-rate-limit-client-ip',
   });
 
   it('X-Forwarded-For palsu di sisi kiri tidak bisa dipakai menghindari rate limit', async () => {
-    // app.inject memakai remoteAddress 127.0.0.1 → dianggap proxy tepercaya.
+    // app.inject memakai remoteAddress 127.0.0.1, jadi dianggap proxy tepercaya.
     ctx = await buatApp({ TRUST_PROXY: '127.0.0.1', RATE_LIMIT_LACAK: '2', LACAK_MAX_GAGAL: '1000' });
     const kode: number[] = [];
     for (const k of ['10.0.0.1', '10.0.0.2', '10.0.0.3']) {

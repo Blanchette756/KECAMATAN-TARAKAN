@@ -19,6 +19,16 @@ export interface BerkasPengajuan {
   diunggah_pada: string;
 }
 
+/** File hasil POST /berkas/unggah. */
+export interface FileUnggahan {
+  file_id: string;
+  id_user: string;
+  nama_file: string;
+  mime_type: MimeDiizinkan;
+  ukuran_byte: number;
+  dibuat_pada: string;
+}
+
 /** Metadata berkas yang dikirim klien saat submit/revisi. */
 export interface BerkasInput {
   id_syarat: string;

@@ -2,13 +2,11 @@ import type { MasterData } from './data-loader.js';
 import type { JenisLayanan, KontakKecamatan } from '../types/layanan.js';
 import type { Kelurahan, User } from '../types/user.js';
 import type { AuditLog, PengajuanPelayanan, RiwayatStatus, Sesi } from '../types/pengajuan.js';
-import type { BerkasPengajuan } from '../types/berkas.js';
+import type { BerkasPengajuan, FileUnggahan } from '../types/berkas.js';
 
 /**
- * Simulasi database di memori. Setiap Map/array mewakili satu tabel.
- *
- * PENTING: isinya hilang setiap server restart/deploy. Hanya untuk Fase 1.
- * Di Fase 2, repository diganti implementasi MySQL; service & controller tidak berubah.
+ * Penyimpanan di memori untuk DB_DRIVER=memory. Setiap Map atau array mewakili satu tabel, dan isinya
+ * hilang saat server restart. Data master di sini juga dipakai dengan DB_DRIVER=mysql.
  */
 export class MemoryStore {
   // Data master (dari folder data/)
@@ -23,8 +21,9 @@ export class MemoryStore {
   readonly riwayat: RiwayatStatus[] = [];
   readonly auditLog: AuditLog[] = [];
   readonly sesi = new Map<string, Sesi>();
+  readonly files = new Map<string, { info: FileUnggahan; data: Buffer }>();
 
-  /** Penghitung nomor surat per tahun (simulasi sequence database). */
+  /** Penghitung nomor surat per tahun. */
   readonly nomorSuratCounter = new Map<string, number>();
 
   constructor(master: MasterData) {

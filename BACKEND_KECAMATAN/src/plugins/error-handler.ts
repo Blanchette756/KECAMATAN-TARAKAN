@@ -2,8 +2,8 @@ import type { FastifyError, FastifyInstance } from 'fastify';
 import { AppError } from '../utils/errors.js';
 
 /**
- * Semua error diubah ke satu format:  { "error": { "code", "message", "details?" } }
- * Error tak terduga (bug) selalu dijawab 500 dengan pesan umum; detailnya hanya di log server.
+ * Semua error dijawab dengan format { "error": { "code", "message", "details" } }.
+ * Error tak terduga dijawab 500 dengan pesan umum; detailnya hanya di log server.
  */
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((err: FastifyError | AppError | Error, req, reply) => {

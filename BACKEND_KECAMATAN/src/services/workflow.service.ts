@@ -8,13 +8,9 @@ import { newId, sha256, tahun } from '../utils/ids.js';
 import type { ServiceDeps } from './deps.js';
 
 /**
- * State machine pengajuan. Semua perubahan status WAJIB lewat `jalankan()`:
- *  1. aksi harus ada di tabel TRANSISI,
- *  2. role pelaku harus sesuai,
- *  3. status saat ini harus termasuk `dari`,
- *  4. Kasi hanya boleh memproses seksinya sendiri,
- *  5. versi harus cocok (cegah dua petugas memproses bersamaan),
- *  6. setiap perubahan dicatat di riwayat_status.
+ * Alur status pengajuan. Semua perubahan status harus lewat `jalankan()`, yang memeriksa bahwa aksi ada
+ * di tabel TRANSISI, role pelaku sesuai, status saat ini termasuk `dari`, Kasi hanya memproses seksinya
+ * sendiri, dan versi cocok. Setiap perubahan dicatat di riwayat_status.
  */
 export class WorkflowService {
   constructor(private readonly deps: ServiceDeps) {}
@@ -52,8 +48,8 @@ export class WorkflowService {
   }
 
   /**
-   * Jalankan transisi & simpan. `p` boleh sudah dimodifikasi pemanggil (mis. catatan berkas),
-   * asalkan `periksa()` sudah lolos. Mengembalikan pengajuan versi terbaru.
+   * Jalankan transisi lalu simpan. `p` boleh sudah diubah pemanggil, asalkan `periksa()` lolos.
+   * Mengembalikan pengajuan versi terbaru.
    */
   async jalankan(
     user: User,
@@ -100,7 +96,7 @@ export class WorkflowService {
         const th = tahun(waktu, config.timezone);
         const urut = await repos.pengajuan.nextNomorSurat(th);
         next.nomor_surat = formatNomorSurat(layanan.kode, urut, th);
-        // SIMULASI: bukan tanda tangan elektronik tersertifikasi BSrE.
+        // Simulasi, bukan tanda tangan elektronik tersertifikasi BSrE.
         next.qr_code_tte = `SIMULASI-TTE-${sha256(`${p.no_registrasi}|${next.nomor_surat}`).slice(0, 16).toUpperCase()}`;
         if (ke === 'SELESAI') {
           next.file_surat_selesai = `dummy://surat/${p.id_pengajuan}.pdf`;

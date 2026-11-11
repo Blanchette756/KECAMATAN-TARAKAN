@@ -2,7 +2,7 @@ import type { MemoryStore } from '../database/memory-store.js';
 import type { AuditLog, RiwayatStatus, Sesi } from '../types/pengajuan.js';
 import type { AuditRepository, RiwayatRepository, SesiRepository } from './interfaces.js';
 
-/** Riwayat perubahan status: dasar linimasa lacak & statistik waktu layanan. */
+/** Riwayat perubahan status, dipakai linimasa lacak dan statistik waktu layanan. */
 export class MemoryRiwayatRepository implements RiwayatRepository {
   constructor(private readonly store: MemoryStore) {}
 
@@ -20,9 +20,8 @@ export class MemoryRiwayatRepository implements RiwayatRepository {
 }
 
 /**
- * Jejak audit: siapa membuka data siapa, kapan (kewajiban perlindungan data pribadi).
- * Fase 1 menyimpan paling banyak `maks` entri terbaru (ring buffer) agar memori proses
- * tidak tumbuh tanpa batas (temuan audit run-1 #3). Fase 2: tabel database + retensi.
+ * Jejak audit: siapa membuka data siapa dan kapan, untuk kewajiban perlindungan data pribadi.
+ * Hanya `maks` entri terbaru yang disimpan supaya memori proses tidak terus bertambah.
  */
 export class MemoryAuditRepository implements AuditRepository {
   constructor(

@@ -1,14 +1,36 @@
 import { buildApp } from './app.js';
 import { ConfigError, loadConfig, loadDotEnvFile } from './config/env.js';
-import { createContainer } from './container.js';
+import { buatContainer } from './container.js';
 import { DataValidationError } from './database/data-loader.js';
 import { seedDemoPengajuan } from './database/seed-demo.js';
+
+/** Pesan untuk kegagalan koneksi database yang umum. */
+function pesanGagalDatabase(err: unknown): string | null {
+  const kode = (err as { code?: string } | null)?.code;
+  switch (kode) {
+    case 'ER_ACCESS_DENIED_ERROR':
+      return 'Login ke database ditolak. Periksa DB_USER dan DB_PASSWORD.';
+    case 'ER_BAD_DB_ERROR':
+      return 'Database tidak ditemukan. Periksa DB_NAME.';
+    case 'ER_DBACCESS_DENIED_ERROR':
+      return 'User database tidak punya akses ke DB_NAME. Hubungkan user ke database di hPanel.';
+    case 'ECONNREFUSED':
+    case 'ETIMEDOUT':
+    case 'ENOTFOUND':
+    case 'EHOSTUNREACH':
+      return 'Server database tidak dapat dihubungi. Periksa DB_HOST/DB_PORT. Dari laptop: DB_HOST=srvNNNN.hstgr.io dan IP Anda harus terdaftar di Remote MySQL hPanel. Di server Hostinger: DB_HOST=127.0.0.1.';
+    default:
+      return null;
+  }
+}
 
 async function main(): Promise<void> {
   loadDotEnvFile();
   const config = loadConfig();
-  const container = createContainer(config);
+  if (config.dbDriver === 'mysql') console.log(`[db] Menyambung ke MySQL ${config.db?.host}:${config.db?.port}/${config.db?.name} ...`);
+  const container = await buatContainer(config, (pesan) => console.log(`[db] ${pesan}`));
   const app = await buildApp(container);
+  app.addHook('onClose', async () => container.tutup());
 
   if (config.authMode === 'mock' && config.nodeEnv === 'production') {
     app.log.warn('⚠ AUTH MOCK AKTIF DI PRODUCTION (ALLOW_MOCK_AUTH_IN_PRODUCTION=true). Hanya untuk server DEMO berisi data dummy!');
@@ -16,8 +38,12 @@ async function main(): Promise<void> {
   if (!config.nodeEnvEksplisit) {
     app.log.warn('⚠ NODE_ENV tidak diisi, dianggap "development". Di server, selalu isi NODE_ENV=production.');
   }
+  if (config.dbDriver === 'memory' && config.nodeEnv === 'production') {
+    app.log.warn('⚠ DB_DRIVER=memory di production: pengajuan, akun, dan sesi hilang setiap restart atau deploy. Isi DB_DRIVER=mysql.');
+  }
 
-  if (config.seedDemoPengajuan) {
+  // Hanya kalau belum ada pengajuan, supaya data contoh tidak dobel setiap restart.
+  if (config.seedDemoPengajuan && (await container.repos.pengajuan.listAll()).length === 0) {
     const contoh = await seedDemoPengajuan(container);
     if (config.nodeEnv === 'production') {
       // Jangan tulis pasangan nomor registrasi + 4 digit HP ke log server production.
@@ -43,8 +69,11 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
+  const db = pesanGagalDatabase(err);
   if (err instanceof ConfigError || err instanceof DataValidationError) {
     console.error(`\n✘ Server tidak dijalankan.\n${err.message}\n`);
+  } else if (db) {
+    console.error(`\n✘ Server tidak dijalankan.\n[db] ${db}\n(${(err as Error).message})\n`);
   } else {
     console.error(err);
   }

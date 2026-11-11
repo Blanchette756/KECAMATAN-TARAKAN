@@ -3,9 +3,8 @@ import type { PengajuanRepository } from '../repositories/interfaces.js';
 import { randomKode, tanggalRingkas } from '../utils/ids.js';
 
 /**
- * Membuat nomor registrasi REQ-YYYYMMDD-XXXX.
- * XXXX acak (bukan berurutan), sehingga nomor orang lain tidak bisa ditebak
- * hanya dengan menambah 1. Dipadukan dengan 4 digit HP + rate limit pada endpoint lacak.
+ * Membuat nomor registrasi REQ-YYYYMMDD-XXXX. XXXX acak, jadi nomor orang lain tidak bisa ditebak
+ * dengan menambah 1. Endpoint lacak juga meminta 4 digit HP dan dibatasi rate limit.
  */
 export async function generateNoRegistrasi(repo: PengajuanRepository, now: Date, timeZone: string): Promise<string> {
   const tanggal = tanggalRingkas(now, timeZone);

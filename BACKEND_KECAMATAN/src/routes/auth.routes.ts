@@ -20,7 +20,7 @@ export const authRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { control
       config: { rateLimit: { max: config.rateLimit.login, timeWindow: '1 minute' } },
       schema: {
         tags: ['Auth'],
-        summary: 'Login MOCK dengan email akun dummy (khusus Fase 1, tanpa password)',
+        summary: 'Login tiruan dengan email akun dummy, tanpa password',
         body: MockLoginBodySchema,
         response: { 200: LoginResponseSchema, 401: errorResponses[401], 429: errorResponses[429] },
       },

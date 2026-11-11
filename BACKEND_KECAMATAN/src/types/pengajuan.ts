@@ -19,7 +19,7 @@ export interface PengajuanPelayanan {
   alasan_penolakan: string | null;
   /** Nomor surat resmi, diberikan setelah Camat menandatangani. */
   nomor_surat: string | null;
-  /** SIMULASI – bukan TTE BSrE yang sah secara hukum. */
+  /** Simulasi, bukan TTE BSrE yang sah secara hukum. */
   qr_code_tte: string | null;
   file_surat_selesai: string | null;
   id_verifikator: string | null;

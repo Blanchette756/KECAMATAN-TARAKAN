@@ -3,7 +3,7 @@ import type { JenisLayanan, KontakKecamatan } from '../types/layanan.js';
 import type { Kelurahan } from '../types/user.js';
 import type { MasterRepository } from './interfaces.js';
 
-/** Data master: layanan + persyaratan, kelurahan, kontak kecamatan. */
+/** Data master: layanan dan persyaratannya, kelurahan, kontak kecamatan. */
 export class MemoryMasterRepository implements MasterRepository {
   constructor(private readonly store: MemoryStore) {}
 
