@@ -1,9 +1,24 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { aksiPengajuan, ambilAntrian, ApiError, detailPengajuan, keluarAkun, type BerkasDetail, type DetailPengajuan, type Ringkas } from '../api';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import {
+  aksiPengajuan,
+  ambilAntrian,
+  ambilBerita,
+  ApiError,
+  detailPengajuan,
+  hapusBerita,
+  keluarAkun,
+  simpanBerita,
+  type BerkasDetail,
+  type Berita,
+  type DetailPengajuan,
+  type InputBerita,
+  type Ringkas,
+} from '../api';
 import { Icon, type IconName } from '../components/Icon';
 import { MediaBerkas, PenampilBerkas, useUrlBerkas } from '../components/PenampilBerkas';
 import { BarisData, Galat, Kartu, Riwayat, tanggal, ukuranFile, useKunciKirim } from '../components/portal';
 import { Button, Logo, SelectField } from '../components/ui';
+import { tanggalBerita } from '../data/berita';
 import { LAYANAN } from '../data/layanan';
 import { CAMAT } from '../data/pejabat';
 import { ambilSesi, hapusSesi, inisial, type Pengguna } from '../sesi';
@@ -41,6 +56,9 @@ const TAB: { label: string; status: string[] }[] = [
   { label: 'Selesai', status: ['SIAP_DIAMBIL', 'SELESAI', 'DITOLAK'] },
 ];
 
+/** Menu "Kelola Berita" (khusus Petugas Pelayanan). */
+const TAB_BERITA = 'Berita';
+
 const namaLayanan = (id: string, cadangan: string) => LAYANAN.find((item) => item.id === id)?.judul ?? cadangan;
 const hariIni = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 
@@ -55,6 +73,7 @@ function Sidebar({ user, data, tab, keTab }: { user: Pengguna; data: Ringkas[]; 
         { label: 'Menunggu Paraf Kasi', ikon: 'nav-clipboard', jumlah: hitung('Menunggu Paraf'), tab: 'Menunggu Paraf' },
         { label: 'Menunggu TTD Camat', ikon: 'nav-pen', jumlah: hitung('Menunggu TTD'), tab: 'Menunggu TTD' },
         { label: 'Selesai', ikon: 'nav-selesai', tab: 'Selesai' },
+        { label: 'Kelola Berita', ikon: 'megaphone', tab: TAB_BERITA },
       ]
     : user.role === 'KASI'
       ? [{ label: 'Perlu Paraf', ikon: 'nav-clipboard', jumlah: data.length, tab: 'Semua' }]
@@ -661,11 +680,177 @@ function DetailAdmin({ id }: { id: string }) {
   return data.status_pengajuan === 'SIAP_DIAMBIL' ? <Finalisasi data={data} /> : <Verifikasi data={data} onBerubah={muat} />;
 }
 
+const BATAS = { judulMin: 5, judulMaks: 150, ringkasanMin: 10, ringkasanMaks: 600 };
+/** Tanggal hari ini menurut WITA, format YYYY-MM-DD (nilai bawaan isian tanggal berita). */
+const hariIniWita = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Makassar' }).format(new Date());
+
+function KelolaBerita() {
+  const [daftar, setDaftar] = useState<Berita[] | null>(null);
+  const [galatMuat, setGalatMuat] = useState<string | null>(null);
+  // null = form tertutup; id kosong = berita baru.
+  const [form, setForm] = useState<{ id?: string; isian: InputBerita } | null>(null);
+  const [konfirmasiHapus, setKonfirmasiHapus] = useState<string | null>(null);
+  const [galat, setGalat] = useState<string | null>(null);
+  const [pesan, setPesan] = useState<string | null>(null);
+  const { mengirim, mulai, lepas } = useKunciKirim();
+
+  const muat = () =>
+    ambilBerita()
+      .then(setDaftar)
+      .catch((error: Error) => setGalatMuat(error.message));
+  useEffect(() => {
+    muat();
+  }, []);
+
+  const bukaForm = (berita?: Berita) => {
+    setGalat(null);
+    setPesan(null);
+    setKonfirmasiHapus(null);
+    setForm(berita ? { id: berita.id_berita, isian: { judul: berita.judul, tanggal: berita.tanggal, ringkasan: berita.ringkasan } } : { isian: { judul: '', tanggal: hariIniWita(), ringkasan: '' } });
+    window.scrollTo(0, 0);
+  };
+
+  const ubahIsian = (kunci: keyof InputBerita, nilai: string) => form && setForm({ ...form, isian: { ...form.isian, [kunci]: nilai } });
+
+  const simpan = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!form) return;
+    const { judul, tanggal, ringkasan } = form.isian;
+    const masalah = [
+      judul.trim().length < BATAS.judulMin && `Judul minimal ${BATAS.judulMin} karakter.`,
+      !tanggal && 'Tanggal wajib diisi.',
+      ringkasan.trim().length < BATAS.ringkasanMin && `Ringkasan minimal ${BATAS.ringkasanMin} karakter.`,
+    ].filter(Boolean);
+    if (masalah.length > 0) return setGalat(masalah.join(' '));
+    if (!mulai()) return;
+    setGalat(null);
+    try {
+      await simpanBerita(form.isian, form.id);
+      setPesan(form.id ? 'Perubahan berita disimpan dan sudah tampil di situs.' : 'Berita baru ditambahkan dan sudah tampil di situs.');
+      setForm(null);
+      await muat();
+    } catch (error) {
+      setGalat(error instanceof ApiError ? error.message : 'Gagal menyimpan berita.');
+    } finally {
+      lepas();
+    }
+  };
+
+  const hapus = async (id: string) => {
+    if (!mulai()) return;
+    setGalat(null);
+    try {
+      await hapusBerita(id);
+      setPesan('Berita dihapus dari situs.');
+      setKonfirmasiHapus(null);
+      if (form?.id === id) setForm(null);
+      await muat();
+    } catch (error) {
+      setGalat(error instanceof ApiError ? error.message : 'Gagal menghapus berita.');
+    } finally {
+      lepas();
+    }
+  };
+
+  return (
+    <>
+      <Topbar kecil="Informasi Publik" judul="Kelola Berita" kanan={<Button label="Tambah Berita" arrow onClick={() => bukaForm()} />} />
+      <div className="admin__konten">
+        {pesan && (
+          <p className="pemberitahuan pemberitahuan--hijau pemberitahuan--kecil">
+            {pesan}{' '}
+            <a className="tautan-polos" href="/informasi-publik?tab=Berita" target="_blank" rel="noreferrer">
+              Lihat di situs
+            </a>
+          </p>
+        )}
+        {form && (
+          <Kartu judul={form.id ? 'Ubah berita' : 'Tambah berita'}>
+            <form className="berita-form" onSubmit={simpan} noValidate>
+              <label className="field">
+                <span className="field__label">Judul *</span>
+                <input className="field__input" maxLength={BATAS.judulMaks} placeholder="Contoh: Kerja bakti serentak se-kecamatan" value={form.isian.judul} onChange={(event) => ubahIsian('judul', event.target.value)} />
+              </label>
+              <label className="field berita-form__tanggal">
+                <span className="field__label">Tanggal *</span>
+                <input className="field__input" type="date" value={form.isian.tanggal} onChange={(event) => ubahIsian('tanggal', event.target.value)} />
+              </label>
+              <label className="field">
+                <span className="field__label">Ringkasan *</span>
+                <textarea
+                  className="field__input field__textarea"
+                  maxLength={BATAS.ringkasanMaks}
+                  placeholder="Ringkasan singkat yang tampil di kartu berita"
+                  value={form.isian.ringkasan}
+                  onChange={(event) => ubahIsian('ringkasan', event.target.value)}
+                />
+                <span className="baris__meta">
+                  {form.isian.ringkasan.length}/{BATAS.ringkasanMaks} karakter
+                </span>
+              </label>
+              <Galat pesan={galat} />
+              <div className="berita-form__aksi">
+                <Button label={mengirim ? 'Menyimpan…' : 'Simpan'} type="submit" disabled={mengirim} />
+                <Button label="Batal" style="secondary" disabled={mengirim} onClick={() => setForm(null)} />
+              </div>
+            </form>
+          </Kartu>
+        )}
+        {!form && <Galat pesan={galat} />}
+        <section className="kartu kartu--tabel">
+          <div className="periksa__judul">
+            <h2 className="timeline__judul">Berita yang tampil di situs ({daftar?.length ?? 0})</h2>
+          </div>
+          {daftar === null && <p className="info-kosong tabel-kosong">{galatMuat ?? 'Memuat berita…'}</p>}
+          {daftar?.length === 0 && <p className="info-kosong tabel-kosong">Belum ada berita. Klik "Tambah Berita" untuk menulis berita pertama.</p>}
+          {daftar?.map((berita) => (
+            <article className="berita-admin" key={berita.id_berita}>
+              <div className="berita-admin__teks">
+                <p className="overline">{tanggalBerita(berita.tanggal)}</p>
+                <h3 className="baris__judul">{berita.judul}</h3>
+                <p className="baris__meta">{berita.ringkasan}</p>
+              </div>
+              <div className="berita-admin__aksi">
+                {konfirmasiHapus === berita.id_berita ? (
+                  <>
+                    <span className="baris__meta">Hapus berita ini?</span>
+                    <button type="button" className="tautan-polos tautan-polos--bahaya" disabled={mengirim} onClick={() => hapus(berita.id_berita)}>
+                      Ya, hapus
+                    </button>
+                    <button type="button" className="tautan-polos" onClick={() => setKonfirmasiHapus(null)}>
+                      Batal
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="tautan-polos" onClick={() => bukaForm(berita)}>
+                      Ubah
+                    </button>
+                    <button type="button" className="tautan-polos tautan-polos--bahaya" onClick={() => setKonfirmasiHapus(berita.id_berita)}>
+                      Hapus
+                    </button>
+                  </>
+                )}
+              </div>
+            </article>
+          ))}
+        </section>
+      </div>
+    </>
+  );
+}
+
+/** Menu bisa dibuka langsung lewat alamat, mis. /admin?tab=Berita. */
+const tabAwal = () => {
+  const diminta = new URLSearchParams(window.location.search).get('tab');
+  return diminta && (diminta === TAB_BERITA || TAB.some((t) => t.label === diminta)) ? diminta : 'Semua';
+};
+
 export function Admin() {
   const sesi = ambilSesi();
   const id = new URLSearchParams(window.location.search).get('id');
   const [data, setData] = useState<Ringkas[] | null>(null);
-  const [tab, setTab] = useState('Semua');
+  const [tab, setTab] = useState(tabAwal);
   const [galat, setGalat] = useState<string | null>(null);
   const petugas = sesi && sesi.user.role !== 'WARGA' ? sesi.user : null;
 
@@ -687,8 +872,9 @@ export function Admin() {
   if (!petugas) return null;
 
   const keTab = (label: string) => {
-    if (id) window.location.assign('/admin');
-    setTab(label);
+    // Dari halaman detail, kembali ke panel dengan menu yang dipilih tetap terbuka.
+    if (id) window.location.assign(`/admin?tab=${encodeURIComponent(label)}`);
+    else setTab(label);
   };
 
   return (
@@ -700,6 +886,8 @@ export function Admin() {
           (petugas.role === 'ADMIN' ? (
             id ? (
               <DetailAdmin id={id} />
+            ) : tab === TAB_BERITA ? (
+              <KelolaBerita />
             ) : (
               <Dashboard data={data} tab={tab} setTab={setTab} />
             )

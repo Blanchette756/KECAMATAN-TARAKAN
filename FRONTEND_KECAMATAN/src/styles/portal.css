@@ -1164,6 +1164,57 @@
   gap: var(--space-16);
 }
 
+/* Kelola Berita (panel Petugas Pelayanan) */
+.berita-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.berita-form__tanggal {
+  max-width: 240px;
+}
+
+.berita-form__aksi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+.berita-admin {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-24);
+  padding: var(--space-16) var(--space-20);
+  border-top: 1px solid var(--color-border-default);
+}
+
+.berita-admin__teks {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.berita-admin__aksi {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+@media (max-width: 1099px) {
+  .berita-admin {
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .berita-form__tanggal {
+    max-width: none;
+  }
+}
+
 /* Penampil berkas layar penuh (dialog modal bawaan browser: Esc menutup, latar tidak bisa diklik). */
 html:has(.penampil[open]) {
   overflow: hidden;

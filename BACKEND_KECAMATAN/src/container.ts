@@ -4,6 +4,7 @@ import { MemoryStore } from './database/memory-store.js';
 import { createMemoryRepositories } from './repositories/index.js';
 import type { Repositories } from './repositories/interfaces.js';
 import { AuthService } from './services/auth.service.js';
+import { BeritaService } from './services/berita.service.js';
 import type { ServiceDeps } from './services/deps.js';
 import { LayananService } from './services/layanan.service.js';
 import { PengajuanService } from './services/pengajuan.service.js';
@@ -18,6 +19,7 @@ export interface Services {
   workflow: WorkflowService;
   statistik: StatistikService;
   unggah: UnggahService;
+  berita: BeritaService;
 }
 
 export interface Container {
@@ -49,6 +51,7 @@ export function createContainer(config: AppConfig, opts: ContainerOptions = {}):
     workflow,
     statistik: new StatistikService(deps),
     unggah,
+    berita: new BeritaService(deps),
   };
   return { config, repos, services, store };
 }

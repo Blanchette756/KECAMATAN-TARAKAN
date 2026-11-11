@@ -32,6 +32,11 @@ export interface AppConfig {
   lacakLockout: { maxGagal: number; menit: number };
   seedDemoPengajuan: boolean;
   dataDir: string;
+  /**
+   * File tempat berita disimpan agar tetap ada saat server dimulai ulang.
+   * null saat tes (berita hanya di memori). Bawaan: data/runtime/berita.json; bisa dipindah lewat BERITA_FILE.
+   */
+  beritaFile: string | null;
   logLevel: string;
 }
 
@@ -152,6 +157,8 @@ export function loadConfig(env: Env = process.env): AppConfig {
     }
   }
 
+  const dataDir = path.resolve(str(env, 'DATA_DIR', 'data'));
+
   return {
     nodeEnv,
     nodeEnvEksplisit: (env.NODE_ENV ?? '').trim() !== '',
@@ -179,7 +186,8 @@ export function loadConfig(env: Env = process.env): AppConfig {
     },
     // Data contoh hanya otomatis di development; di production harus diminta eksplisit.
     seedDemoPengajuan: bool(env, 'SEED_DEMO_PENGAJUAN', nodeEnv === 'development'),
-    dataDir: path.resolve(str(env, 'DATA_DIR', 'data')),
+    dataDir,
+    beritaFile: nodeEnv === 'test' ? null : path.resolve(str(env, 'BERITA_FILE', path.join(dataDir, 'runtime', 'berita.json'))),
     logLevel: str(env, 'LOG_LEVEL', nodeEnv === 'test' ? 'silent' : 'info'),
   };
 }

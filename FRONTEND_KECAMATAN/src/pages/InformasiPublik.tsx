@@ -3,7 +3,7 @@ import { Icon } from '../components/Icon';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button, FotoPlaceholder, NewsCard, PageBanner } from '../components/ui';
-import { BERITA } from '../data/berita';
+import { tanggalBerita, useBerita } from '../data/berita';
 
 // Nama unit mengikuti susunan organisasi kecamatan ("06. Nama Pejabat.xlsx").
 const PENGUMUMAN = [
@@ -22,14 +22,7 @@ const DOKUMEN = [
   'Laporan Kinerja Instansi Pemerintah (LKjIP)',
 ];
 
-const TAB = [
-  { label: 'Semua', jumlah: BERITA.length + PENGUMUMAN.length + DOKUMEN.length },
-  { label: 'Berita', jumlah: BERITA.length },
-  { label: 'Pengumuman', jumlah: PENGUMUMAN.length },
-  { label: 'Dokumen Publik', jumlah: DOKUMEN.length },
-];
-
-const RINGKASAN_UTAMA = 'Warga dapat mengakses layanan dokumen dasar lebih dekat melalui jadwal pelayanan keliling yang digelar bergiliran di setiap kelurahan.';
+const TAB = ['Semua', 'Berita', 'Pengumuman', 'Dokumen Publik'];
 
 /** Jumlah kartu berita yang langsung tampil di mobile sebelum "Muat lebih banyak". */
 const KARTU_AWAL_MOBILE = 2;
@@ -39,7 +32,7 @@ const KARTU_PER_HALAMAN = 4;
 /** Tab bisa dibuka langsung dari menu atas, mis. /informasi-publik?tab=Pengumuman. */
 const tabAwal = () => {
   const diminta = new URLSearchParams(window.location.search).get('tab');
-  return TAB.some((t) => t.label === diminta) ? diminta! : 'Semua';
+  return diminta && TAB.includes(diminta) ? diminta : 'Semua';
 };
 
 export function InformasiPublik() {
@@ -47,11 +40,21 @@ export function InformasiPublik() {
   const [cari, setCari] = useState('');
   const [muatSemua, setMuatSemua] = useState(false);
   const [halaman, setHalaman] = useState(1);
+  const { berita: semuaBerita, galat: galatBerita } = useBerita();
+  const daftarBerita = semuaBerita ?? [];
+  const jumlahTab: Record<string, number> = {
+    Semua: daftarBerita.length + PENGUMUMAN.length + DOKUMEN.length,
+    Berita: daftarBerita.length,
+    Pengumuman: PENGUMUMAN.length,
+    'Dokumen Publik': DOKUMEN.length,
+  };
 
   const kata = cari.trim().toLowerCase();
   const cocok = (...teks: string[]) => teks.join(' ').toLowerCase().includes(kata);
 
-  const berita = tab === 'Semua' || tab === 'Berita' ? BERITA.filter((b) => cocok(b.judul, b.ringkasan)) : [];
+  const tampilkanBerita = tab === 'Semua' || tab === 'Berita';
+  const beritaBelumAda = tampilkanBerita && semuaBerita === null;
+  const berita = tampilkanBerita ? daftarBerita.filter((b) => cocok(b.judul, b.ringkasan)) : [];
   const pengumuman = tab === 'Semua' || tab === 'Pengumuman' ? PENGUMUMAN.filter((p) => cocok(p.judul, p.meta)) : [];
   const dokumen = tab === 'Semua' || tab === 'Dokumen Publik' ? DOKUMEN.filter((judul) => cocok(judul)) : [];
 
@@ -74,10 +77,10 @@ export function InformasiPublik() {
 
         <div className="toolbar">
           <div className="chips">
-            {TAB.map(({ label, jumlah }) => (
+            {TAB.map((label) => (
               <button key={label} type="button" className={`chip${label === tab ? ' chip--selected' : ''}`} aria-pressed={label === tab} onClick={() => setTab(label)}>
                 {label}
-                <span className="chip__jumlah">{jumlah}</span>
+                <span className="chip__jumlah">{jumlahTab[label]}</span>
               </button>
             ))}
           </div>
@@ -95,17 +98,18 @@ export function InformasiPublik() {
         </div>
 
         <div className="info-konten">
-          {!adaHasil && <p className="info-kosong">Tidak ada hasil untuk “{cari.trim()}”.</p>}
+          {beritaBelumAda && <p className="info-kosong">{galatBerita ? 'Berita belum dapat dimuat. Coba muat ulang halaman.' : 'Memuat berita…'}</p>}
+          {!adaHasil && !beritaBelumAda && <p className="info-kosong">{kata ? `Tidak ada hasil untuk “${cari.trim()}”.` : 'Belum ada informasi.'}</p>}
 
-          {berita.length > 0 && (
+          {utama && (
             <div className="info-utama">
               <article className="sorotan">
                 <FotoPlaceholder keterangan="Foto berita utama" className="sorotan__foto" />
                 <div className="sorotan__isi">
                   <span className="badge">Sorotan</span>
-                  <p className="overline">{utama.tanggal}</p>
+                  <p className="overline">{tanggalBerita(utama.tanggal)}</p>
                   <h2 className="sorotan__judul">{utama.judul}</h2>
-                  <p className="teks-sekunder">{utama === BERITA[0] ? RINGKASAN_UTAMA : utama.ringkasan}</p>
+                  <p className="teks-sekunder">{utama.ringkasan}</p>
                 </div>
               </article>
 
@@ -126,7 +130,7 @@ export function InformasiPublik() {
                       const diMobile = muatSemua || urutan < KARTU_AWAL_MOBILE;
                       if (!diDesktop && !diMobile) return null;
                       const kelas = diDesktop && diMobile ? '' : diDesktop ? 'only-desktop' : 'only-mobile';
-                      return <NewsCard key={item.judul} {...item} className={kelas} />;
+                      return <NewsCard key={item.id_berita} tanggal={tanggalBerita(item.tanggal)} judul={item.judul} ringkasan={item.ringkasan} className={kelas} />;
                     })}
                   </div>
                   {jumlahHalaman > 1 && (

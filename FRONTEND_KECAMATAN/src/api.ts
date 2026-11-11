@@ -37,7 +37,9 @@ async function panggilLengkap<T>(path: string, init?: RequestInit): Promise<Resp
   }
   const body = await res.json().catch(() => null);
   if (!res.ok || body === null) {
-    const rincian = Array.isArray(body?.error?.details) ? `: ${body.error.details.join('; ')}` : '';
+    // Rincian bisa berupa teks (validasi service) atau objek { lokasi, pesan } (validasi skema).
+    const teksRincian = (d: unknown) => (typeof d === 'string' ? d : d && typeof d === 'object' && 'pesan' in d ? `${(d as { lokasi?: string }).lokasi ?? ''} ${(d as { pesan: string }).pesan}`.trim() : JSON.stringify(d));
+    const rincian = Array.isArray(body?.error?.details) ? `: ${body.error.details.map(teksRincian).join('; ')}` : '';
     throw new ApiError(`${body?.error?.message ?? 'Terjadi kesalahan pada server. Coba lagi beberapa saat lagi.'}${rincian}`, res.status);
   }
   return body as Respons<T>;
@@ -153,6 +155,22 @@ export const kirimPengajuan = (id_layanan: string, data_formulir: Record<string,
 export const pengajuanSaya = () => panggil<Ringkas[]>('/pengajuan/saya?limit=50');
 export const detailPengajuan = (id: string) => panggil<DetailPengajuan>(`/pengajuan/${id}`);
 export const kirimRevisi = (id: string, berkas: BerkasKirim[], version: number) => kirimJson<DetailPengajuan>('PATCH', `/pengajuan/${id}/revisi`, { berkas, version });
+export interface Berita {
+  id_berita: string;
+  judul: string;
+  /** YYYY-MM-DD */
+  tanggal: string;
+  ringkasan: string;
+  diperbarui_pada?: string;
+}
+export type InputBerita = Pick<Berita, 'judul' | 'tanggal' | 'ringkasan'>;
+
+/** Publik, terbaru di atas. */
+export const ambilBerita = () => panggil<Berita[]>('/berita');
+/** Khusus petugas pelayanan. Tanpa `id` = tambah, dengan `id` = ubah. */
+export const simpanBerita = (input: InputBerita, id?: string) => (id ? kirimJson<Berita>('PATCH', `/berita/${id}`, input) : kirimJson<Berita>('POST', '/berita', input));
+export const hapusBerita = (id: string) => kirimJson<{ id_berita: string }>('DELETE', `/berita/${id}`);
+
 /** Backend membatasi 50 berkas per halaman, jadi semua halaman diambil agar daftar dan angka dashboard lengkap. */
 export async function ambilAntrian(semua: boolean): Promise<Ringkas[]> {
   const hasil: Ringkas[] = [];

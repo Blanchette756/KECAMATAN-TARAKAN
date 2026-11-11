@@ -2,6 +2,7 @@ import type { JenisLayanan, KontakKecamatan } from '../types/layanan.js';
 import type { Kelurahan, User } from '../types/user.js';
 import type { AuditLog, PengajuanPelayanan, RiwayatStatus, Sesi } from '../types/pengajuan.js';
 import type { BerkasPengajuan } from '../types/berkas.js';
+import type { Berita } from '../types/berita.js';
 import type { StatusPengajuan } from '../constants/workflow.js';
 import type { Seksi } from '../types/common.js';
 
@@ -75,6 +76,15 @@ export interface AuditRepository {
   listByTarget(targetId: string): Promise<AuditLog[]>;
 }
 
+export interface BeritaRepository {
+  list(): Promise<Berita[]>;
+  findById(id: string): Promise<Berita | null>;
+  create(b: Berita): Promise<void>;
+  update(b: Berita): Promise<void>;
+  /** false jika berita tidak ada. */
+  delete(id: string): Promise<boolean>;
+}
+
 export interface SesiRepository {
   create(s: Sesi): Promise<void>;
   findByHash(tokenHash: string): Promise<Sesi | null>;
@@ -91,4 +101,5 @@ export interface Repositories {
   riwayat: RiwayatRepository;
   audit: AuditRepository;
   sesi: SesiRepository;
+  berita: BeritaRepository;
 }

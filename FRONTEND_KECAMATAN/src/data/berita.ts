@@ -1,34 +1,20 @@
-// Isi berita mengikuti Figma dan belum terverifikasi (lihat "Catatan Desain & Data").
-export const BERITA = [
-  {
-    tanggal: '18 September 2026',
-    judul: 'Pelayanan Administrasi Keliling Hadir di Kelurahan Mamburungan',
-    ringkasan: 'Warga dapat mengakses layanan dokumen dasar lebih dekat melalui jadwal pelayanan keliling.',
-  },
-  {
-    tanggal: '12 September 2026',
-    judul: 'Musrenbang Kecamatan Tarakan Timur Tetapkan Prioritas 2027',
-    ringkasan: 'Forum menyepakati penguatan drainase, layanan dasar, dan pemberdayaan ekonomi warga.',
-  },
-  {
-    tanggal: '5 September 2026',
-    judul: 'Imbauan Menjaga Kebersihan Pesisir dan Lingkungan Permukiman',
-    ringkasan: 'Kecamatan mengajak seluruh RT dan masyarakat mengikuti gerakan bersih lingkungan serentak.',
-  },
-  {
-    tanggal: '28 Agustus 2026',
-    judul: 'Rapat Koordinasi Ketenteraman dan Ketertiban Wilayah',
-    ringkasan: 'Camat bersama lurah, Babinsa, dan Bhabinkamtibmas membahas pengamanan kegiatan warga.',
-  },
-  {
-    tanggal: '20 Agustus 2026',
-    judul: 'Sosialisasi Layanan Administrasi bagi Warga Pesisir',
-    ringkasan: 'Petugas menjelaskan persyaratan surat keterangan dan alur pengajuan secara langsung.',
-  },
-  // Figma mencatat 6 berita tetapi hanya menggambar 5; isi yang keenam menunggu data kecamatan.
-  {
-    tanggal: '[tanggal]',
-    judul: '[Judul berita dari kecamatan]',
-    ringkasan: '[Ringkasan berita dari kecamatan]',
-  },
-];
+import { useEffect, useState } from 'react';
+import { ambilBerita, type Berita } from '../api';
+
+// Berita kini dikelola petugas pelayanan lewat panel admin dan diambil dari API (GET /berita).
+
+/** "2026-09-18" → "18 September 2026" */
+export const tanggalBerita = (tanggal: string) =>
+  new Date(`${tanggal}T00:00:00Z`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/** Daftar berita untuk halaman publik. `berita` null selama memuat. */
+export function useBerita() {
+  const [berita, setBerita] = useState<Berita[] | null>(null);
+  const [galat, setGalat] = useState<string | null>(null);
+  useEffect(() => {
+    ambilBerita()
+      .then(setBerita)
+      .catch((error: Error) => setGalat(error.message));
+  }, []);
+  return { berita, galat };
+}

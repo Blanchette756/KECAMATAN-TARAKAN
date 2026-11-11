@@ -17,9 +17,9 @@ const EKSTENSI_PER_MIME: Record<MimeDiizinkan, readonly string[]> = {
 };
 // Karakter kontrol (kecuali tab & baris baru untuk paragraf) tidak diizinkan.
 // Karakter tak terlihat yang bisa menyamarkan teks: pengarah bidi (mis. "rapor\u202Efdp.exe") & zero-width.
-const KARAKTER_TERSEMBUNYI = /[\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/;
+export const KARAKTER_TERSEMBUNYI = /[\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/;
 // eslint-disable-next-line no-control-regex
-const KARAKTER_KONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+export const KARAKTER_KONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 // eslint-disable-next-line no-control-regex
 const NAMA_FILE_TERLARANG = /[\u0000-\u001F\u007F<>:"/\\|?*]/;
 

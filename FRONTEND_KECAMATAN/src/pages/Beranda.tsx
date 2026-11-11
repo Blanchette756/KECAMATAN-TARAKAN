@@ -4,7 +4,7 @@ import { PersyaratanDialog } from '../components/PersyaratanDialog';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button, NewsCard, SectionHeading, ServiceTile, StatCard } from '../components/ui';
-import { BERITA } from '../data/berita';
+import { tanggalBerita, useBerita } from '../data/berita';
 import { angka, desimal, SUMBER_MONOGRAFI, TAHUN_MONOGRAFI, TOTAL_LUAS, TOTAL_PENDUDUK } from '../data/monografi';
 
 // Judul dan deskripsi mengikuti Figma; `id` menunjuk layanan di backend.
@@ -23,6 +23,7 @@ const LAYANAN: { id: string; ikon: IconName; judul: string; deskripsi: string }[
 
 export function Beranda() {
   const [layananDipilih, setLayananDipilih] = useState<string | null>(null);
+  const { berita, galat: galatBerita } = useBerita();
 
   return (
     <>
@@ -68,10 +69,12 @@ export function Beranda() {
         <section className="section section--page">
           <SectionHeading overline="Informasi pemerintah" judul="Berita Terkini" tautan="Lihat semua berita" tautanHref="/informasi-publik" />
           <div className="news-row">
-            {BERITA.slice(0, 3).map((berita, urutan) => (
-              <NewsCard key={berita.judul} {...berita} className={urutan === 2 ? 'only-desktop' : ''} />
+            {berita?.slice(0, 3).map((item, urutan) => (
+              <NewsCard key={item.id_berita} tanggal={tanggalBerita(item.tanggal)} judul={item.judul} ringkasan={item.ringkasan} className={urutan === 2 ? 'only-desktop' : ''} />
             ))}
           </div>
+          {!berita && <p className="heading__desc">{galatBerita ? 'Berita belum dapat dimuat. Coba muat ulang halaman.' : 'Memuat berita…'}</p>}
+          {berita?.length === 0 && <p className="heading__desc">Belum ada berita.</p>}
         </section>
 
         <section className="section section--demografi" id="demografi">

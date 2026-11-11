@@ -41,7 +41,7 @@ export async function registerSecurity(app: FastifyInstance, config: AppConfig):
       if (!origin) return cb(null, true);
       cb(null, config.corsOrigins.includes(origin));
     },
-    methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Authorization', 'Content-Type'],
     credentials: false,
     maxAge: 600,

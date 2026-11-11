@@ -1,0 +1,35 @@
+{
+  "_catatan": "Berita awal (isi contoh dari Figma). Setelah server berjalan, petugas pelayanan mengelola berita lewat panel admin; perubahannya disimpan di data/runtime/berita.json, bukan di file ini.",
+  "berita": [
+    {
+      "id_berita": "BRT-0001",
+      "judul": "Pelayanan Administrasi Keliling Hadir di Kelurahan Mamburungan",
+      "tanggal": "2026-09-18",
+      "ringkasan": "Warga dapat mengakses layanan dokumen dasar lebih dekat melalui jadwal pelayanan keliling yang digelar bergiliran di setiap kelurahan."
+    },
+    {
+      "id_berita": "BRT-0002",
+      "judul": "Musrenbang Kecamatan Tarakan Timur Tetapkan Prioritas 2027",
+      "tanggal": "2026-09-12",
+      "ringkasan": "Forum menyepakati penguatan drainase, layanan dasar, dan pemberdayaan ekonomi warga."
+    },
+    {
+      "id_berita": "BRT-0003",
+      "judul": "Imbauan Menjaga Kebersihan Pesisir dan Lingkungan Permukiman",
+      "tanggal": "2026-09-05",
+      "ringkasan": "Kecamatan mengajak seluruh RT dan masyarakat mengikuti gerakan bersih lingkungan serentak."
+    },
+    {
+      "id_berita": "BRT-0004",
+      "judul": "Rapat Koordinasi Ketenteraman dan Ketertiban Wilayah",
+      "tanggal": "2026-08-28",
+      "ringkasan": "Camat bersama lurah, Babinsa, dan Bhabinkamtibmas membahas pengamanan kegiatan warga."
+    },
+    {
+      "id_berita": "BRT-0005",
+      "judul": "Sosialisasi Layanan Administrasi bagi Warga Pesisir",
+      "tanggal": "2026-08-20",
+      "ringkasan": "Petugas menjelaskan persyaratan surat keterangan dan alur pengajuan secara langsung."
+    }
+  ]
+}
