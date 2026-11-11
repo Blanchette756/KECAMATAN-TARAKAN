@@ -44,11 +44,12 @@ export class MemoryPengajuanRepository implements PengajuanRepository {
     statuses: readonly StatusPengajuan[],
     filter: { seksi?: Seksi },
     paging: Paging,
+    urutan: 'terlama' | 'terbaru' = 'terlama',
   ): Promise<Halaman<PengajuanPelayanan>> {
     const rows = [...this.store.pengajuan.values()]
       .filter((p) => statuses.includes(p.status_pengajuan))
       .filter((p) => filter.seksi === undefined || p.seksi === filter.seksi)
-      .sort(terlamaDulu); // antrian: yang paling lama menunggu di atas
+      .sort(urutan === 'terbaru' ? terbaruDulu : terlamaDulu);
     return paginate(rows.map((p) => structuredClone(p)), paging);
   }
 

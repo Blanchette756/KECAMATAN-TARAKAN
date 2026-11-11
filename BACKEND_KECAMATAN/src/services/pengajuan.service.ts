@@ -319,9 +319,11 @@ export class PengajuanService {
     if (user.role === 'WARGA') throw forbidden();
     // Kasi tanpa seksi ditolak (fail closed), jangan sampai filter kosong = melihat semua.
     if (user.role === 'KASI' && user.seksi === null) throw forbidden('Akun Kasi belum memiliki seksi');
-    const statuses = semua && user.role === 'ADMIN' ? (Object.keys(STATUS_LABEL) as (keyof typeof STATUS_LABEL)[]) : ANTRIAN_PER_ROLE[user.role];
+    const semuaBerkas = semua && user.role === 'ADMIN';
+    const statuses = semuaBerkas ? (Object.keys(STATUS_LABEL) as (keyof typeof STATUS_LABEL)[]) : ANTRIAN_PER_ROLE[user.role];
     const filter = user.role === 'KASI' && user.seksi !== null ? { seksi: user.seksi } : {};
-    const hal = await repos.pengajuan.listByStatus(statuses, filter, paging);
+    // Dashboard semua berkas: terbaru di atas (sesuai Figma D1). Antrean kerja: yang paling lama menunggu di atas.
+    const hal = await repos.pengajuan.listByStatus(statuses, filter, paging, semuaBerkas ? 'terbaru' : 'terlama');
     const layanan = new Map((await repos.master.listLayanan()).map((l) => [l.id_layanan, l]));
     const items = await Promise.all(
       hal.items.map(async (p) => ringkasPengajuan(p, layanan.get(p.id_layanan) ?? null, await repos.users.findById(p.id_user))),

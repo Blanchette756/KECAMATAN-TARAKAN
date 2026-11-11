@@ -257,6 +257,21 @@ describe('Pengajuan: alur lengkap state machine', () => {
     expect(stat.durasi.verifikasi_admin.sampel).toBe(1);
   });
 
+  it('urutan: semua berkas admin terbaru di atas, antrean kerja terlama di atas', async () => {
+    const lama = await ajukan(ctx, tWarga, 'LAYANAN-007', DATA_PENGANTAR);
+    const baru = await ajukan(ctx, tWarga, 'LAYANAN-007', DATA_PENGANTAR);
+    // Dua pengajuan bisa jatuh di milidetik yang sama; mundurkan yang pertama agar urutannya pasti.
+    const p = (await ctx.c.repos.pengajuan.findById(lama.id_pengajuan))!;
+    await ctx.c.repos.pengajuan.updateIfVersion({ ...p, tgl_pengajuan: '2026-01-01T00:00:00.000Z' }, p.version);
+    const ids = async (query: string) =>
+      (await ctx.app.inject({ method: 'GET', url: `/api/v1/pengajuan/antrian${query}`, headers: bearer(tAdmin) }))
+        .json()
+        .data.map((x: { id_pengajuan: string }) => x.id_pengajuan);
+
+    expect(await ids('?semua=true')).toEqual([baru.id_pengajuan, lama.id_pengajuan]);
+    expect(await ids('')).toEqual([lama.id_pengajuan, baru.id_pengajuan]);
+  });
+
   it('daftar pengajuan saya + paginasi', async () => {
     for (let i = 0; i < 3; i++) await ajukan(ctx, tWarga, 'LAYANAN-007', DATA_PENGANTAR);
     const res = await ctx.app.inject({ method: 'GET', url: '/api/v1/pengajuan/saya?page=2&limit=2', headers: bearer(tWarga) });

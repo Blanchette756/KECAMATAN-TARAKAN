@@ -42,7 +42,13 @@ export interface PengajuanRepository {
   findById(id: string): Promise<PengajuanPelayanan | null>;
   findByNoRegistrasi(noRegistrasi: string): Promise<PengajuanPelayanan | null>;
   listByUser(idUser: string, paging: Paging): Promise<Halaman<PengajuanPelayanan>>;
-  listByStatus(statuses: readonly StatusPengajuan[], filter: { seksi?: Seksi }, paging: Paging): Promise<Halaman<PengajuanPelayanan>>;
+  /** `terlama` (bawaan) untuk antrean kerja; `terbaru` untuk daftar semua berkas di dashboard petugas. */
+  listByStatus(
+    statuses: readonly StatusPengajuan[],
+    filter: { seksi?: Seksi },
+    paging: Paging,
+    urutan?: 'terlama' | 'terbaru',
+  ): Promise<Halaman<PengajuanPelayanan>>;
   listAll(): Promise<PengajuanPelayanan[]>;
   /** Simpan hanya jika versi di penyimpanan masih `expectedVersion`. false = sudah diubah orang lain. */
   updateIfVersion(p: PengajuanPelayanan, expectedVersion: number): Promise<boolean>;
