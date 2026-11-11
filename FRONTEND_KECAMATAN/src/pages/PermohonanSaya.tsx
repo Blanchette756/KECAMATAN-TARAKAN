@@ -7,6 +7,7 @@ import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button } from '../components/ui';
 import { ALAMAT_SINGKAT, JAM_PELAYANAN, TAUTAN_WA, WHATSAPP } from '../data/kontak';
+import { useSegarkanOtomatis } from '../segarkan';
 import { ambilSesi, hapusSesi } from '../sesi';
 
 const DIPROSES = ['DIAJUKAN', 'DIKEMBALIKAN_KE_ADMIN', 'MENUNGGU_PARAF_KASI', 'MENUNGGU_TTE_CAMAT'];
@@ -33,6 +34,12 @@ function Daftar() {
       .then(setData)
       .catch((error: Error) => setGalat(error.message));
   }, []);
+  // Status permohonan diperbarui otomatis; galat jaringan sesaat diabaikan.
+  useSegarkanOtomatis(() => {
+    pengajuanSaya()
+      .then(setData)
+      .catch(() => undefined);
+  });
 
   const hitung = (daftar: string[]) => data?.filter((item) => daftar.includes(item.status_pengajuan)).length ?? 0;
   const statistik = [
@@ -244,6 +251,12 @@ function Detail({ id }: { id: string }) {
   useEffect(() => {
     muat();
   }, [id]);
+  // Hanya pemohon yang bisa mengubah permohonan berstatus Perlu Perbaikan, jadi aman diganti otomatis.
+  useSegarkanOtomatis(() => {
+    detailPengajuan(id)
+      .then(setData)
+      .catch(() => undefined);
+  });
 
   if (!data) return <div className="portal__isi">{galat ? <Galat pesan={galat} /> : <p className="heading__desc">Memuat…</p>}</div>;
 

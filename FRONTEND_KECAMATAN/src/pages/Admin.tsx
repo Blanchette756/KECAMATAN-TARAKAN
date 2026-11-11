@@ -27,6 +27,7 @@ import { Button, Logo, SelectField } from '../components/ui';
 import { tanggalBerita } from '../data/berita';
 import { LAYANAN } from '../data/layanan';
 import { CAMAT } from '../data/pejabat';
+import { useSegarkanOtomatis } from '../segarkan';
 import { ambilSesi, hapusSesi, inisial, type Pengguna } from '../sesi';
 
 const PERAN: Record<string, string> = { ADMIN: 'Petugas Pelayanan', KASI: 'Kasi Tata Pemerintahan', CAMAT: 'Camat' };
@@ -535,14 +536,18 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
   const [galat, setGalat] = useState<string | null>(null);
   const { mengirim, mulai: mulaiKirim, lepas: lepasKirim } = useKunciKirim();
 
-  useEffect(() => {
-    setData(null);
-    setIndeks(0);
+  const muatDetail = () => {
     if (id)
       detailPengajuan(id)
         .then(setData)
         .catch((error: Error) => setGalat(error.message));
+  };
+  useEffect(() => {
+    setData(null);
+    setIndeks(0);
+    muatDetail();
   }, [id]);
+  const berubah = usePantauPerubahan(id, data?.version);
 
   const kirim = async (aksi: 'SETUJUI' | 'KEMBALIKAN' | 'TOLAK') => {
     if (!data || !mulaiKirim()) return;
@@ -562,6 +567,7 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
 
   const keputusan = data && (
     <>
+      {berubah && <PemberitahuanBerubah onMuatUlang={muatDetail} />}
       <label className="field">
         <span className="field__label">Catatan (wajib jika mengembalikan atau menolak)</span>
         <textarea className="field__input periksa__catatan" value={catatan} onChange={(event) => setCatatan(event.target.value)} />
@@ -681,6 +687,31 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
   );
 }
 
+/**
+ * Halaman detail tidak diganti diam-diam (isian petugas bisa hilang dan pengaman versi jadi tidak berguna).
+ * Sebagai gantinya, versi berkas dipantau berkala; bila berubah, petugas diberi tahu untuk memuat ulang.
+ */
+function usePantauPerubahan(id: string | null, versi: number | undefined): boolean {
+  const [berubah, setBerubah] = useState(false);
+  useEffect(() => setBerubah(false), [id, versi]);
+  useSegarkanOtomatis(() => {
+    if (id && versi !== undefined)
+      detailPengajuan(id)
+        .then((terbaru) => terbaru.version !== versi && setBerubah(true))
+        .catch(() => undefined);
+  }, id !== null && versi !== undefined);
+  return berubah;
+}
+
+const PemberitahuanBerubah = ({ onMuatUlang }: { onMuatUlang: () => void }) => (
+  <p className="pemberitahuan pemberitahuan--kecil" role="status">
+    Berkas ini baru saja diubah oleh petugas lain atau pemohon.{' '}
+    <button type="button" className="tautan-polos" onClick={onMuatUlang}>
+      Muat ulang
+    </button>
+  </p>
+);
+
 function DetailAdmin({ id }: { id: string }) {
   const [data, setData] = useState<DetailPengajuan | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
@@ -692,8 +723,25 @@ function DetailAdmin({ id }: { id: string }) {
     muat();
   }, [id]);
 
+  const berubah = usePantauPerubahan(id, data?.version);
+  // Naik setiap petugas menekan Muat ulang, supaya isian pemeriksaan dimulai bersih untuk versi baru.
+  const [kunci, setKunci] = useState(0);
+  const muatUlang = () => {
+    setKunci((k) => k + 1);
+    muat();
+  };
+
   if (!data) return <div className="admin__konten">{galat ? <Galat pesan={galat} /> : <p className="heading__desc">Memuat…</p>}</div>;
-  return data.status_pengajuan === 'SIAP_DIAMBIL' ? <Finalisasi data={data} /> : <Verifikasi data={data} onBerubah={muat} />;
+  return (
+    <>
+      {berubah && (
+        <div className="admin__konten">
+          <PemberitahuanBerubah onMuatUlang={muatUlang} />
+        </div>
+      )}
+      {data.status_pengajuan === 'SIAP_DIAMBIL' ? <Finalisasi key={kunci} data={data} /> : <Verifikasi key={kunci} data={data} onBerubah={muat} />}
+    </>
+  );
 }
 
 const BATAS = { judulMin: 5, judulMaks: 150, ringkasanMin: 10, ringkasanMaks: 600 };
@@ -1188,6 +1236,14 @@ export function Admin() {
         } else setGalat(error.message);
       });
   }, []);
+
+  // Daftar berkas dan angka di menu diperbarui otomatis; galat jaringan sesaat diabaikan.
+  useSegarkanOtomatis(() => {
+    if (petugas)
+      ambilAntrian(petugas.role === 'ADMIN')
+        .then(setData)
+        .catch(() => undefined);
+  }, petugas !== null);
 
   if (!petugas) return null;
 
