@@ -1,6 +1,77 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type DragEvent as ReactDragEvent, type ReactNode } from 'react';
 import type { DetailPengajuan } from '../api';
 import { Icon } from './Icon';
+
+/**
+ * Kunci tombol kirim supaya aksi hanya jalan sekali walau diklik dua kali cepat atau Enter ditekan berulang.
+ * Memakai ref (langsung berlaku), bukan hanya state yang baru berlaku setelah render berikutnya.
+ * Setelah berhasil kunci tidak dilepas, karena halaman berpindah; jika gagal, panggil `lepas()`.
+ */
+export function useKunciKirim() {
+  const terkunci = useRef(false);
+  const [mengirim, setMengirim] = useState(false);
+  const mulai = () => {
+    if (terkunci.current) return false;
+    terkunci.current = true;
+    setMengirim(true);
+    return true;
+  };
+  const lepas = () => {
+    terkunci.current = false;
+    setMengirim(false);
+  };
+  return { mengirim, mulai, lepas };
+}
+
+const FORMAT_BERKAS = ['application/pdf', 'image/jpeg', 'image/png'];
+const MAKS_UKURAN_BERKAS = 2 * 1024 * 1024;
+
+/** Cek format dan ukuran sebelum diunggah. Mengembalikan pesan galat, atau null jika aman. */
+export function cekBerkas(file: File): string | null {
+  if (!FORMAT_BERKAS.includes(file.type)) return `${file.name} bukan file JPG, PNG, atau PDF.`;
+  if (file.size > MAKS_UKURAN_BERKAS) return `${file.name} melebihi batas 2 MB.`;
+  return null;
+}
+
+/**
+ * Tanpa ini, file yang dijatuhkan sedikit di luar kotak unggah akan dibuka browser
+ * dan halaman ditinggalkan, sehingga semua isian dan unggahan hilang.
+ */
+export function useCegahBukaFile() {
+  useEffect(() => {
+    const cegah = (event: DragEvent) => {
+      if (event.dataTransfer?.types.includes('Files')) event.preventDefault();
+    };
+    window.addEventListener('dragover', cegah);
+    window.addEventListener('drop', cegah);
+    return () => {
+      window.removeEventListener('dragover', cegah);
+      window.removeEventListener('drop', cegah);
+    };
+  }, []);
+}
+
+/** Seret-lepas file ke satu kotak unggah. `diAtas` dipakai untuk menyorot kotak saat file diseret di atasnya. */
+export function useSeretLepas(onPilih: (file: File) => void) {
+  const [diAtas, setDiAtas] = useState(false);
+  const props = {
+    onDragOver: (event: ReactDragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+      setDiAtas(true);
+    },
+    onDragLeave: (event: ReactDragEvent<HTMLElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDiAtas(false);
+    },
+    onDrop: (event: ReactDragEvent<HTMLElement>) => {
+      event.preventDefault();
+      setDiAtas(false);
+      const file = event.dataTransfer.files[0];
+      if (file) onPilih(file);
+    },
+  };
+  return { diAtas, props };
+}
 
 /** Label singkat dan warna badge mengikuti Figma; status backend lebih rinci. */
 const BADGE: Record<string, { label: string; warna: string }> = {

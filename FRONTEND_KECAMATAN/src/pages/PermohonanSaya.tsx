@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ambilFileBerkas, ApiError, detailPengajuan, keluarAkun, kirimRevisi, pengajuanSaya, unggahBerkas, type BerkasDetail, type BerkasKirim, type DetailPengajuan, type Ringkas } from '../api';
+import { ApiError, detailPengajuan, keluarAkun, kirimRevisi, pengajuanSaya, unggahBerkas, type BerkasDetail, type BerkasKirim, type DetailPengajuan, type Ringkas } from '../api';
 import { Icon } from '../components/Icon';
-import { BarisData, Galat, jumlahTahapSelesai, Kartu, StatusBadge, TahapPermohonan, tanggal } from '../components/portal';
+import { PenampilDaftarBerkas } from '../components/PenampilBerkas';
+import { BarisData, cekBerkas, Galat, jumlahTahapSelesai, Kartu, StatusBadge, TahapPermohonan, tanggal, useCegahBukaFile, useKunciKirim, useSeretLepas } from '../components/portal';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button } from '../components/ui';
@@ -115,15 +116,7 @@ function Daftar() {
   );
 }
 
-function BarisBerkas({ berkas }: { berkas: BerkasDetail }) {
-  const [galat, setGalat] = useState<string | null>(null);
-  const lihat = async () => {
-    try {
-      window.open(await ambilFileBerkas(berkas.file_url!), '_blank');
-    } catch (error) {
-      setGalat((error as Error).message);
-    }
-  };
+function BarisBerkas({ berkas, onLihat }: { berkas: BerkasDetail; onLihat?: () => void }) {
   return (
     <article className="dokumen">
       <span className="dokumen__ikon">
@@ -132,10 +125,9 @@ function BarisBerkas({ berkas }: { berkas: BerkasDetail }) {
       <div className="dokumen__teks">
         <h3 className="baris__judul">{berkas.nama_syarat}</h3>
         <p className="baris__meta">{berkas.nama_file}</p>
-        <Galat pesan={galat} />
       </div>
-      {berkas.file_url && (
-        <button type="button" className="tautan-polos" onClick={lihat}>
+      {onLihat && (
+        <button type="button" className="tautan-polos" onClick={onLihat}>
           Lihat
         </button>
       )}
@@ -143,57 +135,95 @@ function BarisBerkas({ berkas }: { berkas: BerkasDetail }) {
   );
 }
 
+function SlotPerbaikan({ berkas, pengganti, sibuk, onPilih }: { berkas: BerkasDetail; pengganti?: BerkasKirim; sibuk: boolean; onPilih: (file: File) => void }) {
+  const { diAtas, props } = useSeretLepas(onPilih);
+  return (
+    <div className={`slot slot--perbaikan${diAtas ? ' slot--seret' : ''}`} {...props}>
+      <div className="slot__judul">
+        <p className="baris__judul">{berkas.nama_syarat}</p>
+        <span className="syarat__tag syarat__tag--wajib">Wajib</span>
+      </div>
+      <div className="slot__file">
+        <div className="dokumen__teks">
+          <p className="baris__judul">{pengganti?.nama_file ?? berkas.nama_file}</p>
+          <p className="baris__meta">{sibuk ? 'Mengunggah…' : pengganti ? 'Berkas baru siap dikirim' : 'Seret file baru ke sini, atau pilih Unggah ulang'}</p>
+        </div>
+        <label className="tautan-polos">
+          Unggah ulang
+          <input
+            type="file"
+            hidden
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={(event) => {
+              const pilihan = event.target.files?.[0];
+              event.target.value = '';
+              if (pilihan) onPilih(pilihan);
+            }}
+          />
+        </label>
+      </div>
+      {berkas.catatan_admin && <p className="tracker__error">Catatan petugas: {berkas.catatan_admin}</p>}
+    </div>
+  );
+}
+
 function Perbaikan({ data, onSelesai }: { data: DetailPengajuan; onSelesai: () => void }) {
   const ditandai = data.berkas.filter((berkas) => berkas.status_berkas === 'PERLU_PERBAIKAN');
   const [baru, setBaru] = useState<Record<string, BerkasKirim>>({});
+  const [sibuk, setSibuk] = useState<string | null>(null);
+  const { mengirim, mulai: mulaiKirim, lepas: lepasKirim } = useKunciKirim();
   const [galat, setGalat] = useState<string | null>(null);
+  useCegahBukaFile();
 
   const pilih = async (idSyarat: string, file: File) => {
-    setGalat(null);
+    const masalah = cekBerkas(file);
+    setGalat(masalah);
+    if (masalah) return;
+    setSibuk(idSyarat);
     try {
       const hasil = await unggahBerkas(file);
       setBaru((lama) => ({ ...lama, [idSyarat]: { id_syarat: idSyarat, ...hasil } }));
     } catch (error) {
       setGalat(error instanceof ApiError ? error.message : 'Unggah gagal.');
+    } finally {
+      setSibuk(null);
     }
   };
 
   const kirim = async () => {
+    if (!mulaiKirim()) return;
     setGalat(null);
     try {
       await kirimRevisi(data.id_pengajuan, Object.values(baru), data.version);
       onSelesai();
     } catch (error) {
       setGalat(error instanceof ApiError ? error.message : 'Gagal mengirim perbaikan.');
+      lepasKirim();
     }
   };
 
   return (
     <Kartu judul="Perbaiki berkas">
       {ditandai.map((berkas) => (
-        <div className="slot slot--perbaikan" key={berkas.id_berkas}>
-          <div className="slot__judul">
-            <p className="baris__judul">{berkas.nama_syarat}</p>
-            <span className="syarat__tag syarat__tag--wajib">Wajib</span>
-          </div>
-          <div className="slot__file">
-            <div className="dokumen__teks">
-              <p className="baris__judul">{baru[berkas.id_syarat]?.nama_file ?? berkas.nama_file}</p>
-            </div>
-            <label className="tautan-polos">
-              Unggah ulang
-              <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => event.target.files?.[0] && pilih(berkas.id_syarat, event.target.files[0])} />
-            </label>
-          </div>
-          {berkas.catatan_admin && <p className="tracker__error">Catatan petugas: {berkas.catatan_admin}</p>}
-        </div>
+        <SlotPerbaikan
+          key={berkas.id_berkas}
+          berkas={berkas}
+          pengganti={baru[berkas.id_syarat]}
+          sibuk={sibuk === berkas.id_syarat}
+          onPilih={(file) => pilih(berkas.id_syarat, file)}
+        />
       ))}
       <p className="baris__meta">
         {Object.keys(baru).length} dari {ditandai.length} berkas sudah diperbaiki
       </p>
       <Galat pesan={galat} />
       <div>
-        <Button label="Kirim Perbaikan" arrow disabled={Object.keys(baru).length < ditandai.length} onClick={kirim} />
+        <Button
+          label={mengirim ? 'Mengirim…' : 'Kirim Perbaikan'}
+          arrow={!mengirim}
+          disabled={mengirim || sibuk !== null || Object.keys(baru).length < ditandai.length}
+          onClick={kirim}
+        />
       </div>
     </Kartu>
   );
@@ -202,6 +232,7 @@ function Perbaikan({ data, onSelesai }: { data: DetailPengajuan; onSelesai: () =
 function Detail({ id }: { id: string }) {
   const [data, setData] = useState<DetailPengajuan | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
+  const [lihat, setLihat] = useState<number | null>(null);
   const muat = () =>
     detailPengajuan(id)
       .then(setData)
@@ -215,6 +246,8 @@ function Detail({ id }: { id: string }) {
 
   const status = data.status_pengajuan;
   const siap = status === 'SIAP_DIAMBIL' || status === 'SELESAI';
+  // Hanya berkas yang benar-benar punya file (data contoh tidak punya) yang bisa dibuka di penampil.
+  const adaFile = data.berkas.filter((berkas) => berkas.file_url);
 
   return (
     <>
@@ -276,9 +309,10 @@ function Detail({ id }: { id: string }) {
           )}
           <Kartu judul={`Berkas Anda (${data.berkas.length})`}>
             {data.berkas.map((berkas) => (
-              <BarisBerkas berkas={berkas} key={berkas.id_berkas} />
+              <BarisBerkas berkas={berkas} key={berkas.id_berkas} onLihat={berkas.file_url ? () => setLihat(adaFile.indexOf(berkas)) : undefined} />
             ))}
           </Kartu>
+          {lihat !== null && <PenampilDaftarBerkas daftar={adaFile} indeksAwal={lihat} onTutup={() => setLihat(null)} />}
           <Kartu judul="Pengambilan surat">
             <dl>
               <BarisData label="Lokasi" nilai="Kantor Kecamatan Tarakan Timur" />

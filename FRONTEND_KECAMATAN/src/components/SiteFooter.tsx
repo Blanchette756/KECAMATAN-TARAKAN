@@ -64,7 +64,6 @@ export function SiteFooter() {
 
       <div className="footer__bottom">
         <p>© 2026 Kecamatan Tarakan Timur. Hak cipta dilindungi.</p>
-        <p className="only-desktop">{'Kebijakan Privasi  •  Aksesibilitas  •  Peta Situs'}</p>
       </div>
     </footer>
   );

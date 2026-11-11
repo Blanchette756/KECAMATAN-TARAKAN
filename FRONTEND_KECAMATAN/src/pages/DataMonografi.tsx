@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
-import { Button, PageBanner, SectionHeading, SelectField, StatCard } from '../components/ui';
+import { PageBanner, SectionHeading, SelectField, StatCard } from '../components/ui';
 import { KELURAHAN } from '../data/kelurahan';
 import {
   angka,
@@ -22,24 +22,6 @@ const PERSEN_LAKI = (PENDUDUK_LAKI / (PENDUDUK_LAKI + PENDUDUK_PEREMPUAN)) * 100
 
 const nilaiKolom = (luas: number, penduduk: number) => [desimal(luas), angka(penduduk), persen((penduduk / TOTAL_PENDUDUK) * 100), angka(penduduk / luas)];
 
-// Pemisah ";" dan koma desimal supaya langsung terbaca rapi oleh Excel berbahasa Indonesia.
-function unduhCsv() {
-  const baris = [
-    ['Kelurahan', ...KOLOM],
-    ...KELURAHAN.map((nama) => [nama, ...nilaiKolom(MONOGRAFI[nama].luas, MONOGRAFI[nama].penduduk)]),
-    ['Total Kecamatan Tarakan Timur', ...nilaiKolom(TOTAL_LUAS, TOTAL_PENDUDUK)],
-    [],
-    [`Sumber: ${SUMBER_MONOGRAFI}`],
-  ];
-  const isi = '﻿' + baris.map((b) => b.map((sel) => `"${sel.replace(/"/g, '""')}"`).join(';')).join('\r\n');
-  const tautan = document.createElement('a');
-  tautan.href = URL.createObjectURL(new Blob([isi], { type: 'text/csv;charset=utf-8' }));
-  tautan.download = `data-monografi-tarakan-timur-${TAHUN_MONOGRAFI}.csv`;
-  tautan.click();
-  // Dilepas belakangan: sebagian browser baru membaca berkas setelah klik selesai diproses.
-  window.setTimeout(() => URL.revokeObjectURL(tautan.href), 1000);
-}
-
 export function DataMonografi() {
   const [kelurahan, setKelurahan] = useState('');
   const baris = kelurahan ? [kelurahan] : KELURAHAN;
@@ -59,9 +41,6 @@ export function DataMonografi() {
           <div className="filter">
             <SelectField nama="periode" pilihan={[`Periode: Tahun ${TAHUN_MONOGRAFI}`]} />
             <SelectField nama="kelurahan" placeholder="Semua kelurahan" pilihan={KELURAHAN} nilai={kelurahan} onUbah={setKelurahan} />
-          </div>
-          <div className="filter__unduh">
-            <Button label="Unduh Data (CSV)" onClick={unduhCsv} />
           </div>
         </div>
 

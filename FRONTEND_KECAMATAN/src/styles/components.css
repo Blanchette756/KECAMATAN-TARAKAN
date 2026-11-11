@@ -392,6 +392,65 @@
   color: var(--color-primary);
 }
 
+/* Menu turunan: terbuka saat kursor di atas menu, atau saat menu difokus lewat keyboard (Tab). */
+.nav__cabang {
+  position: relative;
+}
+
+.nav__cabang .nav__item .icon {
+  transition: transform 180ms ease;
+}
+
+.nav__cabang:hover .nav__item .icon,
+.nav__cabang:focus-within .nav__item .icon {
+  transform: rotate(180deg);
+}
+
+.nav__sub {
+  position: absolute;
+  top: calc(100% - 12px);
+  left: -12px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: var(--space-8);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-page);
+  box-shadow: var(--shadow-medium);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    visibility 180ms;
+}
+
+.nav__cabang:hover .nav__sub,
+.nav__cabang:focus-within .nav__sub {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.nav__sub a {
+  display: block;
+  padding: 10px var(--space-12);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.nav__sub a:hover,
+.nav__sub a:focus-visible {
+  background: var(--color-bg-muted);
+  color: var(--color-primary);
+}
+
 .menu-button {
   display: none;
   align-items: center;
@@ -1371,17 +1430,6 @@
   height: 40px;
   border-radius: var(--radius-md);
   background: var(--color-primary-subtle);
-}
-
-.dokumen__unduh {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  gap: 6px;
-  color: var(--color-primary);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 18px;
 }
 
 .ppid {

@@ -78,14 +78,9 @@ function DetailLayanan({ id, data, galat, denganJudul }: { id: string; data?: Da
         <span className="only-mobile">Yang Anda terima</span> <strong>{judul}</strong>
       </p>
       <p className="baris__meta">*Dihitung setelah seluruh persyaratan dinyatakan lengkap oleh petugas.</p>
+      {adaFormat && <p className="baris__meta">Format surat yang disiapkan kecamatan dapat diminta di kantor kecamatan atau lewat WhatsApp layanan.</p>}
       <div className="detail-layanan__aksi">
         <Button label="Ajukan Online" arrow href={`/ajukan?layanan=${id}`} />
-        {adaFormat && (
-          <span title="Berkas belum tersedia">
-            <Button label="Unduh Format Surat Keterangan Tukang" style="secondary" className="only-desktop" />
-            <Button label="Unduh Format Surat Tukang" style="secondary" className="only-mobile" />
-          </span>
-        )}
       </div>
     </div>
   );

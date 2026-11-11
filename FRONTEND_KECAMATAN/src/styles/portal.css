@@ -432,6 +432,16 @@
   border: 1.5px solid var(--color-primary);
 }
 
+/* File sedang diseret di atas kotak: tunjukkan bahwa file boleh dilepas di sini. */
+.slot--seret {
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+.slot--seret .slot__area {
+  border-color: var(--color-primary);
+}
+
 .slot__judul {
   display: flex;
   align-items: center;

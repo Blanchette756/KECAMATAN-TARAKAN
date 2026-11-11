@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { ambilLayanan, ApiError, kirimPengajuan, unggahBerkas, type DetailLayananApi, type HasilUnggah, type Kondisi, type SyaratLengkap } from '../api';
 import { Icon } from '../components/Icon';
-import { BarisData, Galat, Kartu, ukuranFile } from '../components/portal';
+import { BarisData, cekBerkas, Galat, Kartu, ukuranFile, useCegahBukaFile, useKunciKirim, useSeretLepas } from '../components/portal';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button } from '../components/ui';
@@ -47,9 +47,22 @@ function KepalaHalaman({ langkah }: { langkah: number }) {
 
 function SlotUnggah({ syarat, file, onPilih, sibuk }: { syarat: SyaratLengkap; file?: HasilUnggah; onPilih: (file: File) => void; sibuk: boolean }) {
   const keterangan = syarat.keterangan?.startsWith('SP menulis') ? undefined : syarat.keterangan;
-  const masukan = <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => event.target.files?.[0] && onPilih(event.target.files[0])} />;
+  const { diAtas, props } = useSeretLepas(onPilih);
+  // value dikosongkan setelah dipilih, supaya memilih file yang sama lagi (mis. setelah galat) tetap terbaca.
+  const masukan = (
+    <input
+      type="file"
+      hidden
+      accept=".pdf,.jpg,.jpeg,.png"
+      onChange={(event) => {
+        const pilihan = event.target.files?.[0];
+        event.target.value = '';
+        if (pilihan) onPilih(pilihan);
+      }}
+    />
+  );
   return (
-    <div className={`slot${file ? ' slot--terisi' : ''}`}>
+    <div className={`slot${file ? ' slot--terisi' : ''}${diAtas ? ' slot--seret' : ''}`} {...props}>
       <div className="slot__judul">
         <p className="baris__judul">{syarat.nama_syarat}</p>
         <span className={syarat.wajib && !syarat.kondisi ? 'syarat__tag syarat__tag--wajib' : 'baris__meta'}>{syarat.wajib && !syarat.kondisi ? 'Wajib' : (keterangan ?? 'Opsional')}</span>
@@ -96,8 +109,10 @@ export function Ajukan() {
   const [berkas, setBerkas] = useState<Record<string, HasilUnggah>>({});
   const [sibuk, setSibuk] = useState<string | null>(null);
   const [setuju, setSetuju] = useState(false);
+  const { mengirim, mulai: mulaiKirim, lepas: lepasKirim } = useKunciKirim();
   const [kode, setKode] = useState<string | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
+  useCegahBukaFile();
 
   useEffect(() => {
     if (!sesi) window.location.replace(`/masuk?ke=${encodeURIComponent(`/ajukan?layanan=${idLayanan}`)}`);
@@ -123,11 +138,9 @@ export function Ajukan() {
   const terunggah = syarat.filter((item) => berkas[item.id_syarat]);
 
   const pilihFile = async (id: string, file: File) => {
-    setGalat(null);
-    if (file.size > 2 * 1024 * 1024) {
-      setGalat(`${file.name} melebihi batas 2 MB.`);
-      return;
-    }
+    const masalah = cekBerkas(file);
+    setGalat(masalah);
+    if (masalah) return;
     setSibuk(id);
     try {
       const hasil = await unggahBerkas(file);
@@ -151,6 +164,8 @@ export function Ajukan() {
   const kirim = async (event: FormEvent) => {
     event.preventDefault();
     if (!setuju) return setGalat('Centang pernyataan sebelum mengirim.');
+    // Cegah klik ganda: tanpa ini, dua klik cepat membuat dua permohonan yang sama.
+    if (!mulaiKirim()) return;
     setGalat(null);
     const data: Record<string, unknown> = {};
     for (const field of fields) {
@@ -171,6 +186,7 @@ export function Ajukan() {
       window.scrollTo(0, 0);
     } catch (error) {
       setGalat(error instanceof ApiError ? error.message : 'Gagal mengirim permohonan.');
+      lepasKirim();
     }
   };
 
@@ -231,6 +247,8 @@ export function Ajukan() {
             <Galat pesan={galat} />
           </div>
         )}
+
+        {langkah === 1 && !layanan && <div className="portal__isi">{galat ? <Galat pesan={galat} /> : <p className="heading__desc">Memuat persyaratan…</p>}</div>}
 
         {langkah === 1 && layanan && (
           <div className="portal__dua">
@@ -335,7 +353,7 @@ export function Ajukan() {
             <aside className="portal__samping">
               {ringkasan}
               <Galat pesan={galat} />
-              <Button label="Kirim Permohonan" arrow type="submit" />
+              <Button label={mengirim ? 'Mengirim…' : 'Kirim Permohonan'} arrow={!mengirim} type="submit" disabled={mengirim} />
             </aside>
           </form>
         )}

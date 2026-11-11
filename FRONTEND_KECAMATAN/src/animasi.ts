@@ -4,13 +4,15 @@
  * Ringan: satu IntersectionObserver dan satu MutationObserver, hanya menambah/menghapus kelas CSS
  * (lihat `.muncul` di styles/animasi.css). Dipasang sebelum React merender, sehingga elemen baru
  * sudah diberi kelas tersembunyi sebelum browser menggambarnya (tidak berkedip).
+ * Jika "Animation effects" sistem dimatikan, CSS mengubahnya menjadi efek memudar saja.
  */
 const TARGET = '.heading, .tile, .news, .stat, .info-kartu, .grafik__kartu, .alur, .produk, .bantuan, .ppid';
-const JEDA_PER_ELEMEN = 70; // ms, supaya kartu yang muncul bersamaan tampil bergantian
+const JEDA_PER_ELEMEN = 120; // ms, supaya kartu yang muncul bersamaan tampil bergantian
 const JEDA_MAKS = 5;
+const LAMA_ANIMASI = 800 + JEDA_MAKS * JEDA_PER_ELEMEN + 200; // --gerak-muncul + jeda terlama + cadangan
 
 export function pasangAnimasiMuncul(akar: HTMLElement) {
-  if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (!('IntersectionObserver' in window)) return;
 
   const io = new IntersectionObserver(
     (entri) => {
@@ -27,7 +29,7 @@ export function pasangAnimasiMuncul(akar: HTMLElement) {
         window.setTimeout(() => {
           el.classList.remove('muncul', 'muncul--tampil');
           el.style.transitionDelay = '';
-        }, 1000);
+        }, LAMA_ANIMASI);
       }
     },
     { rootMargin: '0px 0px -40px 0px' },

@@ -55,7 +55,7 @@ export class PengajuanController {
   }
 
   async serahkan(user: User, id: string, body: SerahkanBody) {
-    return { data: await this.s.pengajuan.serahkan(user, id, body.version) };
+    return { data: await this.s.pengajuan.serahkan(user, id, body.version, body.catatan) };
   }
 
   async statistik(user: User) {

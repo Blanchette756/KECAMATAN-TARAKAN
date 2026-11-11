@@ -4,13 +4,31 @@ import { JAM_PELAYANAN, JAM_PELAYANAN_SINGKAT } from '../data/kontak';
 import { ambilSesi, inisial } from '../sesi';
 import { Button, Logo } from './ui';
 
-const MENU = [
-  { label: 'Beranda', dropdown: false, href: '/#beranda' },
-  { label: 'Profil Kecamatan', dropdown: true, href: '/profil-kecamatan' },
-  { label: 'Informasi Publik', dropdown: true, href: '/informasi-publik' },
-  { label: 'Pelayanan', dropdown: false, href: '/pelayanan' },
-  { label: 'Data Monografi', dropdown: false, href: '/data-monografi' },
-  { label: 'Kontak', dropdown: false, href: '/kontak' },
+const MENU: { label: string; href: string; sub?: { label: string; href: string }[] }[] = [
+  { label: 'Beranda', href: '/#beranda' },
+  {
+    label: 'Profil Kecamatan',
+    href: '/profil-kecamatan',
+    sub: [
+      { label: 'Gambaran Umum', href: '/profil-kecamatan#gambaran-umum' },
+      { label: 'Sejarah', href: '/profil-kecamatan#sejarah' },
+      { label: 'Visi & Misi', href: '/profil-kecamatan#visi-misi' },
+      { label: 'Wilayah', href: '/profil-kecamatan#wilayah' },
+      { label: 'Struktur Organisasi', href: '/profil-kecamatan#struktur-organisasi' },
+    ],
+  },
+  {
+    label: 'Informasi Publik',
+    href: '/informasi-publik',
+    sub: [
+      { label: 'Berita', href: '/informasi-publik?tab=Berita' },
+      { label: 'Pengumuman', href: '/informasi-publik?tab=Pengumuman' },
+      { label: 'Dokumen Publik', href: '/informasi-publik?tab=Dokumen Publik' },
+    ],
+  },
+  { label: 'Pelayanan', href: '/pelayanan' },
+  { label: 'Data Monografi', href: '/data-monografi' },
+  { label: 'Kontak', href: '/kontak' },
 ];
 
 export function SiteHeader({ aktif }: { aktif: string }) {
@@ -27,7 +45,7 @@ export function SiteHeader({ aktif }: { aktif: string }) {
         <Icon name="chevron-nav" />
       </a>
     ) : (
-      <Button label="Masuk" style="accent" href={sesi ? '/admin' : '/masuk'} />
+      <Button label={sesi ? 'Panel Petugas' : 'Masuk'} style="accent" href={sesi ? '/admin' : '/masuk'} />
     );
 
   return (
@@ -63,11 +81,20 @@ export function SiteHeader({ aktif }: { aktif: string }) {
         <nav className="nav" aria-label="Navigasi utama">
           <ul className="nav__list">
             {MENU.map((item) => (
-              <li key={item.label}>
+              <li key={item.label} className={item.sub ? 'nav__cabang' : undefined}>
                 <a className={`nav__item${item.label === aktif ? ' nav__item--active' : ''}`} href={item.href} aria-current={item.label === aktif ? 'page' : undefined}>
                   {item.label}
-                  {item.dropdown && <Icon name="chevron-nav" />}
+                  {item.sub && <Icon name="chevron-nav" />}
                 </a>
+                {item.sub && (
+                  <ul className="nav__sub" aria-label={`Bagian ${item.label}`}>
+                    {item.sub.map((bagian) => (
+                      <li key={bagian.label}>
+                        <a href={bagian.href}>{bagian.label}</a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>

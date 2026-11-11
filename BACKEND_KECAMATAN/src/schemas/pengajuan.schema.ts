@@ -94,5 +94,11 @@ export const KeputusanBodySchema = Type.Object(
 );
 export type KeputusanBody = Static<typeof KeputusanBodySchema>;
 
-export const SerahkanBodySchema = Type.Object({ version: VersionSchema }, { additionalProperties: false });
+export const SerahkanBodySchema = Type.Object(
+  {
+    version: VersionSchema,
+    catatan: Type.Optional(Type.String({ maxLength: 200, description: 'Mis. nama pengambil jika dikuasakan. Hanya terlihat oleh petugas.' })),
+  },
+  { additionalProperties: false },
+);
 export type SerahkanBody = Static<typeof SerahkanBodySchema>;

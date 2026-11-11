@@ -5,20 +5,21 @@ import { SiteHeader } from '../components/SiteHeader';
 import { Button, FotoPlaceholder, NewsCard, PageBanner } from '../components/ui';
 import { BERITA } from '../data/berita';
 
+// Nama unit mengikuti susunan organisasi kecamatan ("06. Nama Pejabat.xlsx").
 const PENGUMUMAN = [
   { hari: '24', bulan: 'OKT', judul: 'Jadwal pelayanan kantor kecamatan selama cuti bersama', meta: 'Pengumuman · Sekretariat' },
-  { hari: '15', bulan: 'OKT', judul: 'Pelayanan administrasi keliling bulan November', meta: 'Pengumuman · Seksi Pelayanan' },
-  { hari: '07', bulan: 'OKT', judul: 'Pemutakhiran data RT/RW se-Kecamatan Tarakan Timur', meta: 'Pengumuman · Seksi Pemerintahan' },
-  { hari: '30', bulan: 'SEP', judul: 'Pendaftaran pelatihan UMKM tingkat kecamatan', meta: 'Pengumuman · Seksi Ekonomi' },
+  { hari: '15', bulan: 'OKT', judul: 'Pelayanan administrasi keliling bulan November', meta: 'Pengumuman · Seksi Tata Pemerintahan' },
+  { hari: '07', bulan: 'OKT', judul: 'Pemutakhiran data RT/RW se-Kecamatan Tarakan Timur', meta: 'Pengumuman · Seksi Tata Pemerintahan' },
+  { hari: '30', bulan: 'SEP', judul: 'Pendaftaran pelatihan UMKM tingkat kecamatan', meta: 'Pengumuman · Seksi Pemberdayaan Masyarakat' },
 ];
 
-// Teks dalam kurung siku adalah placeholder Figma; berkasnya belum ada.
+// Berkasnya belum diserahkan kecamatan, jadi belum bisa diunduh.
 const DOKUMEN = [
   'Standar Pelayanan Kecamatan Tarakan Timur',
   'Maklumat Pelayanan',
   'Rencana Strategis (Renstra)',
-  'Rencana Kerja (Renja) [tahun]',
-  'Laporan Kinerja Instansi Pemerintah [tahun]',
+  'Rencana Kerja (Renja)',
+  'Laporan Kinerja Instansi Pemerintah (LKjIP)',
 ];
 
 const TAB = [
@@ -35,8 +36,14 @@ const KARTU_AWAL_MOBILE = 2;
 const PENGUMUMAN_AWAL_MOBILE = 3;
 const KARTU_PER_HALAMAN = 4;
 
+/** Tab bisa dibuka langsung dari menu atas, mis. /informasi-publik?tab=Pengumuman. */
+const tabAwal = () => {
+  const diminta = new URLSearchParams(window.location.search).get('tab');
+  return TAB.some((t) => t.label === diminta) ? diminta! : 'Semua';
+};
+
 export function InformasiPublik() {
-  const [tab, setTab] = useState('Semua');
+  const [tab, setTab] = useState(tabAwal);
   const [cari, setCari] = useState('');
   const [muatSemua, setMuatSemua] = useState(false);
   const [halaman, setHalaman] = useState(1);
@@ -110,7 +117,7 @@ export function InformasiPublik() {
                       <h2 className="info-judul__teks">Berita Terbaru</h2>
                     </div>
                     <p className="info-judul__jumlah only-desktop">
-                      Menampilkan {kartuDesktop.length} dari {BERITA.length} berita
+                      Menampilkan {kartuDesktop.length} dari {lainnya.length} berita
                     </p>
                   </div>
                   <div className="info-berita">
@@ -184,12 +191,8 @@ export function InformasiPublik() {
                     </span>
                     <div className="dokumen__teks">
                       <h3 className="baris__judul">{judul}</h3>
-                      <p className="baris__meta">PDF · [ukuran] · Diperbarui [tanggal]</p>
+                      <p className="baris__meta">PDF · Segera tersedia</p>
                     </div>
-                    <span className="dokumen__unduh" title="Berkas belum tersedia">
-                      <Icon name="download" />
-                      Unduh
-                    </span>
                   </article>
                 ))}
               </section>

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { aksiPengajuan, ambilAntrian, ambilFileBerkas, ApiError, detailPengajuan, keluarAkun, type BerkasDetail, type DetailPengajuan, type Ringkas } from '../api';
+import { useEffect, useState, type ReactNode } from 'react';
+import { aksiPengajuan, ambilAntrian, ApiError, detailPengajuan, keluarAkun, type BerkasDetail, type DetailPengajuan, type Ringkas } from '../api';
 import { Icon, type IconName } from '../components/Icon';
-import { BarisData, Galat, Kartu, Riwayat, tanggal, ukuranFile } from '../components/portal';
+import { MediaBerkas, PenampilBerkas, useUrlBerkas } from '../components/PenampilBerkas';
+import { BarisData, Galat, Kartu, Riwayat, tanggal, ukuranFile, useKunciKirim } from '../components/portal';
 import { Button, Logo, SelectField } from '../components/ui';
 import { LAYANAN } from '../data/layanan';
 import { CAMAT } from '../data/pejabat';
@@ -239,38 +240,11 @@ function Dashboard({ data, tab, setTab }: { data: Ringkas[]; tab: string; setTab
 }
 
 function PratinjauBerkas({ daftar, indeks, setIndeks }: { daftar: BerkasDetail[]; indeks: number; setIndeks: (indeks: number) => void }) {
-  const [pratinjau, setPratinjau] = useState<string | null>(null);
   const [layarPenuh, setLayarPenuh] = useState(false);
-  const penampil = useRef<HTMLDialogElement>(null);
   const berkas = daftar[indeks];
+  const { url: pratinjau, galat } = useUrlBerkas(berkas);
   const adaSebelumnya = indeks > 0;
   const adaBerikutnya = indeks < daftar.length - 1;
-
-  useEffect(() => {
-    setPratinjau(null);
-    if (berkas?.file_url) ambilFileBerkas(berkas.file_url).then(setPratinjau).catch(() => setPratinjau(null));
-  }, [berkas?.id_berkas]);
-
-  // Berkas dilindungi token, jadi dibuka di halaman ini (bukan tab baru yang hanya berisi salinan blob sementara).
-  useEffect(() => {
-    if (layarPenuh && penampil.current && !penampil.current.open) {
-      penampil.current.showModal();
-      // Fokus awal ke Tutup, bukan Unduh, supaya Enter tidak langsung mengunduh berkas.
-      penampil.current.querySelector<HTMLButtonElement>('.penampil__tutup')?.focus();
-    }
-  }, [layarPenuh]);
-
-  const isi = (kelas: string) =>
-    pratinjau && berkas?.mime_type.startsWith('image/') ? (
-      <img className={kelas} src={pratinjau} alt={berkas.nama_syarat} />
-    ) : pratinjau && berkas?.mime_type === 'application/pdf' ? (
-      <iframe className={kelas} src={pratinjau} title={berkas.nama_syarat} />
-    ) : (
-      <>
-        <Icon name="image" />
-        {berkas?.file_url ? 'Memuat…' : `${berkas?.nama_file ?? 'Berkas'} (data contoh tanpa file)`}
-      </>
-    );
 
   return (
     <Kartu
@@ -281,7 +255,9 @@ function PratinjauBerkas({ daftar, indeks, setIndeks }: { daftar: BerkasDetail[]
         </span>
       }
     >
-      <div className="pratinjau">{isi('')}</div>
+      <div className="pratinjau">
+        <MediaBerkas berkas={berkas} url={pratinjau} galat={galat} />
+      </div>
       <div className="pratinjau__kontrol">
         <button type="button" className="tautan-polos" disabled={!adaSebelumnya} onClick={() => setIndeks(indeks - 1)}>
           ‹ Sebelumnya
@@ -301,48 +277,7 @@ function PratinjauBerkas({ daftar, indeks, setIndeks }: { daftar: BerkasDetail[]
         </button>
       </div>
 
-      {layarPenuh && berkas && (
-        <dialog
-          ref={penampil}
-          className="penampil"
-          aria-labelledby="penampil-judul"
-          onClose={() => setLayarPenuh(false)}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowLeft' && adaSebelumnya) setIndeks(indeks - 1);
-            if (event.key === 'ArrowRight' && adaBerikutnya) setIndeks(indeks + 1);
-          }}
-        >
-          <div className="penampil__atas">
-            <div className="penampil__judul">
-              <p className="overline">
-                Berkas {indeks + 1} dari {daftar.length}
-              </p>
-              <h2 id="penampil-judul" className="baris__judul">
-                {berkas.nama_syarat}
-              </h2>
-              <p className="baris__meta">{berkas.nama_file}</p>
-            </div>
-            {pratinjau && (
-              <a className="penampil__tombol" href={pratinjau} download={berkas.nama_file}>
-                <Icon name="download" />
-                Unduh
-              </a>
-            )}
-            <button type="button" className="penampil__tombol penampil__tutup" onClick={() => penampil.current?.close()}>
-              ✕ Tutup
-            </button>
-          </div>
-          <div className="penampil__isi">
-            {isi('penampil__media')}
-            <button type="button" className="penampil__panah penampil__panah--kiri" aria-label="Berkas sebelumnya" disabled={!adaSebelumnya} onClick={() => setIndeks(indeks - 1)}>
-              <Icon name="chevron-left-16" ukuran={20} />
-            </button>
-            <button type="button" className="penampil__panah penampil__panah--kanan" aria-label="Berkas berikutnya" disabled={!adaBerikutnya} onClick={() => setIndeks(indeks + 1)}>
-              <Icon name="chevron-right-16" ukuran={20} />
-            </button>
-          </div>
-        </dialog>
-      )}
+      {layarPenuh && <PenampilBerkas daftar={daftar} indeks={indeks} setIndeks={setIndeks} url={pratinjau} galat={galat} onTutup={() => setLayarPenuh(false)} />}
     </Kartu>
   );
 }
@@ -353,12 +288,14 @@ function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () 
   const [catatan, setCatatan] = useState('');
   const [indeks, setIndeks] = useState(0);
   const [galat, setGalat] = useState<string | null>(null);
+  const { mengirim, mulai: mulaiKirim, lepas: lepasKirim } = useKunciKirim();
 
   const jumlahSesuai = Object.values(nilai).filter((n) => n.sesuai).length;
   const tidakSesuai = Object.entries(nilai).filter(([, n]) => !n.sesuai);
   const semuaDinilai = data.berkas.every((b) => nilai[b.id_berkas]);
 
   const kirim = async (aksi: 'SETUJUI' | 'MINTA_REVISI' | 'TOLAK') => {
+    if (!mulaiKirim()) return;
     setGalat(null);
     try {
       await aksiPengajuan(data.id_pengajuan, 'verifikasi', {
@@ -374,6 +311,7 @@ function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () 
       window.location.assign('/admin');
     } catch (error) {
       setGalat(error instanceof ApiError ? error.message : 'Aksi gagal.');
+      lepasKirim();
       onBerubah();
     }
   };
@@ -460,10 +398,10 @@ function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () 
                 <textarea className="field__input field__textarea" value={catatan} placeholder="Tuliskan catatan" onChange={(event) => setCatatan(event.target.value)} />
               </label>
               <Galat pesan={galat} />
-              <Button label="Kirim Permintaan Perbaikan" arrow disabled={tidakSesuai.length === 0} onClick={() => kirim('MINTA_REVISI')} />
-              <Button label="Teruskan ke Kasi Tata Pemerintahan" style="secondary" disabled={!semuaDinilai || tidakSesuai.length > 0} onClick={() => kirim('SETUJUI')} />
+              <Button label="Kirim Permintaan Perbaikan" arrow disabled={mengirim || tidakSesuai.length === 0} onClick={() => kirim('MINTA_REVISI')} />
+              <Button label="Teruskan ke Kasi Tata Pemerintahan" style="secondary" disabled={mengirim || !semuaDinilai || tidakSesuai.length > 0} onClick={() => kirim('SETUJUI')} />
               <p className="baris__meta">Tombol teruskan aktif jika semua persyaratan wajib sudah sesuai.</p>
-              <button type="button" className="tautan-polos tautan-polos--bahaya" disabled={!catatan.trim()} onClick={() => kirim('TOLAK')}>
+              <button type="button" className="tautan-polos tautan-polos--bahaya" disabled={mengirim || !catatan.trim()} onClick={() => kirim('TOLAK')}>
                 Tolak permohonan (isi catatan alasan)
               </button>
             </Kartu>
@@ -481,19 +419,26 @@ function Finalisasi({ data }: { data: DetailPengajuan }) {
   const [cek, setCek] = useState<boolean[]>([false, false, false, false]);
   const [pengambil, setPengambil] = useState('');
   const [galat, setGalat] = useState<string | null>(null);
+  const { mengirim, mulai: mulaiKirim, lepas: lepasKirim } = useKunciKirim();
   const tandai = (i: number) => setCek(cek.map((nilai, urutan) => (urutan === i ? !nilai : nilai)));
 
   const serahkan = async () => {
+    if (!mulaiKirim()) return;
     setGalat(null);
     try {
-      await aksiPengajuan(data.id_pengajuan, 'serahkan', { version: data.version });
+      // Nama pengambil (jika dikuasakan) dicatat di riwayat proses; hanya terlihat oleh petugas.
+      const nama = pengambil.trim();
+      await aksiPengajuan(data.id_pengajuan, 'serahkan', { version: data.version, catatan: nama ? `Diambil oleh: ${nama}` : undefined });
       window.location.assign('/admin');
     } catch (error) {
       setGalat(error instanceof ApiError ? error.message : 'Aksi gagal.');
+      lepasKirim();
     }
   };
 
-  const Cek = ({ i, teks }: { i: number; teks: string }) => (
+  // Fungsi biasa, bukan komponen: komponen yang dibuat di dalam render dipasang ulang setiap render,
+  // sehingga kotak centang kehilangan fokus (pengguna keyboard tidak bisa lanjut ke kotak berikutnya).
+  const kotakCek = (i: number, teks: string) => (
     <label className="persetujuan">
       <input type="checkbox" checked={cek[i]} onChange={() => tandai(i)} />
       <span>{teks}</span>
@@ -511,20 +456,20 @@ function Finalisasi({ data }: { data: DetailPengajuan }) {
               <span className="field__label">Nomor registrasi *</span>
               <input className="field__input" readOnly value={data.nomor_surat ?? ''} />
             </label>
-            <Cek i={0} teks="Stempel kecamatan sudah dibubuhkan" />
+            {kotakCek(0, 'Stempel kecamatan sudah dibubuhkan')}
           </Kartu>
           <Kartu judul="2. Penyerahan kepada pemohon">
             <p className="tile__desc">Lakukan saat pemohon datang ke kantor kecamatan.</p>
-            <Cek i={1} teks={`Kode pengambilan dicocokkan (${data.no_registrasi})`} />
-            <Cek i={2} teks="Dokumen asli sudah dicocokkan dengan berkas unggahan" />
-            <Cek i={3} teks="KTP pengambil sudah diperiksa" />
+            {kotakCek(1, `Kode pengambilan dicocokkan (${data.no_registrasi})`)}
+            {kotakCek(2, 'Dokumen asli sudah dicocokkan dengan berkas unggahan')}
+            {kotakCek(3, 'KTP pengambil sudah diperiksa')}
             <label className="field">
               <span className="field__label">Diambil oleh</span>
               <input className="field__input" placeholder="Nama pengambil (isi jika dikuasakan)" value={pengambil} onChange={(event) => setPengambil(event.target.value)} />
             </label>
             <Galat pesan={galat} />
             <div>
-              <Button label="Tandai Sudah Diambil" style="secondary" disabled={cek.includes(false)} onClick={serahkan} />
+              <Button label="Tandai Sudah Diambil" style="secondary" disabled={mengirim || cek.includes(false)} onClick={serahkan} />
             </div>
           </Kartu>
         </div>
@@ -553,6 +498,7 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
   const [catatan, setCatatan] = useState('');
   const [indeks, setIndeks] = useState(0);
   const [galat, setGalat] = useState<string | null>(null);
+  const { mengirim, mulai: mulaiKirim, lepas: lepasKirim } = useKunciKirim();
 
   useEffect(() => {
     setData(null);
@@ -564,13 +510,14 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
   }, [id]);
 
   const kirim = async (aksi: 'SETUJUI' | 'KEMBALIKAN' | 'TOLAK') => {
-    if (!data) return;
+    if (!data || !mulaiKirim()) return;
     setGalat(null);
     try {
       await aksiPengajuan(data.id_pengajuan, kasi ? 'paraf-kasi' : 'tte-camat', { aksi, version: data.version, catatan: catatan.trim() || undefined });
       window.location.assign('/admin');
     } catch (error) {
       setGalat(error instanceof ApiError ? error.message : 'Aksi gagal.');
+      lepasKirim();
     }
   };
 
@@ -585,9 +532,9 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
         <textarea className="field__input periksa__catatan" value={catatan} onChange={(event) => setCatatan(event.target.value)} />
       </label>
       <Galat pesan={galat} />
-      <Button label={kasi ? 'Paraf & Teruskan ke Camat' : 'Tanda Tangani'} arrow onClick={() => kirim('SETUJUI')} />
-      <Button label="Kembalikan ke Petugas" style="secondary" disabled={!catatan.trim()} onClick={() => kirim('KEMBALIKAN')} />
-      <button type="button" className="tautan-polos tautan-polos--bahaya" disabled={!catatan.trim()} onClick={() => kirim('TOLAK')}>
+      <Button label={kasi ? 'Paraf & Teruskan ke Camat' : 'Tanda Tangani'} arrow disabled={mengirim} onClick={() => kirim('SETUJUI')} />
+      <Button label="Kembalikan ke Petugas" style="secondary" disabled={mengirim || !catatan.trim()} onClick={() => kirim('KEMBALIKAN')} />
+      <button type="button" className="tautan-polos tautan-polos--bahaya" disabled={mengirim || !catatan.trim()} onClick={() => kirim('TOLAK')}>
         Tolak permohonan
       </button>
       <p className="baris__meta">

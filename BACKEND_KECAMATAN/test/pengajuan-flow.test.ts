@@ -180,9 +180,17 @@ describe('Pengajuan: alur lengkap state machine', () => {
     expect(p.status_pengajuan).toBe('SIAP_DIAMBIL');
     expect(p.file_surat_selesai).toBeNull();
 
-    const res = await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'serahkan'), { version: p.version });
+    const res = await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'serahkan'), { version: p.version, catatan: 'Diambil oleh: Siti (dikuasakan)' });
     expect(res.statusCode).toBe(200);
     expect(res.json().data.status_pengajuan).toBe('SELESAI');
+
+    // Nama pengambil tercatat di riwayat untuk petugas, tetapi tidak ditampilkan ke pemohon.
+    const catatanSerahkan = (token: string) =>
+      ctx.app
+        .inject({ method: 'GET', url: `/api/v1/pengajuan/${p.id_pengajuan}`, headers: bearer(token) })
+        .then((r) => r.json().data.riwayat.find((x: { aksi: string }) => x.aksi === 'SERAHKAN').catatan);
+    expect(await catatanSerahkan(tAdmin)).toBe('Diambil oleh: Siti (dikuasakan)');
+    expect(await catatanSerahkan(tWarga)).toBeNull();
   });
 
   it('serahkan ditolak sebelum surat siap diambil', async () => {

@@ -1,19 +1,21 @@
 /*
  * Animasi ringan untuk seluruh situs.
  * Hanya memakai opacity, transform, warna, dan bayangan (murah untuk browser), tanpa library.
- * Pengguna yang mematikan animasi di sistem operasinya (prefers-reduced-motion) tidak melihat gerakan apa pun.
+ * Jika "Animation effects" di sistem operasi dimatikan (prefers-reduced-motion), gerakan geser
+ * dihilangkan tetapi efek memudar tetap ada (lihat bagian paling bawah).
  */
 :root {
-  --gerak-cepat: 160ms;
-  --gerak: 260ms;
-  --gerak-muncul: 520ms;
+  --gerak-cepat: 180ms;
+  --gerak: 300ms;
+  --gerak-muncul: 800ms;
+  --jarak-muncul: 32px;
   --kurva: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 @keyframes naik {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(var(--jarak-muncul));
   }
 }
 
@@ -50,22 +52,22 @@
 
 .hero__title,
 .banner__title {
-  animation-delay: 80ms;
+  animation-delay: 150ms;
 }
 
 .hero__lead,
 .banner__desc {
-  animation-delay: 160ms;
+  animation-delay: 300ms;
 }
 
 .hero__cta {
-  animation-delay: 240ms;
+  animation-delay: 450ms;
 }
 
 /* 2. Saat di-scroll: kartu dan judul bagian muncul pelan (kelas dipasang oleh src/animasi.ts). */
 .muncul {
   opacity: 0;
-  transform: translateY(18px);
+  transform: translateY(var(--jarak-muncul));
 }
 
 .muncul.muncul--tampil {
@@ -195,14 +197,35 @@
   }
 }
 
+/*
+ * "Animation effects" dimatikan: tanpa gerakan (geser, naik, membesar), cukup memudar.
+ * Memudar tidak memindahkan apa pun di layar, jadi tetap nyaman bagi yang peka terhadap gerakan.
+ */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after,
-  ::backdrop {
-    animation-duration: 1ms !important;
-    animation-delay: 0ms !important;
-    transition-duration: 1ms !important;
-    transition-delay: 0ms !important;
+  :root {
+    --jarak-muncul: 0px;
+  }
+
+  .dialog[open],
+  .drawer--open {
+    animation-name: pudar;
+  }
+
+  .btn:not(:disabled):hover,
+  .btn:not(:disabled):active,
+  .btn:not(:disabled):hover > .icon:last-child,
+  .link:hover::after,
+  .nav__sub {
+    transform: none;
+  }
+
+  .penampil__panah:not(:disabled):hover {
+    transform: translateY(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 1099px) {
+  .penampil__panah:not(:disabled):hover {
+    transform: none;
   }
 }

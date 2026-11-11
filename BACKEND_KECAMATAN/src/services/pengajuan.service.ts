@@ -381,11 +381,12 @@ export class PengajuanService {
     return this.keputusan(user, id, input, { SETUJUI: 'CAMAT_TTE', KEMBALIKAN: 'CAMAT_KEMBALIKAN', TOLAK: 'CAMAT_TOLAK' });
   }
 
-  async serahkan(user: User, id: string, version: number) {
+  /** `catatan` (mis. "Diambil oleh: …" jika dikuasakan) masuk riwayat dan hanya terlihat oleh petugas. */
+  async serahkan(user: User, id: string, version: number, catatan?: string) {
     const p = await this.ambilDenganAkses(user, id);
     const layanan = await this.layananAtauGagal(p.id_layanan);
     if (layanan.mode_penyerahan !== 'AMBIL_DI_KANTOR') throw badRequest('Layanan ini diunduh daring, tidak melalui penyerahan di kantor');
-    const hasil = await this.workflow.jalankan(user, p, layanan, 'SERAHKAN', null, version);
+    const hasil = await this.workflow.jalankan(user, p, layanan, 'SERAHKAN', catatan ?? null, version);
     return this.detailUntuk(user, hasil);
   }
 }
