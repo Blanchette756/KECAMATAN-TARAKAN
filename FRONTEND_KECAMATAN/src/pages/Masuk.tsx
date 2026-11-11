@@ -100,7 +100,13 @@ export function Masuk() {
               <p className="tile__desc">2. Saat pertama kali masuk, lengkapi NIK, nomor HP, dan alamat</p>
               <p className="tile__desc">3. Ajukan permohonan dan pantau statusnya</p>
             </div>
-            <p className="baris__meta">Belum punya akun Google? Buat akun Gmail secara gratis, lalu kembali ke halaman ini.</p>
+            <p className="baris__meta">
+              Belum punya akun Google?{' '}
+              <a className="tautan-polos" href="https://accounts.google.com/signup" target="_blank" rel="noreferrer">
+                Buat akun Gmail
+              </a>{' '}
+              secara gratis, lalu kembali ke halaman ini.
+            </p>
             <p className="baris__meta">
               Dengan masuk, Anda menyetujui <a className="tautan-polos" href="/kebijakan-privasi">Kebijakan Privasi</a>. Butuh bantuan? WhatsApp {WHATSAPP}
             </p>
