@@ -120,4 +120,13 @@ describe('Konfigurasi database (DB_DRIVER)', () => {
     expect(loadConfig({ NODE_ENV: 'development' }).seedDemoPengajuan).toBe(true);
     expect(loadConfig({ NODE_ENV: 'development', DB_DRIVER: 'mysql', DB_NAME: 'd', DB_USER: 'u', DB_PASSWORD: 'p' }).seedDemoPengajuan).toBe(false);
   });
+
+  it('database MySQL tanpa akun dummy: SEED_DEMO_PENGAJUAN=true diabaikan supaya server tetap bisa start', () => {
+    const mysql = { NODE_ENV: 'production', ALLOW_MOCK_AUTH_IN_PRODUCTION: 'true', DB_DRIVER: 'mysql', DB_NAME: 'd', DB_USER: 'u', DB_PASSWORD: 'p' };
+    const c = loadConfig({ ...mysql, SEED_DEMO_PENGAJUAN: 'true' });
+    expect(c.salinAkunDummy).toBe(false);
+    expect(c.seedDemoPengajuan).toBe(false);
+    const uji = loadConfig({ ...mysql, SEED_DEMO_PENGAJUAN: 'true', SALIN_AKUN_DUMMY: 'true' });
+    expect(uji.seedDemoPengajuan).toBe(true);
+  });
 });

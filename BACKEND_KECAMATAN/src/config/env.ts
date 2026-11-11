@@ -43,6 +43,8 @@ export interface AppConfig {
   /** Kunci lacak per nomor registrasi setelah sejumlah percobaan gagal. */
   lacakLockout: { maxGagal: number; menit: number };
   seedDemoPengajuan: boolean;
+  /** Salin akun dummy dari data/users.json ke database MySQL. Bawaan mati: database asli tanpa akun dummy. */
+  salinAkunDummy: boolean;
   dbDriver: DbDriver;
   /** null bila dbDriver = memory. */
   db: DbConfig | null;
@@ -201,6 +203,8 @@ export function loadConfig(env: Env = process.env): AppConfig {
 
   const awalUsername = str(env, 'PETUGAS_AWAL_USERNAME', '').toLowerCase();
   const awalPassword = env.PETUGAS_AWAL_PASSWORD ?? '';
+  const salinAkunDummy = bool(env, 'SALIN_AKUN_DUMMY', false);
+
   let petugasAwal: AppConfig['petugasAwal'] = null;
   if (awalUsername !== '' || awalPassword !== '') {
     if (awalUsername === '' || awalPassword === '') throw new ConfigError('PETUGAS_AWAL_USERNAME dan PETUGAS_AWAL_PASSWORD harus diisi keduanya');
@@ -236,8 +240,10 @@ export function loadConfig(env: Env = process.env): AppConfig {
       maxGagal: int(env, 'LACAK_MAX_GAGAL', 5, 1, 1000),
       menit: int(env, 'LACAK_KUNCI_MENIT', 15, 1, 24 * 60),
     },
-    // Data contoh otomatis hanya di development dengan data di memori, tidak pernah ke MySQL.
-    seedDemoPengajuan: bool(env, 'SEED_DEMO_PENGAJUAN', nodeEnv === 'development' && dbDriver === 'memory'),
+    // Data contoh otomatis hanya di development dengan data di memori. Ke MySQL hanya bila akun dummy
+    // juga disalin, karena data contoh dibuat atas nama akun dummy.
+    seedDemoPengajuan: bool(env, 'SEED_DEMO_PENGAJUAN', nodeEnv === 'development' && dbDriver === 'memory') && (dbDriver === 'memory' || salinAkunDummy),
+    salinAkunDummy,
     dbDriver,
     db,
     petugasAwal,

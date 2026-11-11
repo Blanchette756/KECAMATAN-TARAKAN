@@ -67,7 +67,10 @@ export function createContainer(config: AppConfig, opts: ContainerOptions = {}):
   return rakit(config, createMemoryRepositories(store, config), store, opts, async () => undefined);
 }
 
-/** Container sesuai DB_DRIVER. Untuk mysql: pasang skema, salin akun dari users.json, muat berita awal. */
+/**
+ * Container sesuai DB_DRIVER. Untuk mysql: pasang skema dan muat berita awal. Akun dummy dari users.json
+ * hanya disalin bila SALIN_AKUN_DUMMY=true (misalnya database uji coba).
+ */
 export async function buatContainer(config: AppConfig, log: (pesan: string) => void, opts: ContainerOptions = {}): Promise<Container> {
   if (config.dbDriver === 'memory' || !config.db) return createContainer(config, opts);
 
@@ -75,8 +78,10 @@ export async function buatContainer(config: AppConfig, log: (pesan: string) => v
   const db = buatPool(config.db);
   try {
     await jalankanMigrasi(db, log);
-    const akun = await sinkronAkunDariFile(db, master.users);
-    if (akun.baru + akun.diperbarui > 0) log(`Akun dari users.json: ${akun.baru} ditambahkan, ${akun.diperbarui} diperbarui`);
+    if (config.salinAkunDummy) {
+      const akun = await sinkronAkunDariFile(db, master.users);
+      if (akun.baru + akun.diperbarui > 0) log(`Akun dummy dari users.json: ${akun.baru} ditambahkan, ${akun.diperbarui} diperbarui`);
+    }
     const berita = await muatBeritaAwalSekali(db, muatBerita(config.dataDir, config.beritaFile, log));
     if (berita !== null) log(`Berita awal dimuat ke database: ${berita} berita`);
   } catch (err) {
