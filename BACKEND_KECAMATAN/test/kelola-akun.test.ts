@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
-import { ConfigError, loadConfig } from '../src/config/env.js';
+import { loadConfig } from '../src/config/env.js';
 import { createContainer } from '../src/container.js';
 import { bearer, buatApp, EMAIL, login, type TestCtx } from './helpers.js';
 
@@ -36,8 +36,10 @@ describe('Akun petugas awal dari environment variables', () => {
     expect((await masuk('pelayanan', 'password-baru-22')).status).toBe(200);
   });
 
-  it('konfigurasi tidak lengkap atau password pendek ditolak saat start', () => {
-    expect(() => loadConfig({ NODE_ENV: 'test', PETUGAS_AWAL_USERNAME: 'pelayanan' })).toThrow(ConfigError);
+  it('password pendek ditolak; username tanpa password diabaikan tanpa menghentikan server', () => {
+    // Hanya username (password sudah dihapus dari hPanel): diabaikan, server tetap jalan.
+    expect(loadConfig({ NODE_ENV: 'test', PETUGAS_AWAL_USERNAME: 'pelayanan' }).petugasAwal).toBeNull();
+    expect(loadConfig({ NODE_ENV: 'production', ALLOW_MOCK_AUTH_IN_PRODUCTION: 'true', PETUGAS_AWAL_USERNAME: 'pelayanan', PETUGAS_AWAL_NAMA: 'Petugas' }).petugasAwal).toBeNull();
     expect(() => loadConfig({ NODE_ENV: 'test', PETUGAS_AWAL_USERNAME: 'pelayanan', PETUGAS_AWAL_PASSWORD: 'pendek' })).toThrow(/minimal 8/);
     expect(loadConfig({ NODE_ENV: 'test' }).petugasAwal).toBeNull();
   });

@@ -213,8 +213,9 @@ export function loadConfig(env: Env = process.env): AppConfig {
   }
 
   let petugasAwal: AppConfig['petugasAwal'] = null;
-  if (awalUsername !== '' || awalPassword !== '') {
-    if (awalUsername === '' || awalPassword === '') throw new ConfigError('PETUGAS_AWAL_USERNAME dan PETUGAS_AWAL_PASSWORD harus diisi keduanya');
+  // Akun awal hanya dibuat bila keduanya terisi. Satu saja (mis. password sudah dihapus setelah akun dibuat)
+  // tidak boleh menghentikan server.
+  if (awalUsername !== '' && awalPassword !== '') {
     if (!new RegExp(POLA_USERNAME).test(awalUsername) || awalUsername.length < 3 || awalUsername.length > 50) {
       throw new ConfigError('PETUGAS_AWAL_USERNAME: 3-50 karakter, hanya huruf kecil, angka, titik, garis bawah, atau tanda hubung');
     }
