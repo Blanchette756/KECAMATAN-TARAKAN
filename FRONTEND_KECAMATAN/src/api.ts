@@ -22,26 +22,34 @@ interface Respons<T> {
   meta?: { page: number; limit: number; total: number; total_halaman: number };
 }
 
+const GALAT_JARINGAN = 'Server tidak dapat dihubungi. Coba lagi beberapa saat lagi.';
+
+/** Token tidak berlaku lagi, misalnya sesi habis. Warga kembali ke Masuk, petugas ke Masuk Petugas. */
+function tanganiSesiHabis(status: number) {
+  const sesi = ambilSesi();
+  if (status !== 401 || !sesi) return;
+  hapusSesi();
+  window.location.assign(sesi.user.role === 'WARGA' ? `/masuk?ke=${encodeURIComponent(window.location.pathname + window.location.search)}` : '/masuk-petugas');
+}
+
+/** Pesan galat dari respons { error: { message, details } }. */
+function galatDariRespons(body: { error?: { message?: string; details?: unknown } } | null, status: number): ApiError {
+  // Rincian bisa berupa teks (validasi service) atau objek { lokasi, pesan } (validasi skema).
+  const teksRincian = (d: unknown) => (typeof d === 'string' ? d : d && typeof d === 'object' && 'pesan' in d ? `${(d as { lokasi?: string }).lokasi ?? ''} ${(d as { pesan: string }).pesan}`.trim() : JSON.stringify(d));
+  const rincian = Array.isArray(body?.error?.details) ? `: ${body.error.details.map(teksRincian).join('; ')}` : '';
+  return new ApiError(`${body?.error?.message ?? 'Terjadi kesalahan pada server. Coba lagi beberapa saat lagi.'}${rincian}`, status);
+}
+
 async function panggilLengkap<T>(path: string, init?: RequestInit): Promise<Respons<T>> {
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, { ...init, headers: { ...izin(), ...init?.headers } });
   } catch {
-    throw new ApiError('Server tidak dapat dihubungi. Coba lagi beberapa saat lagi.');
+    throw new ApiError(GALAT_JARINGAN);
   }
-  // Token tidak berlaku lagi, misalnya setelah backend dimulai ulang. Petugas kembali ke halaman masuk petugas.
-  const sesi = ambilSesi();
-  if (res.status === 401 && sesi) {
-    hapusSesi();
-    window.location.assign(sesi.user.role === 'WARGA' ? `/masuk?ke=${encodeURIComponent(window.location.pathname + window.location.search)}` : '/masuk-petugas');
-  }
+  tanganiSesiHabis(res.status);
   const body = await res.json().catch(() => null);
-  if (!res.ok || body === null) {
-    // Rincian bisa berupa teks (validasi service) atau objek { lokasi, pesan } (validasi skema).
-    const teksRincian = (d: unknown) => (typeof d === 'string' ? d : d && typeof d === 'object' && 'pesan' in d ? `${(d as { lokasi?: string }).lokasi ?? ''} ${(d as { pesan: string }).pesan}`.trim() : JSON.stringify(d));
-    const rincian = Array.isArray(body?.error?.details) ? `: ${body.error.details.map(teksRincian).join('; ')}` : '';
-    throw new ApiError(`${body?.error?.message ?? 'Terjadi kesalahan pada server. Coba lagi beberapa saat lagi.'}${rincian}`, res.status);
-  }
+  if (!res.ok || body === null) throw galatDariRespons(body, res.status);
   return body as Respons<T>;
 }
 
@@ -121,8 +129,34 @@ export interface HasilUnggah {
   ukuran_byte: number;
 }
 
-export const unggahBerkas = (file: File) =>
-  panggil<HasilUnggah>(`/berkas/unggah?nama_file=${encodeURIComponent(file.name)}`, { method: 'POST', headers: { 'content-type': file.type }, body: file });
+/**
+ * Unggah satu file. Memakai XMLHttpRequest (bukan fetch) karena hanya itu yang melaporkan kemajuan unggah,
+ * supaya warga di jaringan HP yang lambat melihat persentasenya.
+ */
+export function unggahBerkas(file: File, onKemajuan?: (persen: number) => void): Promise<HasilUnggah> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_URL}/berkas/unggah?nama_file=${encodeURIComponent(file.name)}`);
+    for (const [kunci, nilai] of Object.entries(izin())) xhr.setRequestHeader(kunci, nilai);
+    xhr.setRequestHeader('content-type', file.type);
+    xhr.responseType = 'json';
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onKemajuan) onKemajuan(Math.min(99, Math.round((e.loaded / e.total) * 100)));
+    };
+    xhr.onload = () => {
+      tanganiSesiHabis(xhr.status);
+      const body = (xhr.response ?? null) as Respons<HasilUnggah> & { error?: { message?: string; details?: unknown } } | null;
+      if (xhr.status >= 200 && xhr.status < 300 && body?.data) {
+        onKemajuan?.(100);
+        resolve(body.data);
+      } else reject(galatDariRespons(body, xhr.status));
+    };
+    xhr.onerror = () => reject(new ApiError(GALAT_JARINGAN));
+    xhr.ontimeout = () => reject(new ApiError('Unggah terlalu lama. Periksa koneksi internet lalu coba lagi.'));
+    xhr.timeout = 120_000;
+    xhr.send(file);
+  });
+}
 
 export interface BerkasDetail {
   id_berkas: string;

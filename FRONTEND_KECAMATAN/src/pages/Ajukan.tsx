@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { ambilLayanan, ApiError, kirimPengajuan, unggahBerkas, type DetailLayananApi, type HasilUnggah, type Kondisi, type SyaratLengkap } from '../api';
 import { Icon } from '../components/Icon';
-import { BarisData, cekBerkas, Galat, Kartu, ukuranFile, useCegahBukaFile, useKunciKirim, useSeretLepas } from '../components/portal';
+import { BarisData, cekBerkas, Galat, Kartu, TandaUnggah, tanpaKunci, ukuranFile, useCegahBukaFile, useKunciKirim, useSeretLepas, type ProsesUnggah } from '../components/portal';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button } from '../components/ui';
@@ -45,7 +45,7 @@ function KepalaHalaman({ langkah }: { langkah: number }) {
   );
 }
 
-function SlotUnggah({ syarat, file, onPilih, sibuk }: { syarat: SyaratLengkap; file?: HasilUnggah; onPilih: (file: File) => void; sibuk: boolean }) {
+function SlotUnggah({ syarat, file, onPilih, proses }: { syarat: SyaratLengkap; file?: HasilUnggah; onPilih: (file: File) => void; proses?: ProsesUnggah }) {
   const keterangan = syarat.keterangan?.startsWith('SP menulis') ? undefined : syarat.keterangan;
   const { diAtas, props } = useSeretLepas(onPilih);
   // value dikosongkan setelah dipilih, supaya memilih file yang sama lagi (mis. setelah galat) tetap terbaca.
@@ -67,7 +67,9 @@ function SlotUnggah({ syarat, file, onPilih, sibuk }: { syarat: SyaratLengkap; f
         <p className="baris__judul">{syarat.nama_syarat}</p>
         <span className={syarat.wajib && !syarat.kondisi ? 'syarat__tag syarat__tag--wajib' : 'baris__meta'}>{syarat.wajib && !syarat.kondisi ? 'Wajib' : (keterangan ?? 'Opsional')}</span>
       </div>
-      {file ? (
+      {proses ? (
+        <TandaUnggah proses={proses} />
+      ) : file ? (
         <div className="slot__file">
           <span className="dokumen__ikon">
             <Icon name="file-text-sm" />
@@ -90,7 +92,7 @@ function SlotUnggah({ syarat, file, onPilih, sibuk }: { syarat: SyaratLengkap; f
         <label className="slot__area">
           <Icon name="upload" />
           <span>
-            Seret file ke sini atau <strong>{sibuk ? 'mengunggah…' : 'pilih file'}</strong>
+            Seret file ke sini atau <strong>pilih file</strong>
           </span>
           <span className="baris__meta">Format JPG, PNG, atau PDF · maks. 2 MB</span>
           {masukan}
@@ -114,7 +116,8 @@ export function Ajukan() {
   const [layanan, setLayanan] = useState<DetailLayananApi | null>(null);
   const [isian, setIsian] = useState<Record<string, string>>({});
   const [berkas, setBerkas] = useState<Record<string, HasilUnggah>>({});
-  const [sibuk, setSibuk] = useState<string | null>(null);
+  // Berkas yang sedang diunggah, per id persyaratan (bisa beberapa sekaligus).
+  const [proses, setProses] = useState<Record<string, ProsesUnggah>>({});
   const [setuju, setSetuju] = useState(false);
   const { mengirim, mulai: mulaiKirim, lepas: lepasKirim } = useKunciKirim();
   const [kode, setKode] = useState<string | null>(null);
@@ -153,23 +156,25 @@ export function Ajukan() {
   const terunggah = syarat.filter((item) => berkas[item.id_syarat]);
 
   const pilihFile = async (id: string, file: File) => {
+    if (proses[id]) return;
     const masalah = cekBerkas(file);
     setGalat(masalah);
     if (masalah) return;
-    setSibuk(id);
+    setProses((lama) => ({ ...lama, [id]: { nama: file.name, persen: 0 } }));
     try {
-      const hasil = await unggahBerkas(file);
+      const hasil = await unggahBerkas(file, (persen) => setProses((lama) => (lama[id] ? { ...lama, [id]: { ...lama[id], persen } } : lama)));
       setBerkas((lama) => ({ ...lama, [id]: hasil }));
     } catch (error) {
       setGalat(error instanceof ApiError ? error.message : 'Unggah gagal.');
     } finally {
-      setSibuk(null);
+      setProses((lama) => tanpaKunci(lama, id));
     }
   };
 
   const lanjutPeriksa = () => {
     const kosong = fields.filter((field) => field.wajib && !isian[field.key]?.trim());
     if (kosong.length > 0) return setGalat(`Lengkapi ${kosong.map((field) => field.label).join(', ')}.`);
+    if (Object.keys(proses).length > 0) return setGalat('Tunggu sampai semua berkas selesai diunggah.');
     if (wajibTerisi < wajib.length) return setGalat('Unggah semua berkas wajib terlebih dahulu.');
     setGalat(null);
     setLangkah(2);
@@ -315,7 +320,7 @@ export function Ajukan() {
                   </div>
                 )}
                 {syarat.map((item) => (
-                  <SlotUnggah key={item.id_syarat} syarat={item} file={berkas[item.id_syarat]} sibuk={sibuk === item.id_syarat} onPilih={(file) => pilihFile(item.id_syarat, file)} />
+                  <SlotUnggah key={item.id_syarat} syarat={item} file={berkas[item.id_syarat]} proses={proses[item.id_syarat]} onPilih={(file) => pilihFile(item.id_syarat, file)} />
                 ))}
               </Kartu>
             </div>

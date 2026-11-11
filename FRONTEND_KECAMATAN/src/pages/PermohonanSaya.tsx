@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ApiError, detailPengajuan, keluarAkun, kirimRevisi, pengajuanSaya, unggahBerkas, type BerkasDetail, type BerkasKirim, type DetailPengajuan, type Ringkas } from '../api';
 import { Icon } from '../components/Icon';
 import { PenampilDaftarBerkas } from '../components/PenampilBerkas';
-import { BarisData, cekBerkas, Galat, jumlahTahapSelesai, Kartu, StatusBadge, TahapPermohonan, tanggal, useCegahBukaFile, useKunciKirim, useSeretLepas } from '../components/portal';
+import { BarisData, cekBerkas, Galat, jumlahTahapSelesai, Kartu, StatusBadge, TahapPermohonan, TandaUnggah, tanggal, tanpaKunci, useCegahBukaFile, useKunciKirim, useSeretLepas, type ProsesUnggah } from '../components/portal';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button } from '../components/ui';
@@ -145,7 +145,7 @@ function BarisBerkas({ berkas, onLihat }: { berkas: BerkasDetail; onLihat?: () =
   );
 }
 
-function SlotPerbaikan({ berkas, pengganti, sibuk, onPilih }: { berkas: BerkasDetail; pengganti?: BerkasKirim; sibuk: boolean; onPilih: (file: File) => void }) {
+function SlotPerbaikan({ berkas, pengganti, proses, onPilih }: { berkas: BerkasDetail; pengganti?: BerkasKirim; proses?: ProsesUnggah; onPilih: (file: File) => void }) {
   const { diAtas, props } = useSeretLepas(onPilih);
   return (
     <div className={`slot slot--perbaikan${diAtas ? ' slot--seret' : ''}`} {...props}>
@@ -153,25 +153,29 @@ function SlotPerbaikan({ berkas, pengganti, sibuk, onPilih }: { berkas: BerkasDe
         <p className="baris__judul">{berkas.nama_syarat}</p>
         <span className="syarat__tag syarat__tag--wajib">Wajib</span>
       </div>
-      <div className="slot__file">
-        <div className="dokumen__teks">
-          <p className="baris__judul">{pengganti?.nama_file ?? berkas.nama_file}</p>
-          <p className="baris__meta">{sibuk ? 'Mengunggah…' : pengganti ? 'Berkas baru siap dikirim' : 'Seret file baru ke sini, atau pilih Unggah ulang'}</p>
+      {proses ? (
+        <TandaUnggah proses={proses} />
+      ) : (
+        <div className="slot__file">
+          <div className="dokumen__teks">
+            <p className="baris__judul">{pengganti?.nama_file ?? berkas.nama_file}</p>
+            <p className="baris__meta">{pengganti ? 'Berkas baru siap dikirim' : 'Seret file baru ke sini, atau pilih Unggah ulang'}</p>
+          </div>
+          <label className="tautan-polos">
+            Unggah ulang
+            <input
+              type="file"
+              hidden
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(event) => {
+                const pilihan = event.target.files?.[0];
+                event.target.value = '';
+                if (pilihan) onPilih(pilihan);
+              }}
+            />
+          </label>
         </div>
-        <label className="tautan-polos">
-          Unggah ulang
-          <input
-            type="file"
-            hidden
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(event) => {
-              const pilihan = event.target.files?.[0];
-              event.target.value = '';
-              if (pilihan) onPilih(pilihan);
-            }}
-          />
-        </label>
-      </div>
+      )}
       {berkas.catatan_admin && <p className="tracker__error">Catatan petugas: {berkas.catatan_admin}</p>}
     </div>
   );
@@ -180,23 +184,24 @@ function SlotPerbaikan({ berkas, pengganti, sibuk, onPilih }: { berkas: BerkasDe
 function Perbaikan({ data, onSelesai }: { data: DetailPengajuan; onSelesai: () => void }) {
   const ditandai = data.berkas.filter((berkas) => berkas.status_berkas === 'PERLU_PERBAIKAN');
   const [baru, setBaru] = useState<Record<string, BerkasKirim>>({});
-  const [sibuk, setSibuk] = useState<string | null>(null);
+  const [proses, setProses] = useState<Record<string, ProsesUnggah>>({});
   const { mengirim, mulai: mulaiKirim, lepas: lepasKirim } = useKunciKirim();
   const [galat, setGalat] = useState<string | null>(null);
   useCegahBukaFile();
 
   const pilih = async (idSyarat: string, file: File) => {
+    if (proses[idSyarat]) return;
     const masalah = cekBerkas(file);
     setGalat(masalah);
     if (masalah) return;
-    setSibuk(idSyarat);
+    setProses((lama) => ({ ...lama, [idSyarat]: { nama: file.name, persen: 0 } }));
     try {
-      const hasil = await unggahBerkas(file);
+      const hasil = await unggahBerkas(file, (persen) => setProses((lama) => (lama[idSyarat] ? { ...lama, [idSyarat]: { ...lama[idSyarat], persen } } : lama)));
       setBaru((lama) => ({ ...lama, [idSyarat]: { id_syarat: idSyarat, ...hasil } }));
     } catch (error) {
       setGalat(error instanceof ApiError ? error.message : 'Unggah gagal.');
     } finally {
-      setSibuk(null);
+      setProses((lama) => tanpaKunci(lama, idSyarat));
     }
   };
 
@@ -219,7 +224,7 @@ function Perbaikan({ data, onSelesai }: { data: DetailPengajuan; onSelesai: () =
           key={berkas.id_berkas}
           berkas={berkas}
           pengganti={baru[berkas.id_syarat]}
-          sibuk={sibuk === berkas.id_syarat}
+          proses={proses[berkas.id_syarat]}
           onPilih={(file) => pilih(berkas.id_syarat, file)}
         />
       ))}
@@ -231,7 +236,7 @@ function Perbaikan({ data, onSelesai }: { data: DetailPengajuan; onSelesai: () =
         <Button
           label={mengirim ? 'Mengirim…' : 'Kirim Perbaikan'}
           arrow={!mengirim}
-          disabled={mengirim || sibuk !== null || Object.keys(baru).length < ditandai.length}
+          disabled={mengirim || Object.keys(proses).length > 0 || Object.keys(baru).length < ditandai.length}
           onClick={kirim}
         />
       </div>

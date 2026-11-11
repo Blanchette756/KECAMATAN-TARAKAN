@@ -73,6 +73,35 @@ export function useSeretLepas(onPilih: (file: File) => void) {
   return { diAtas, props };
 }
 
+/** Berkas yang sedang diunggah, per id persyaratan. */
+export interface ProsesUnggah {
+  nama: string;
+  persen: number;
+}
+
+/** Salinan objek tanpa satu kunci (mis. berkas yang selesai diunggah). */
+export function tanpaKunci<T>(objek: Record<string, T>, kunci: string): Record<string, T> {
+  const salinan = { ...objek };
+  delete salinan[kunci];
+  return salinan;
+}
+
+/** Tanda unggah yang jelas: ikon berputar, nama file, bilah kemajuan, dan persentase. */
+export function TandaUnggah({ proses }: { proses: ProsesUnggah }) {
+  return (
+    <div className="unggah-proses" role="status" aria-live="polite">
+      <span className="pemuat" aria-hidden="true" />
+      <div className="unggah-proses__teks">
+        <p className="baris__judul">Mengunggah {proses.nama}…</p>
+        <div className="progres-tunggal" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={proses.persen} aria-label={`Kemajuan unggah ${proses.nama}`}>
+          <span style={{ width: `${proses.persen}%` }} />
+        </div>
+      </div>
+      <span className="unggah-proses__persen">{proses.persen}%</span>
+    </div>
+  );
+}
+
 /** Label singkat dan warna badge mengikuti Figma; status backend lebih rinci. */
 const BADGE: Record<string, { label: string; warna: string }> = {
   DIAJUKAN: { label: 'Diajukan', warna: 'netral' },
