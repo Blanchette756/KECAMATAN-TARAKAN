@@ -1,7 +1,8 @@
 import type { User } from '../types/user.js';
 import { AttemptLimiter } from '../utils/attempt-limiter.js';
-import { AppError, unauthorized } from '../utils/errors.js';
-import { newId, newToken, sha256 } from '../utils/ids.js';
+import { AppError, forbidden, unauthorized } from '../utils/errors.js';
+import type { IdentitasGoogle } from '../utils/google.js';
+import { newId, newToken, randomKode, sha256 } from '../utils/ids.js';
 import { cocokPassword, hashUntukUsernameTakAda } from '../utils/password.js';
 import type { ServiceDeps } from './deps.js';
 
@@ -16,8 +17,8 @@ const LOGIN_PETUGAS_MAKS_GAGAL = 5;
 const LOGIN_PETUGAS_KUNCI_MENIT = 15;
 
 /**
- * Login petugas memakai username dan password. Login warga masih tiruan (email akun dummy)
- * sampai login Google selesai. Di production, login tiruan hanya untuk akun warga.
+ * Warga login dengan Google, petugas dengan username dan password. Login tiruan (email akun dummy)
+ * hanya untuk pengembangan dan tes; rutenya tidak dipasang di production.
  * Yang disimpan untuk sesi hanya hash SHA-256 token.
  */
 export class AuthService {
@@ -25,6 +26,10 @@ export class AuthService {
   private readonly gagalPetugas = new AttemptLimiter(LOGIN_PETUGAS_MAKS_GAGAL, LOGIN_PETUGAS_KUNCI_MENIT * 60_000);
 
   constructor(private readonly deps: ServiceDeps) {}
+
+  get googleClientId(): string | null {
+    return this.deps.config.googleClientId;
+  }
 
   async mockLogin(email: string): Promise<HasilLogin> {
     const user = await this.deps.repos.users.findByEmail(email);
@@ -50,6 +55,48 @@ export class AuthService {
     }
     this.gagalPetugas.reset(kunci);
     return this.buatSesi(akun.user);
+  }
+
+  /**
+   * Login warga dengan Google. Akun dibuat otomatis saat pertama kali masuk; NIK, HP, alamat, dan
+   * kelurahan diisi sesudahnya di halaman Lengkapi Profil.
+   */
+  async loginGoogle(credential: string): Promise<HasilLogin> {
+    const { repos } = this.deps;
+    const verifikasi = this.deps.verifikasiGoogle;
+    if (!verifikasi) throw new AppError(503, 'GOOGLE_BELUM_AKTIF', 'Login Google belum diaktifkan. Hubungi petugas kecamatan.');
+    let id: IdentitasGoogle;
+    try {
+      id = await verifikasi(credential);
+    } catch {
+      throw unauthorized('Login Google gagal. Coba lagi.');
+    }
+
+    let user = await repos.users.findByGoogleSub(id.sub);
+    if (!user) {
+      const samaEmail = await repos.users.findByEmail(id.email);
+      if (samaEmail && samaEmail.role !== 'WARGA') throw forbidden('Email ini dipakai akun petugas. Petugas masuk lewat halaman Masuk Petugas.');
+      if (samaEmail) {
+        await repos.users.tautkanGoogle(samaEmail.id_user, id.sub);
+        user = samaEmail;
+      } else {
+        user = {
+          id_user: `USR-WG-${randomKode(8)}`,
+          id_kelurahan: null,
+          nik: null,
+          nama_lengkap: id.nama.slice(0, 120),
+          email: id.email,
+          no_hp: null,
+          role: 'WARGA',
+          seksi: null,
+          alamat: null,
+          aktif: true,
+        };
+        await repos.users.buatWargaGoogle(user, id.sub);
+      }
+    }
+    if (!user.aktif) throw forbidden('Akun ini dinonaktifkan. Hubungi petugas kecamatan.');
+    return this.buatSesi(user);
   }
 
   private async buatSesi(user: User): Promise<HasilLogin> {

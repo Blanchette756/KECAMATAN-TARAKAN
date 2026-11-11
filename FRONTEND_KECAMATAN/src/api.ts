@@ -66,6 +66,22 @@ const kirimJson = <T>(method: string, path: string, data?: unknown) =>
   panggil<T>(path, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(data ?? {}) });
 
 export const masukTiruan = (email: string) => kirimJson<{ token: string; user: Pengguna }>('POST', '/auth/mock-login', { email });
+export const googleConfig = () => panggil<{ client_id: string | null }>('/auth/google-config');
+export const masukGoogle = (credential: string) => kirimJson<{ token: string; user: Pengguna }>('POST', '/auth/google', { credential });
+
+export interface Profil {
+  nama_lengkap: string;
+  email: string | null;
+  nik: string | null;
+  no_hp: string | null;
+  alamat: string | null;
+  id_kelurahan: string | null;
+}
+export type InputProfil = { [K in Exclude<keyof Profil, 'email'>]: string };
+export const ambilProfil = () => panggil<Profil>('/auth/profil');
+export const simpanProfil = (data: InputProfil) => kirimJson<{ user: Pengguna }>('PATCH', '/auth/profil', data);
+export const ambilKelurahan = () => panggil<{ id_kelurahan: string; nama: string }[]>('/kelurahan');
+
 export const masukPetugas = (username: string, password: string) => kirimJson<{ token: string; user: Pengguna }>('POST', '/auth/login-petugas', { username, password });
 export const keluarAkun = () => panggil<unknown>('/auth/logout', { method: 'POST' }).catch(() => null);
 

@@ -51,6 +51,9 @@ function Daftar() {
             <p className="heading__desc">Pantau semua permohonan Anda di satu tempat.</p>
           </div>
           <div className="kepala__aksi">
+            <a className="tautan-polos" href="/profil">
+              Profil saya
+            </a>
             <button type="button" className="tautan-polos" onClick={keluar}>
               Keluar
             </button>
@@ -337,6 +340,7 @@ export function PermohonanSaya() {
   useEffect(() => {
     if (!sesi) window.location.replace('/masuk?ke=/permohonan');
     else if (sesi.user.role !== 'WARGA') window.location.replace('/admin');
+    else if (!sesi.user.profil_lengkap) window.location.replace('/profil?ke=/permohonan');
   }, []);
 
   if (!sesi) return null;

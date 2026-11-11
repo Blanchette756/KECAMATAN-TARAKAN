@@ -15,6 +15,8 @@ export class MemoryStore {
   readonly users = new Map<string, User>();
   /** Username → akun petugas yang login dengan password. */
   readonly kredensial = new Map<string, { id_user: string; password_hash: string }>();
+  /** ID akun Google (sub) → id_user. */
+  readonly googleSub = new Map<string, string>();
   kontak: KontakKecamatan;
 
   // Data transaksi

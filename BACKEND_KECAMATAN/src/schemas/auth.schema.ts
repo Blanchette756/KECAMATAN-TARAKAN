@@ -31,7 +31,24 @@ export const UserPublikSchema = Type.Object({
   id_kelurahan: TeksAtauNull,
   nik_tersamar: TeksAtauNull,
   no_hp_tersamar: TeksAtauNull,
+  profil_lengkap: Type.Boolean(),
 });
+
+export const LoginGoogleBodySchema = Type.Object({ credential: Type.String({ minLength: 20, maxLength: 4096 }) }, { additionalProperties: false });
+export type LoginGoogleBody = Static<typeof LoginGoogleBodySchema>;
+
+/** Panjang dan pola dicek ulang di service supaya pesannya jelas. */
+export const ProfilBodySchema = Type.Object(
+  {
+    nama_lengkap: Type.String({ minLength: 1, maxLength: 120 }),
+    nik: Type.String({ minLength: 1, maxLength: 30 }),
+    no_hp: Type.String({ minLength: 1, maxLength: 30 }),
+    alamat: Type.String({ minLength: 1, maxLength: 250 }),
+    id_kelurahan: Type.String({ minLength: 1, maxLength: 20 }),
+  },
+  { additionalProperties: false },
+);
+export type ProfilBody = Static<typeof ProfilBodySchema>;
 
 export const LoginResponseSchema = Type.Object({
   data: Type.Object({

@@ -15,11 +15,13 @@ import { Ajukan } from './pages/Ajukan';
 import { Beranda } from './pages/Beranda';
 import { DataMonografi } from './pages/DataMonografi';
 import { InformasiPublik } from './pages/InformasiPublik';
+import { KebijakanPrivasi } from './pages/KebijakanPrivasi';
 import { Kontak } from './pages/Kontak';
 import { Masuk } from './pages/Masuk';
 import { MasukPetugas } from './pages/MasukPetugas';
 import { Pelayanan } from './pages/Pelayanan';
 import { PermohonanSaya } from './pages/PermohonanSaya';
+import { Profil } from './pages/Profil';
 import { ProfilKecamatan } from './pages/ProfilKecamatan';
 
 const RUTE: Record<string, () => JSX.Element | null> = {
@@ -32,6 +34,8 @@ const RUTE: Record<string, () => JSX.Element | null> = {
   '/masuk-petugas': MasukPetugas,
   '/ajukan': Ajukan,
   '/permohonan': PermohonanSaya,
+  '/profil': Profil,
+  '/kebijakan-privasi': KebijakanPrivasi,
   '/admin': Admin,
 };
 

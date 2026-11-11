@@ -28,7 +28,7 @@ Data contoh tidak pernah diisi ke MySQL.
 | Perintah | Fungsi |
 |---|---|
 | `npm run dev` | Mode pengembangan, auto-reload saat file diubah |
-| `npm test` | Menjalankan semua tes otomatis (99 tes, memakai data di memori) |
+| `npm test` | Menjalankan semua tes otomatis (109 tes, memakai data di memori) |
 | `npm run typecheck` | Cek tipe TypeScript |
 | `npm run validate-data` | Cek isi folder `data/` (jalankan setiap kali data diubah) |
 | `npm run check` | Ketiganya sekaligus, jalankan sebelum commit |
@@ -53,7 +53,15 @@ Di Swagger: jalankan login, salin token, klik tombol **Authorize**.
 | `kasi.kesra@example.com` | KASI | Seksi Kesra, untuk menguji bahwa Kasi tidak bisa melihat seksi lain |
 | `camat@example.com` | CAMAT | |
 
-Semua nama, NIK, email, dan nomor HP di atas fiktif. Di production, login tiruan hanya bisa untuk akun warga.
+Semua nama, NIK, email, dan nomor HP di atas fiktif. Login tiruan hanya ada di pengembangan dan tes; di production
+rutenya tidak dipasang, dan akun dummy tidak disalin ke database MySQL (kecuali `SALIN_AKUN_DUMMY=true`).
+
+### Akun warga
+
+Warga masuk dengan Google (`POST /api/v1/auth/google`, berisi ID token dari tombol Google). Akun dibuat
+otomatis saat pertama kali masuk, lalu warga melengkapi NIK, nomor HP, alamat, dan kelurahan di `/profil`.
+Permohonan baru ditolak (`PROFIL_BELUM_LENGKAP`) sebelum profil lengkap. Isi `GOOGLE_CLIENT_ID` di
+environment variables backend; frontend mengambilnya dari `GET /api/v1/auth/google-config`.
 
 ### Akun petugas
 
@@ -92,7 +100,10 @@ Semua endpoint diawali `/api/v1`. Format sukses `{ "data": ..., "meta"?: ... }`,
 | GET | `/kelurahan` | publik | Daftar kelurahan |
 | GET | `/kontak` | publik | Kontak pengaduan |
 | POST | `/pengajuan/lacak` | publik | Lacak: `{ no_registrasi, last_4_digit_hp }` |
-| POST | `/auth/mock-login` | publik | Login dummy (di production hanya akun warga) |
+| POST | `/auth/mock-login` | publik | Login dummy (tidak ada di production) |
+| GET | `/auth/google-config` | publik | Client ID Google untuk tombol login |
+| POST | `/auth/google` | publik | Login warga: `{ credential }` dari tombol Google |
+| GET/PATCH | `/auth/profil` | WARGA | Lihat atau lengkapi profil (NIK, HP, alamat, kelurahan) |
 | POST | `/auth/login-petugas` | publik | Login petugas: `{ username, password }` |
 | PATCH | `/auth/password` | ADMIN/KASI/CAMAT | Ganti password sendiri: `{ password_lama, password_baru }` |
 | GET | `/petugas` | ADMIN | Daftar akun petugas |
@@ -317,7 +328,7 @@ src/
 ├── plugins/           Keamanan, autentikasi, penanganan error
 ├── scripts/           validate-data
 └── utils/             Error, ID acak, masking
-test/                  99 tes otomatis (alur, otorisasi/IDOR, lacak, unggah, login & akun petugas, data, konfigurasi, regresi audit)
+test/                  109 tes otomatis (alur, otorisasi/IDOR, lacak, unggah, login & akun petugas, data, konfigurasi, regresi audit)
 ```
 
 ---

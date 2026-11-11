@@ -40,4 +40,10 @@ export interface UserPublik {
   id_kelurahan: string | null;
   nik_tersamar: string | null;
   no_hp_tersamar: string | null;
+  /** false bila warga belum mengisi NIK, HP, alamat, atau kelurahan. Petugas selalu true. */
+  profil_lengkap: boolean;
 }
+
+/** Warga wajib melengkapi profil sebelum mengajukan permohonan. */
+export const profilLengkap = (u: User): boolean =>
+  u.role !== 'WARGA' || (u.nik !== null && u.no_hp !== null && u.alamat !== null && u.id_kelurahan !== null);

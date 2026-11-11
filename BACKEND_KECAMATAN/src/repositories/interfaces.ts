@@ -33,6 +33,13 @@ export interface UserRepository {
   listPetugas(): Promise<{ user: User; username: string }[]>;
   /** Buat akun baru, atau perbarui akun dengan username yang sama (id lama dipertahankan). */
   simpanPetugas(user: User, username: string, passwordHash: string): Promise<{ id_user: string; baru: boolean }>;
+  findByGoogleSub(sub: string): Promise<User | null>;
+  findByNik(nik: string): Promise<User | null>;
+  /** Akun warga baru dari login Google. */
+  buatWargaGoogle(user: User, sub: string): Promise<void>;
+  /** Tautkan akun yang sudah ada (cocok email) ke akun Google. */
+  tautkanGoogle(idUser: string, sub: string): Promise<void>;
+  updateProfil(idUser: string, data: Pick<User, 'nama_lengkap' | 'nik' | 'no_hp' | 'alamat' | 'id_kelurahan'>): Promise<void>;
   /** Ubah data akun petugas; password hanya diganti bila `passwordHash` diisi. */
   updatePetugas(idUser: string, data: Pick<User, 'nama_lengkap' | 'role' | 'seksi' | 'aktif'>, passwordHash: string | null): Promise<void>;
 }

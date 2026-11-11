@@ -5,7 +5,7 @@ import type { Paging } from '../repositories/interfaces.js';
 import type { BerkasInput, BerkasPengajuan, FileUnggahan, MimeDiizinkan } from '../types/berkas.js';
 import type { JenisLayanan } from '../types/layanan.js';
 import type { PengajuanPelayanan } from '../types/pengajuan.js';
-import type { User } from '../types/user.js';
+import { profilLengkap, type User } from '../types/user.js';
 import { AppError, badRequest, conflict, forbidden, notFound, validationFailed } from '../utils/errors.js';
 import { newId } from '../utils/ids.js';
 import { AttemptLimiter } from '../utils/attempt-limiter.js';
@@ -147,6 +147,7 @@ export class PengajuanService {
   async ajukan(user: User, input: InputPengajuan) {
     const { repos, config, now } = this.deps;
     if (user.role !== 'WARGA') throw forbidden('Hanya warga yang dapat mengajukan permohonan');
+    if (!profilLengkap(user)) throw new AppError(422, 'PROFIL_BELUM_LENGKAP', 'Lengkapi profil (NIK, nomor HP, alamat, kelurahan) sebelum mengajukan permohonan.');
 
     const layanan = await repos.master.findLayanan(input.id_layanan);
     if (!layanan || !layanan.aktif) throw notFound('Layanan tidak ditemukan');

@@ -4,7 +4,7 @@ import { buildApp } from '../src/app.js';
 import { createContainer } from '../src/container.js';
 import { periksaAkunPetugas, simpanAkunPetugas } from '../src/services/akun-petugas.js';
 import { cocokPassword, hashPassword } from '../src/utils/password.js';
-import { bearer, buatApp, EMAIL, login, type TestCtx } from './helpers.js';
+import { bearer, buatApp, EMAIL, type TestCtx } from './helpers.js';
 
 let ctx: TestCtx | undefined;
 afterEach(async () => {
@@ -89,7 +89,7 @@ describe('Login petugas dengan username dan password', () => {
 });
 
 describe('Login tiruan di production', () => {
-  it('hanya untuk akun warga; petugas wajib memakai password', async () => {
+  it('tidak dipasang sama sekali: siapa pun yang tahu email warga tidak bisa masuk sebagai warga itu', async () => {
     const config = loadConfig({
       NODE_ENV: 'production',
       ALLOW_MOCK_AUTH_IN_PRODUCTION: 'true',
@@ -100,8 +100,9 @@ describe('Login tiruan di production', () => {
     const c = createContainer(config);
     ctx = { app: await buildApp(c), c };
     await ctx.app.ready();
-    const admin = await ctx!.app.inject({ method: 'POST', url: '/api/v1/auth/mock-login', payload: { email: EMAIL.admin } });
-    expect(admin.statusCode).toBe(401);
-    expect(await login(ctx.app, EMAIL.warga1)).toBeTypeOf('string');
+    for (const email of [EMAIL.admin, EMAIL.warga1]) {
+      const res = await ctx!.app.inject({ method: 'POST', url: '/api/v1/auth/mock-login', payload: { email } });
+      expect(res.statusCode).toBe(404);
+    }
   });
 });

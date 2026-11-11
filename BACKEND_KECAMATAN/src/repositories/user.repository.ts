@@ -24,6 +24,32 @@ export class MemoryUserRepository implements UserRepository {
     return k && u ? { user: structuredClone(u), password_hash: k.password_hash } : null;
   }
 
+  async findByGoogleSub(sub: string): Promise<User | null> {
+    const id = this.store.googleSub.get(sub);
+    return id ? this.findById(id) : null;
+  }
+
+  async findByNik(nik: string): Promise<User | null> {
+    for (const u of this.store.users.values()) if (u.nik === nik) return structuredClone(u);
+    return null;
+  }
+
+  async buatWargaGoogle(user: User, sub: string): Promise<void> {
+    if (this.store.users.has(user.id_user) || this.store.googleSub.has(sub)) throw new Error('Akun Google sudah terdaftar');
+    this.store.users.set(user.id_user, structuredClone(user));
+    this.store.googleSub.set(sub, user.id_user);
+  }
+
+  async tautkanGoogle(idUser: string, sub: string): Promise<void> {
+    this.store.googleSub.set(sub, idUser);
+  }
+
+  async updateProfil(idUser: string, data: Pick<User, 'nama_lengkap' | 'nik' | 'no_hp' | 'alamat' | 'id_kelurahan'>): Promise<void> {
+    const u = this.store.users.get(idUser);
+    if (!u) throw new Error(`User ${idUser} tidak ada`);
+    this.store.users.set(idUser, { ...u, ...data });
+  }
+
   async findKredensialById(idUser: string): Promise<{ user: User; username: string; password_hash: string } | null> {
     const u = this.store.users.get(idUser);
     if (!u) return null;

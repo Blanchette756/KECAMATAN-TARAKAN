@@ -14,9 +14,11 @@ import { BeritaService } from './services/berita.service.js';
 import type { ServiceDeps } from './services/deps.js';
 import { LayananService } from './services/layanan.service.js';
 import { PengajuanService } from './services/pengajuan.service.js';
+import { ProfilService } from './services/profil.service.js';
 import { StatistikService } from './services/statistik.service.js';
 import { UnggahService } from './services/unggah.service.js';
 import { WorkflowService } from './services/workflow.service.js';
+import { buatVerifikasiGoogle, type VerifikasiGoogle } from './utils/google.js';
 
 export interface Services {
   auth: AuthService;
@@ -27,6 +29,7 @@ export interface Services {
   unggah: UnggahService;
   berita: BeritaService;
   akunPetugas: AkunPetugasService;
+  profil: ProfilService;
 }
 
 export interface Container {
@@ -41,10 +44,13 @@ export interface Container {
 export interface ContainerOptions {
   master?: MasterData;
   now?: () => Date;
+  /** Pengganti pemeriksa token Google, untuk tes. */
+  verifikasiGoogle?: VerifikasiGoogle;
 }
 
 function rakit(config: AppConfig, repos: Repositories, store: MemoryStore, opts: ContainerOptions, tutup: () => Promise<void>): Container {
-  const deps: ServiceDeps = { repos, config, now: opts.now ?? (() => new Date()) };
+  const verifikasiGoogle = opts.verifikasiGoogle ?? (config.googleClientId ? buatVerifikasiGoogle(config.googleClientId) : null);
+  const deps: ServiceDeps = { repos, config, now: opts.now ?? (() => new Date()), verifikasiGoogle };
   const unggah = new UnggahService(deps);
   const workflow = new WorkflowService(deps);
   const services: Services = {
@@ -56,6 +62,7 @@ function rakit(config: AppConfig, repos: Repositories, store: MemoryStore, opts:
     unggah,
     berita: new BeritaService(deps),
     akunPetugas: new AkunPetugasService(deps),
+    profil: new ProfilService(deps),
   };
   return { config, repos, services, store, tutup };
 }

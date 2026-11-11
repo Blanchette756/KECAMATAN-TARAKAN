@@ -117,6 +117,7 @@ export function Ajukan() {
   useEffect(() => {
     if (!sesi) window.location.replace(`/masuk?ke=${encodeURIComponent(`/ajukan?layanan=${idLayanan}`)}`);
     else if (sesi.user.role !== 'WARGA') window.location.replace('/admin');
+    else if (!sesi.user.profil_lengkap) window.location.replace(`/profil?ke=${encodeURIComponent(`/ajukan?layanan=${idLayanan}`)}`);
   }, []);
 
   useEffect(() => {

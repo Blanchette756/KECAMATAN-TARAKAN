@@ -41,7 +41,8 @@ async function main(): Promise<void> {
   }
 
   if (config.authMode === 'mock' && config.nodeEnv === 'production') {
-    app.log.warn('⚠ AUTH MOCK AKTIF DI PRODUCTION (ALLOW_MOCK_AUTH_IN_PRODUCTION=true). Hanya untuk server DEMO berisi data dummy!');
+    // Rute login tiruan tidak dipasang di production; warga masuk lewat Google, petugas dengan password.
+    if (!config.googleClientId) app.log.warn('⚠ GOOGLE_CLIENT_ID belum diisi: warga belum bisa masuk.');
   }
   if (!config.nodeEnvEksplisit) {
     app.log.warn('⚠ NODE_ENV tidak diisi, dianggap "development". Di server, selalu isi NODE_ENV=production.');

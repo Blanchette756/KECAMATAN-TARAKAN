@@ -47,6 +47,38 @@ export class MysqlUserRepository implements UserRepository {
     return r ? { user: userDariBaris(r), password_hash: String(r.password_hash) } : null;
   }
 
+  async findByGoogleSub(sub: string): Promise<User | null> {
+    const [rows] = await this.db.execute<RowDataPacket[]>(`SELECT ${KOLOM_USER.join(', ')} FROM users WHERE google_sub = ?`, [sub]);
+    return rows[0] ? userDariBaris(rows[0]) : null;
+  }
+
+  async findByNik(nik: string): Promise<User | null> {
+    const [rows] = await this.db.execute<RowDataPacket[]>(`SELECT ${KOLOM_USER.join(', ')} FROM users WHERE nik = ?`, [nik]);
+    return rows[0] ? userDariBaris(rows[0]) : null;
+  }
+
+  async buatWargaGoogle(user: User, sub: string): Promise<void> {
+    await this.db.execute(`INSERT INTO users (${KOLOM_USER.join(', ')}, google_sub) VALUES (${KOLOM_USER.map(() => '?').join(', ')}, ?)`, [
+      ...nilaiUser(user, KOLOM_USER),
+      sub,
+    ]);
+  }
+
+  async tautkanGoogle(idUser: string, sub: string): Promise<void> {
+    await this.db.execute('UPDATE users SET google_sub = ? WHERE id_user = ?', [sub, idUser]);
+  }
+
+  async updateProfil(idUser: string, data: Pick<User, 'nama_lengkap' | 'nik' | 'no_hp' | 'alamat' | 'id_kelurahan'>): Promise<void> {
+    await this.db.execute('UPDATE users SET nama_lengkap = ?, nik = ?, no_hp = ?, alamat = ?, id_kelurahan = ? WHERE id_user = ?', [
+      data.nama_lengkap,
+      data.nik,
+      data.no_hp,
+      data.alamat,
+      data.id_kelurahan,
+      idUser,
+    ]);
+  }
+
   async findKredensialById(idUser: string): Promise<{ user: User; username: string; password_hash: string } | null> {
     const [rows] = await this.db.execute<RowDataPacket[]>(
       `SELECT ${KOLOM_USER.join(', ')}, username, password_hash FROM users WHERE id_user = ? AND username IS NOT NULL AND password_hash IS NOT NULL`,

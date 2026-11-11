@@ -178,6 +178,14 @@ export const MIGRASI: readonly Migrasi[] = [
       if (!(await indeksAda(conn, 'users', 'uk_users_username'))) await conn.query('ALTER TABLE users ADD UNIQUE KEY uk_users_username (username)');
     },
   },
+  {
+    versi: 3,
+    nama: 'login warga dengan Google',
+    sql: async (conn) => {
+      if (!(await kolomAda(conn, 'users', 'google_sub'))) await conn.query('ALTER TABLE users ADD COLUMN google_sub VARCHAR(64) NULL AFTER password_hash');
+      if (!(await indeksAda(conn, 'users', 'uk_users_google_sub'))) await conn.query('ALTER TABLE users ADD UNIQUE KEY uk_users_google_sub (google_sub)');
+    },
+  },
 ];
 
 /** Pasang migrasi yang belum jalan. GET_LOCK mencegah dua proses memasang bersamaan. */

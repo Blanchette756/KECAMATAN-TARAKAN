@@ -2,7 +2,7 @@ import { STATUS_LABEL } from '../constants/workflow.js';
 import type { BerkasPengajuan } from '../types/berkas.js';
 import type { JenisLayanan } from '../types/layanan.js';
 import type { PengajuanPelayanan, RiwayatStatus } from '../types/pengajuan.js';
-import type { User, UserPublik } from '../types/user.js';
+import { profilLengkap, type User, type UserPublik } from '../types/user.js';
 import { maskHp, maskNik } from '../utils/mask.js';
 
 /** Mengubah data internal menjadi respons API, termasuk menentukan field mana yang boleh dilihat siapa. */
@@ -17,6 +17,7 @@ export function toUserPublik(u: User): UserPublik {
     id_kelurahan: u.id_kelurahan,
     nik_tersamar: maskNik(u.nik),
     no_hp_tersamar: maskHp(u.no_hp),
+    profil_lengkap: profilLengkap(u),
   };
 }
 

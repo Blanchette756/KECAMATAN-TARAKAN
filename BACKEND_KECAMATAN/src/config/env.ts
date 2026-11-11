@@ -48,6 +48,8 @@ export interface AppConfig {
   dbDriver: DbDriver;
   /** null bila dbDriver = memory. */
   db: DbConfig | null;
+  /** Client ID Google untuk login warga. null = login Google belum diaktifkan. */
+  googleClientId: string | null;
   /** Akun Petugas Pelayanan pertama, dibuat saat start bila username itu belum ada. */
   petugasAwal: { username: string; password: string; nama: string } | null;
   dataDir: string;
@@ -205,6 +207,11 @@ export function loadConfig(env: Env = process.env): AppConfig {
   const awalPassword = env.PETUGAS_AWAL_PASSWORD ?? '';
   const salinAkunDummy = bool(env, 'SALIN_AKUN_DUMMY', false);
 
+  const googleClientId = str(env, 'GOOGLE_CLIENT_ID', '') || null;
+  if (googleClientId !== null && !/^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/.test(googleClientId)) {
+    throw new ConfigError('GOOGLE_CLIENT_ID tidak valid (bentuknya 1234567890-abc123.apps.googleusercontent.com)');
+  }
+
   let petugasAwal: AppConfig['petugasAwal'] = null;
   if (awalUsername !== '' || awalPassword !== '') {
     if (awalUsername === '' || awalPassword === '') throw new ConfigError('PETUGAS_AWAL_USERNAME dan PETUGAS_AWAL_PASSWORD harus diisi keduanya');
@@ -246,6 +253,7 @@ export function loadConfig(env: Env = process.env): AppConfig {
     salinAkunDummy,
     dbDriver,
     db,
+    googleClientId,
     petugasAwal,
     dataDir,
     beritaFile: nodeEnv === 'test' ? null : path.resolve(str(env, 'BERITA_FILE', path.join(dataDir, 'runtime', 'berita.json'))),

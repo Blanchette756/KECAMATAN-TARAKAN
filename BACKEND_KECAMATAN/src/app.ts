@@ -39,7 +39,7 @@ export async function buildApp(container: Container): Promise<FastifyInstance> {
         info: {
           title: 'API Pelayanan Publik Kecamatan Tarakan Timur',
           description:
-            'Login masih tiruan: POST /api/v1/auth/mock-login dengan email akun dummy, lalu klik **Authorize** dan tempel token.',
+            'Di pengembangan: POST /api/v1/auth/mock-login dengan email akun dummy, lalu klik **Authorize** dan tempel token.',
           version: '0.1.0',
         },
         components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer' } } },
