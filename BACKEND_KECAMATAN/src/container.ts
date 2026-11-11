@@ -8,6 +8,7 @@ import { muatBeritaAwalSekali, sinkronAkunDariFile } from './database/mysql/seed
 import { createMemoryRepositories } from './repositories/index.js';
 import type { Repositories } from './repositories/interfaces.js';
 import { createMysqlRepositories } from './repositories/mysql/index.js';
+import { AkunPetugasService } from './services/akun-petugas.js';
 import { AuthService } from './services/auth.service.js';
 import { BeritaService } from './services/berita.service.js';
 import type { ServiceDeps } from './services/deps.js';
@@ -25,6 +26,7 @@ export interface Services {
   statistik: StatistikService;
   unggah: UnggahService;
   berita: BeritaService;
+  akunPetugas: AkunPetugasService;
 }
 
 export interface Container {
@@ -53,6 +55,7 @@ function rakit(config: AppConfig, repos: Repositories, store: MemoryStore, opts:
     statistik: new StatistikService(deps),
     unggah,
     berita: new BeritaService(deps),
+    akunPetugas: new AkunPetugasService(deps),
   };
   return { config, repos, services, store, tutup };
 }

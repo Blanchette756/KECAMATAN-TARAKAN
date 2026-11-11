@@ -117,6 +117,10 @@ export class MysqlSesiRepository implements SesiRepository {
     await this.db.execute('DELETE FROM sesi WHERE token_hash = ?', [tokenHash]);
   }
 
+  async deleteByUser(idUser: string): Promise<void> {
+    await this.db.execute('DELETE FROM sesi WHERE id_user = ?', [idUser]);
+  }
+
   async deleteExpired(nowMs: number): Promise<number> {
     const [hasil] = await this.db.execute<ResultSetHeader>('DELETE FROM sesi WHERE kedaluwarsa_ms <= ?', [nowMs]);
     return hasil.affectedRows;

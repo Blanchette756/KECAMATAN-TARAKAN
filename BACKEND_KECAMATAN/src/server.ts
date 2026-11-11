@@ -32,6 +32,14 @@ async function main(): Promise<void> {
   const app = await buildApp(container);
   app.addHook('onClose', async () => container.tutup());
 
+  const akunAwal = await container.services.akunPetugas.pastikanAkunAwal();
+  if (akunAwal === 'dibuat') {
+    app.log.info(`Akun petugas awal "${config.petugasAwal?.username}" dibuat. Setelah masuk, ganti passwordnya dan hapus PETUGAS_AWAL_PASSWORD dari environment variables.`);
+  }
+  if (config.dbDriver === 'memory' && config.petugasAwal) {
+    app.log.warn('Akun petugas awal dibuat di memori dan hilang saat server restart (DB_DRIVER=memory).');
+  }
+
   if (config.authMode === 'mock' && config.nodeEnv === 'production') {
     app.log.warn('⚠ AUTH MOCK AKTIF DI PRODUCTION (ALLOW_MOCK_AUTH_IN_PRODUCTION=true). Hanya untuk server DEMO berisi data dummy!');
   }

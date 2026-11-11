@@ -13,6 +13,8 @@ export class MemoryStore {
   readonly layanan = new Map<string, JenisLayanan>();
   readonly kelurahan = new Map<string, Kelurahan>();
   readonly users = new Map<string, User>();
+  /** Username → akun petugas yang login dengan password. */
+  readonly kredensial = new Map<string, { id_user: string; password_hash: string }>();
   kontak: KontakKecamatan;
 
   // Data transaksi

@@ -2,7 +2,7 @@ import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import type { AppConfig } from '../config/env.js';
 import type { AuthController } from '../controllers/auth.controller.js';
 import type { AuthGuards } from '../plugins/auth.js';
-import { LoginResponseSchema, MeResponseSchema, MockLoginBodySchema } from '../schemas/auth.schema.js';
+import { LoginPetugasBodySchema, LoginResponseSchema, MeResponseSchema, MockLoginBodySchema } from '../schemas/auth.schema.js';
 import { errorResponses } from '../schemas/common.schema.js';
 import { BODY_LIMIT_KECIL } from '../constants/pola.js';
 
@@ -26,6 +26,21 @@ export const authRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { control
       },
     },
     async (req) => controller.mockLogin(req.body),
+  );
+
+  app.post(
+    '/auth/login-petugas',
+    {
+      bodyLimit: BODY_LIMIT_KECIL,
+      config: { rateLimit: { max: config.rateLimit.login, timeWindow: '1 minute' } },
+      schema: {
+        tags: ['Auth'],
+        summary: 'Login petugas (Admin, Kasi, Camat) dengan username dan password',
+        body: LoginPetugasBodySchema,
+        response: { 200: LoginResponseSchema, 401: errorResponses[401], 429: errorResponses[429] },
+      },
+    },
+    async (req) => controller.loginPetugas(req.body),
   );
 
   app.get(

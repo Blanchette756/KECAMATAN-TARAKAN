@@ -1,4 +1,4 @@
-import type { Db, RowDataPacket } from './pool.js';
+import type { Db, PoolConnection, RowDataPacket } from './pool.js';
 
 /**
  * Skema database. Dipasang otomatis saat server start, dan versi yang sudah terpasang dicatat di `schema_versi`.
@@ -13,7 +13,24 @@ const OPSI_TABEL = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicod
 interface Migrasi {
   versi: number;
   nama: string;
-  sql: string[];
+  /** Perintah SQL biasa, atau fungsi bila perlu memeriksa skema dulu supaya aman diulang. */
+  sql: string[] | ((conn: PoolConnection) => Promise<void>);
+}
+
+async function kolomAda(conn: PoolConnection, tabel: string, kolom: string): Promise<boolean> {
+  const [r] = await conn.query<RowDataPacket[]>(
+    'SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+    [tabel, kolom],
+  );
+  return r.length > 0;
+}
+
+async function indeksAda(conn: PoolConnection, tabel: string, indeks: string): Promise<boolean> {
+  const [r] = await conn.query<RowDataPacket[]>(
+    'SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?',
+    [tabel, indeks],
+  );
+  return r.length > 0;
 }
 
 export const MIGRASI: readonly Migrasi[] = [
@@ -148,6 +165,19 @@ export const MIGRASI: readonly Migrasi[] = [
       ) ${OPSI_TABEL}`,
     ],
   },
+  {
+    versi: 2,
+    nama: 'login petugas dengan password',
+    // Petugas tidak wajib punya NIK, email, HP, atau alamat. UNIQUE tetap berlaku untuk nilai yang terisi.
+    sql: async (conn) => {
+      await conn.query(
+        'ALTER TABLE users MODIFY nik CHAR(16) NULL, MODIFY email VARCHAR(120) NULL, MODIFY no_hp VARCHAR(20) NULL, MODIFY alamat VARCHAR(250) NULL',
+      );
+      if (!(await kolomAda(conn, 'users', 'username'))) await conn.query('ALTER TABLE users ADD COLUMN username VARCHAR(50) NULL AFTER email');
+      if (!(await kolomAda(conn, 'users', 'password_hash'))) await conn.query('ALTER TABLE users ADD COLUMN password_hash VARCHAR(200) NULL AFTER username');
+      if (!(await indeksAda(conn, 'users', 'uk_users_username'))) await conn.query('ALTER TABLE users ADD UNIQUE KEY uk_users_username (username)');
+    },
+  },
 ];
 
 /** Pasang migrasi yang belum jalan. GET_LOCK mencegah dua proses memasang bersamaan. */
@@ -169,13 +199,15 @@ export async function jalankanMigrasi(db: Db, log: (pesan: string) => void): Pro
       for (const m of MIGRASI) {
         if (sudah.has(m.versi)) continue;
         log(`Memasang skema database versi ${m.versi} (${m.nama})...`);
-        // DDL tidak bisa di-rollback. Semua perintah memakai IF NOT EXISTS, jadi kalau gagal di tengah,
-        // start berikutnya melanjutkan.
-        for (const sql of m.sql) await conn.query(sql);
+        // DDL tidak bisa di-rollback. Setiap migrasi ditulis aman diulang (IF NOT EXISTS atau cek skema dulu),
+        // jadi kalau gagal di tengah, start berikutnya melanjutkan.
+        if (typeof m.sql === 'function') await m.sql(conn);
+        else for (const sql of m.sql) await conn.query(sql);
         await conn.query('INSERT INTO schema_versi (versi, nama, dipasang_pada) VALUES (?, ?, ?)', [m.versi, m.nama, new Date().toISOString()]);
       }
     } finally {
-      await conn.query("SELECT RELEASE_LOCK('kecamatan_migrasi')");
+      // Bila koneksi putus, kunci ikut lepas sendiri; jangan sampai galat ini menutupi galat aslinya.
+      await conn.query("SELECT RELEASE_LOCK('kecamatan_migrasi')").catch(() => undefined);
     }
   } finally {
     conn.release();

@@ -60,6 +60,10 @@ export class MemorySesiRepository implements SesiRepository {
     this.store.sesi.delete(tokenHash);
   }
 
+  async deleteByUser(idUser: string): Promise<void> {
+    for (const [hash, s] of this.store.sesi) if (s.id_user === idUser) this.store.sesi.delete(hash);
+  }
+
   async deleteExpired(nowMs: number): Promise<number> {
     let n = 0;
     for (const [hash, s] of this.store.sesi) {

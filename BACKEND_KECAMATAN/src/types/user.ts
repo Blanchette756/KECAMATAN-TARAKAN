@@ -15,14 +15,15 @@ export const UserSchema = Type.Object(
   {
     id_user: Type.String({ pattern: '^USR-[A-Z0-9-]{3,30}$' }),
     id_kelurahan: Type.Union([Type.String(), Type.Null()]),
-    nik: Type.String({ pattern: '^[0-9]{16}$' }),
+    // NIK, email, HP, dan alamat boleh null: petugas tidak wajib punya, warga mengisinya di profil.
+    nik: Type.Union([Type.String({ pattern: '^[0-9]{16}$' }), Type.Null()]),
     nama_lengkap: Type.String({ minLength: 2, maxLength: 120 }),
-    email: Type.String({ pattern: POLA_EMAIL, maxLength: 120 }),
-    no_hp: Type.String({ pattern: '^08[0-9]{8,12}$' }),
+    email: Type.Union([Type.String({ pattern: POLA_EMAIL, maxLength: 120 }), Type.Null()]),
+    no_hp: Type.Union([Type.String({ pattern: '^08[0-9]{8,12}$' }), Type.Null()]),
     role: RoleSchema,
     /** Wajib diisi untuk KASI (bidang yang ia pegang). null untuk role lain. */
     seksi: Type.Union([SeksiSchema, Type.Null()]),
-    alamat: Type.String({ maxLength: 250 }),
+    alamat: Type.Union([Type.String({ maxLength: 250 }), Type.Null()]),
     aktif: Type.Boolean(),
   },
   { additionalProperties: false },
@@ -33,10 +34,10 @@ export type User = Static<typeof UserSchema>;
 export interface UserPublik {
   id_user: string;
   nama_lengkap: string;
-  email: string;
+  email: string | null;
   role: User['role'];
   seksi: User['seksi'];
   id_kelurahan: string | null;
-  nik_tersamar: string;
-  no_hp_tersamar: string;
+  nik_tersamar: string | null;
+  no_hp_tersamar: string | null;
 }

@@ -7,5 +7,9 @@
  */
 export const POLA_EMAIL = '^[^@\\s]+@[^@\\s.]+(?:\\.[^@\\s.]+)+$';
 
+/** Username petugas: huruf kecil, angka, titik, garis bawah, dan tanda hubung. */
+export const POLA_USERNAME = '^[a-z0-9._-]+$';
+export const POLA_USERNAME_LOGIN = '^[A-Za-z0-9._-]+$';
+
 /** Batas body untuk endpoint publik kecil (login, lacak). */
 export const BODY_LIMIT_KECIL = 1024;

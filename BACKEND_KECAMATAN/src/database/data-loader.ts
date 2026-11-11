@@ -156,8 +156,9 @@ export function validateMasterData(raw: RawMasterData): MasterData {
 
   // Users
   for (const d of duplikat(users.map((u) => u.id_user))) masalah.push(`users.json: id_user ganda "${d}"`);
-  for (const d of duplikat(users.map((u) => u.email.toLowerCase()))) masalah.push(`users.json: email ganda "${d}"`);
-  for (const d of duplikat(users.map((u) => u.nik))) masalah.push(`users.json: NIK ganda "${d}"`);
+  const ada = (v: string | null): v is string => v !== null;
+  for (const d of duplikat(users.map((u) => u.email?.toLowerCase() ?? null).filter(ada))) masalah.push(`users.json: email ganda "${d}"`);
+  for (const d of duplikat(users.map((u) => u.nik).filter(ada))) masalah.push(`users.json: NIK ganda "${d}"`);
   for (const u of users) {
     const lok = `users.json [${u.id_user}]`;
     if (u.role === 'KASI' && u.seksi === null) masalah.push(`${lok}: role KASI wajib punya "seksi"`);

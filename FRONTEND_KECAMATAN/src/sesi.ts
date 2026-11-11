@@ -1,9 +1,10 @@
 export interface Pengguna {
   id_user: string;
   nama_lengkap: string;
-  email: string;
+  /** Petugas tidak wajib punya email atau nomor HP. */
+  email: string | null;
   role: 'WARGA' | 'ADMIN' | 'KASI' | 'CAMAT';
-  no_hp_tersamar: string;
+  no_hp_tersamar: string | null;
 }
 
 interface Sesi {

@@ -51,7 +51,7 @@ export async function seedDemoPengajuan(c: Container): Promise<ContohLacak[]> {
   const hasil: ContohLacak[] = [];
   const catat = async (warga: User, id: string) => {
     const d = await services.pengajuan.detail(warga, id);
-    hasil.push({ no_registrasi: d.no_registrasi, last_4_digit_hp: warga.no_hp.slice(-4), status: d.status_pengajuan, layanan: d.nama_layanan });
+    hasil.push({ no_registrasi: d.no_registrasi, last_4_digit_hp: (warga.no_hp ?? '').slice(-4), status: d.status_pengajuan, layanan: d.nama_layanan });
   };
 
   // 1. Baru diajukan

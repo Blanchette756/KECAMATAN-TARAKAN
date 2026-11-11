@@ -26,6 +26,15 @@ export interface Paging {
 export interface UserRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
+  /** Akun yang punya username dan password (petugas). */
+  findKredensial(username: string): Promise<{ user: User; password_hash: string } | null>;
+  findKredensialById(idUser: string): Promise<{ user: User; username: string; password_hash: string } | null>;
+  /** Semua akun yang punya username, urut nama. */
+  listPetugas(): Promise<{ user: User; username: string }[]>;
+  /** Buat akun baru, atau perbarui akun dengan username yang sama (id lama dipertahankan). */
+  simpanPetugas(user: User, username: string, passwordHash: string): Promise<{ id_user: string; baru: boolean }>;
+  /** Ubah data akun petugas; password hanya diganti bila `passwordHash` diisi. */
+  updatePetugas(idUser: string, data: Pick<User, 'nama_lengkap' | 'role' | 'seksi' | 'aktif'>, passwordHash: string | null): Promise<void>;
 }
 
 export interface MasterRepository {
@@ -95,6 +104,8 @@ export interface SesiRepository {
   listByUser(idUser: string): Promise<Sesi[]>;
   delete(tokenHash: string): Promise<void>;
   deleteExpired(nowMs: number): Promise<number>;
+  /** Cabut semua sesi milik satu akun (mis. akun dinonaktifkan atau password direset). */
+  deleteByUser(idUser: string): Promise<void>;
 }
 
 export interface Repositories {

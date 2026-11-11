@@ -292,6 +292,7 @@ export class PengajuanService {
     const cocok =
       p !== null &&
       pemohon !== null &&
+      pemohon.no_hp !== null &&
       timingSafeEqual(Buffer.from(pemohon.no_hp.slice(-4).padStart(4, '#')), Buffer.from(last4.padStart(4, '#').slice(-4)));
     // Pesan dan status sama untuk "tidak ada" dan "HP salah", supaya tidak bisa dipakai menebak.
     if (!p || !cocok) {

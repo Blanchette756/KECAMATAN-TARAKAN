@@ -1,6 +1,8 @@
 import { existsSync } from 'node:fs';
 import { isIP } from 'node:net';
 import path from 'node:path';
+import { POLA_USERNAME } from '../constants/pola.js';
+import { PANJANG_PASSWORD_MIN } from '../utils/password.js';
 
 export type NodeEnv = 'development' | 'test' | 'production';
 export type AuthMode = 'mock';
@@ -44,6 +46,8 @@ export interface AppConfig {
   dbDriver: DbDriver;
   /** null bila dbDriver = memory. */
   db: DbConfig | null;
+  /** Akun Petugas Pelayanan pertama, dibuat saat start bila username itu belum ada. */
+  petugasAwal: { username: string; password: string; nama: string } | null;
   dataDir: string;
   /**
    * File tempat berita disimpan agar tetap ada saat server dimulai ulang.
@@ -195,6 +199,18 @@ export function loadConfig(env: Env = process.env): AppConfig {
     if (db.password === '') throw new ConfigError('DB_PASSWORD wajib diisi bila DB_DRIVER=mysql');
   }
 
+  const awalUsername = str(env, 'PETUGAS_AWAL_USERNAME', '').toLowerCase();
+  const awalPassword = env.PETUGAS_AWAL_PASSWORD ?? '';
+  let petugasAwal: AppConfig['petugasAwal'] = null;
+  if (awalUsername !== '' || awalPassword !== '') {
+    if (awalUsername === '' || awalPassword === '') throw new ConfigError('PETUGAS_AWAL_USERNAME dan PETUGAS_AWAL_PASSWORD harus diisi keduanya');
+    if (!new RegExp(POLA_USERNAME).test(awalUsername) || awalUsername.length < 3 || awalUsername.length > 50) {
+      throw new ConfigError('PETUGAS_AWAL_USERNAME: 3-50 karakter, hanya huruf kecil, angka, titik, garis bawah, atau tanda hubung');
+    }
+    if (awalPassword.length < PANJANG_PASSWORD_MIN) throw new ConfigError(`PETUGAS_AWAL_PASSWORD minimal ${PANJANG_PASSWORD_MIN} karakter`);
+    petugasAwal = { username: awalUsername, password: awalPassword, nama: str(env, 'PETUGAS_AWAL_NAMA', 'Petugas Pelayanan') };
+  }
+
   return {
     nodeEnv,
     nodeEnvEksplisit: (env.NODE_ENV ?? '').trim() !== '',
@@ -224,6 +240,7 @@ export function loadConfig(env: Env = process.env): AppConfig {
     seedDemoPengajuan: bool(env, 'SEED_DEMO_PENGAJUAN', nodeEnv === 'development' && dbDriver === 'memory'),
     dbDriver,
     db,
+    petugasAwal,
     dataDir,
     beritaFile: nodeEnv === 'test' ? null : path.resolve(str(env, 'BERITA_FILE', path.join(dataDir, 'runtime', 'berita.json'))),
     logLevel: str(env, 'LOG_LEVEL', nodeEnv === 'test' ? 'silent' : 'info'),

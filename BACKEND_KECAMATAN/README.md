@@ -28,7 +28,7 @@ Data contoh tidak pernah diisi ke MySQL.
 | Perintah | Fungsi |
 |---|---|
 | `npm run dev` | Mode pengembangan, auto-reload saat file diubah |
-| `npm test` | Menjalankan semua tes otomatis (82 tes, memakai data di memori) |
+| `npm test` | Menjalankan semua tes otomatis (99 tes, memakai data di memori) |
 | `npm run typecheck` | Cek tipe TypeScript |
 | `npm run validate-data` | Cek isi folder `data/` (jalankan setiap kali data diubah) |
 | `npm run check` | Ketiganya sekaligus, jalankan sebelum commit |
@@ -53,7 +53,28 @@ Di Swagger: jalankan login, salin token, klik tombol **Authorize**.
 | `kasi.kesra@example.com` | KASI | Seksi Kesra, untuk menguji bahwa Kasi tidak bisa melihat seksi lain |
 | `camat@example.com` | CAMAT | |
 
-Semua nama, NIK, email, dan nomor HP di atas fiktif.
+Semua nama, NIK, email, dan nomor HP di atas fiktif. Di production, login tiruan hanya bisa untuk akun warga.
+
+### Akun petugas
+
+Petugas (Admin, Kasi, Camat) masuk di `/masuk-petugas` dengan username dan password.
+
+1. **Akun pertama.** Di hPanel, tambahkan environment variables berikut ke website API, lalu deploy ulang:
+   ```
+   PETUGAS_AWAL_USERNAME=pelayanan
+   PETUGAS_AWAL_PASSWORD=...        # minimal 8 karakter
+   PETUGAS_AWAL_NAMA=Nama Petugas   # opsional
+   ```
+   Saat start, server membuat akun Petugas Pelayanan itu bila username tersebut belum ada. Akun yang
+   sudah ada tidak pernah ditimpa. Setelah berhasil masuk, ganti password lewat menu Ganti Password,
+   lalu hapus `PETUGAS_AWAL_PASSWORD` dari hPanel.
+2. **Akun lain** (Kasi, Camat, petugas pelayanan lain) dibuat Petugas Pelayanan lewat menu
+   **Kelola Akun** di panel admin. Di menu itu juga bisa mengubah nama dan peran, mereset password,
+   dan menonaktifkan akun. Reset password dan nonaktifkan langsung menutup sesi akun itu.
+3. **Ganti password sendiri** lewat menu **Ganti Password**, tersedia untuk semua petugas.
+
+Password minimal 8 karakter. Username hanya huruf kecil, angka, titik, garis bawah, atau tanda hubung.
+Akun sendiri tidak bisa dinonaktifkan, dan harus selalu ada minimal satu Petugas Pelayanan aktif.
 
 ---
 
@@ -71,7 +92,12 @@ Semua endpoint diawali `/api/v1`. Format sukses `{ "data": ..., "meta"?: ... }`,
 | GET | `/kelurahan` | publik | Daftar kelurahan |
 | GET | `/kontak` | publik | Kontak pengaduan |
 | POST | `/pengajuan/lacak` | publik | Lacak: `{ no_registrasi, last_4_digit_hp }` |
-| POST | `/auth/mock-login` | publik | Login dummy |
+| POST | `/auth/mock-login` | publik | Login dummy (di production hanya akun warga) |
+| POST | `/auth/login-petugas` | publik | Login petugas: `{ username, password }` |
+| PATCH | `/auth/password` | ADMIN/KASI/CAMAT | Ganti password sendiri: `{ password_lama, password_baru }` |
+| GET | `/petugas` | ADMIN | Daftar akun petugas |
+| POST | `/petugas` | ADMIN | Tambah akun petugas |
+| PATCH | `/petugas/:id` | ADMIN | Ubah nama/peran, reset password, aktif/nonaktif |
 | GET | `/auth/me` | login | Profil sendiri |
 | POST | `/auth/logout` | login | Cabut token |
 | POST | `/pengajuan` | WARGA | Ajukan permohonan baru |
@@ -188,6 +214,8 @@ Untuk beberapa nilai, pakai `"salah_satu": ["A", "B"]`.
 - **Autentikasi dicek paling awal** (hook `onRequest`), sebelum body dibaca.
 - **Token sesi** acak 256-bit dengan masa berlaku. Yang disimpan hanya hash SHA-256-nya.
   Maksimal 5 sesi aktif per akun (`MAX_SESI_PER_USER`); login ke-6 mencabut sesi tertua.
+- **Password petugas** disimpan sebagai hash scrypt. Setelah 5 kali salah, username itu dikunci 15 menit.
+  Pesan galat sama untuk username tidak ada dan password salah.
 - **Otorisasi per objek (anti-IDOR).** Warga hanya bisa membuka pengajuannya sendiri, dan Kasi
   hanya seksinya. Data milik orang lain dijawab 404, bukan 403, supaya keberadaannya tidak bocor.
   ID pengajuan berupa UUID acak.
@@ -289,7 +317,7 @@ src/
 ├── plugins/           Keamanan, autentikasi, penanganan error
 ├── scripts/           validate-data
 └── utils/             Error, ID acak, masking
-test/                  82 tes otomatis (alur, otorisasi/IDOR, lacak, unggah, data, konfigurasi, regresi audit)
+test/                  99 tes otomatis (alur, otorisasi/IDOR, lacak, unggah, login & akun petugas, data, konfigurasi, regresi audit)
 ```
 
 ---

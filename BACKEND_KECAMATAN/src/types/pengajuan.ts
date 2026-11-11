@@ -49,7 +49,7 @@ export interface AuditLog {
   waktu: string;
   id_user: string;
   role: Role;
-  aksi: 'LIHAT_PENGAJUAN' | 'LOGIN' | 'BERITA_TAMBAH' | 'BERITA_UBAH' | 'BERITA_HAPUS';
+  aksi: 'LIHAT_PENGAJUAN' | 'LOGIN' | 'BERITA_TAMBAH' | 'BERITA_UBAH' | 'BERITA_HAPUS' | 'AKUN_TAMBAH' | 'AKUN_UBAH' | 'GANTI_PASSWORD';
   target_id: string | null;
 }
 

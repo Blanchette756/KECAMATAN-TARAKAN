@@ -4,11 +4,17 @@ import {
   ambilAntrian,
   ambilBerita,
   ApiError,
+  daftarAkunPetugas,
   detailPengajuan,
+  gantiPassword,
   hapusBerita,
   keluarAkun,
   simpanBerita,
+  tambahAkunPetugas,
+  ubahAkunPetugas,
+  type AkunPetugas,
   type BerkasDetail,
+  type PeranPetugas,
   type Berita,
   type DetailPengajuan,
   type InputBerita,
@@ -56,8 +62,10 @@ const TAB: { label: string; status: string[] }[] = [
   { label: 'Selesai', status: ['SIAP_DIAMBIL', 'SELESAI', 'DITOLAK'] },
 ];
 
-/** Menu "Kelola Berita" (khusus Petugas Pelayanan). */
+/** Menu "Kelola Berita" dan "Kelola Akun" khusus Petugas Pelayanan; "Ganti Password" untuk semua petugas. */
 const TAB_BERITA = 'Berita';
+const TAB_AKUN = 'Akun';
+const TAB_PASSWORD = 'Password';
 
 const namaLayanan = (id: string, cadangan: string) => LAYANAN.find((item) => item.id === id)?.judul ?? cadangan;
 const hariIni = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
@@ -66,7 +74,7 @@ function Sidebar({ user, data, tab, keTab }: { user: Pengguna; data: Ringkas[]; 
   const hitung = (label: string) => data.filter((item) => TAB.find((t) => t.label === label)!.status.includes(item.status_pengajuan)).length;
   const admin = user.role === 'ADMIN';
   // Kasi dan Camat hanya punya satu antrean kerja (lihat Standar Pelayanan), jadi menunya satu.
-  const menu: { label: string; ikon: IconName; ikonAktif?: IconName; jumlah?: number; tab: string }[] = admin
+  const menu: { label: string; ikon: IconName; ikonAktif?: IconName; ukuran?: number; jumlah?: number; tab: string }[] = admin
     ? [
         { label: 'Ringkasan', ikon: 'nav-grid', tab: 'Semua' },
         { label: 'Berkas Masuk', ikon: 'nav-file', ikonAktif: 'nav-inbox-aktif', jumlah: hitung('Perlu Diperiksa'), tab: 'Perlu Diperiksa' },
@@ -74,10 +82,18 @@ function Sidebar({ user, data, tab, keTab }: { user: Pengguna; data: Ringkas[]; 
         { label: 'Menunggu TTD Camat', ikon: 'nav-pen', jumlah: hitung('Menunggu TTD'), tab: 'Menunggu TTD' },
         { label: 'Selesai', ikon: 'nav-selesai', tab: 'Selesai' },
         { label: 'Kelola Berita', ikon: 'megaphone', tab: TAB_BERITA },
+        { label: 'Kelola Akun', ikon: 'users-20', tab: TAB_AKUN },
+        { label: 'Ganti Password', ikon: 'lock', ukuran: 20, tab: TAB_PASSWORD },
       ]
     : user.role === 'KASI'
-      ? [{ label: 'Perlu Paraf', ikon: 'nav-clipboard', jumlah: data.length, tab: 'Semua' }]
-      : [{ label: 'Perlu Tanda Tangan', ikon: 'nav-pen', jumlah: data.length, tab: 'Semua' }];
+      ? [
+          { label: 'Perlu Paraf', ikon: 'nav-clipboard', jumlah: data.length, tab: 'Semua' },
+          { label: 'Ganti Password', ikon: 'lock', ukuran: 20, tab: TAB_PASSWORD },
+        ]
+      : [
+          { label: 'Perlu Tanda Tangan', ikon: 'nav-pen', jumlah: data.length, tab: 'Semua' },
+          { label: 'Ganti Password', ikon: 'lock', ukuran: 20, tab: TAB_PASSWORD },
+        ];
   const keluar = async () => {
     await keluarAkun();
     hapusSesi();
@@ -93,11 +109,11 @@ function Sidebar({ user, data, tab, keTab }: { user: Pengguna; data: Ringkas[]; 
         </span>
       </a>
       <nav className="sidebar__menu" aria-label="Menu admin">
-        {menu.map(({ label, ikon, ikonAktif, jumlah, tab: tujuan }) => {
-          const aktif = !admin || (tujuan === tab && label !== 'Ringkasan');
+        {menu.map(({ label, ikon, ikonAktif, ukuran, jumlah, tab: tujuan }) => {
+          const aktif = tujuan === tab && label !== 'Ringkasan';
           return (
             <button key={label} type="button" className={`sidebar__item${aktif ? ' sidebar__item--aktif' : ''}`} onClick={() => keTab(tujuan)}>
-              <Icon name={aktif && ikonAktif ? ikonAktif : ikon} />
+              <Icon name={aktif && ikonAktif ? ikonAktif : ikon} ukuran={ukuran} />
               <span className="sidebar__label">{label}</span>
               {jumlah !== undefined && <span className="sidebar__jumlah">{jumlah}</span>}
             </button>
@@ -840,10 +856,314 @@ function KelolaBerita() {
   );
 }
 
+const NAMA_SEKSI: Record<string, string> = {
+  TATA_PEMERINTAHAN: 'Tata Pemerintahan',
+  TRANTIB: 'Ketenteraman & Ketertiban Umum',
+  KESRA: 'Kesejahteraan Rakyat',
+  EKONOMI: 'Ekonomi',
+};
+const PILIHAN_PERAN: { nilai: PeranPetugas; label: string }[] = [
+  { nilai: 'ADMIN', label: 'Petugas Pelayanan' },
+  { nilai: 'KASI', label: 'Kasi' },
+  { nilai: 'CAMAT', label: 'Camat' },
+];
+const labelPeran = (akun: Pick<AkunPetugas, 'role' | 'seksi'>) =>
+  akun.role === 'KASI' ? `Kasi ${NAMA_SEKSI[akun.seksi ?? ''] ?? ''}`.trim() : (PILIHAN_PERAN.find((p) => p.nilai === akun.role)?.label ?? akun.role);
+const PASSWORD_MIN = 8;
+
+type IsianAkun = { username: string; nama_lengkap: string; role: PeranPetugas; seksi: string; password: string; ulang: string };
+const ISIAN_KOSONG: IsianAkun = { username: '', nama_lengkap: '', role: 'KASI', seksi: 'TATA_PEMERINTAHAN', password: '', ulang: '' };
+
+function KelolaAkun({ saya }: { saya: string }) {
+  const [daftar, setDaftar] = useState<AkunPetugas[] | null>(null);
+  const [galatMuat, setGalatMuat] = useState<string | null>(null);
+  // null = form tertutup; `id` terisi = mengubah akun itu.
+  const [form, setForm] = useState<{ id?: string; isian: IsianAkun } | null>(null);
+  const [reset, setReset] = useState<{ id: string; password: string } | null>(null);
+  const [konfirmasi, setKonfirmasi] = useState<string | null>(null);
+  const [galat, setGalat] = useState<string | null>(null);
+  const [pesan, setPesan] = useState<string | null>(null);
+  const { mengirim, mulai, lepas } = useKunciKirim();
+
+  const muat = () =>
+    daftarAkunPetugas()
+      .then(setDaftar)
+      .catch((error: Error) => setGalatMuat(error.message));
+  useEffect(() => {
+    muat();
+  }, []);
+
+  const tutupSemua = () => {
+    setGalat(null);
+    setPesan(null);
+    setForm(null);
+    setReset(null);
+    setKonfirmasi(null);
+  };
+
+  const bukaForm = (akun?: AkunPetugas) => {
+    tutupSemua();
+    setForm(
+      akun
+        ? { id: akun.id_user, isian: { ...ISIAN_KOSONG, username: akun.username, nama_lengkap: akun.nama_lengkap, role: akun.role, seksi: akun.seksi ?? 'TATA_PEMERINTAHAN' } }
+        : { isian: ISIAN_KOSONG },
+    );
+    window.scrollTo(0, 0);
+  };
+
+  const ubahIsian = (kunci: keyof IsianAkun, nilai: string) => form && setForm({ ...form, isian: { ...form.isian, [kunci]: nilai } });
+
+  /** Jalankan aksi dengan kunci kirim, lalu muat ulang daftar. */
+  const jalankan = async (aksi: () => Promise<unknown>, berhasil: string) => {
+    if (!mulai()) return;
+    setGalat(null);
+    try {
+      await aksi();
+      tutupSemua();
+      setPesan(berhasil);
+      await muat();
+    } catch (error) {
+      setGalat(error instanceof ApiError ? error.message : 'Gagal menyimpan.');
+    } finally {
+      lepas();
+    }
+  };
+
+  const simpan = (event: FormEvent) => {
+    event.preventDefault();
+    if (!form) return;
+    const { username, nama_lengkap, role, seksi, password, ulang } = form.isian;
+    const data = { nama_lengkap: nama_lengkap.trim(), role, seksi: role === 'KASI' ? seksi : null };
+    if (form.id) return jalankan(() => ubahAkunPetugas(form.id!, data), `Akun ${username} diperbarui.`);
+    if (!username.trim() || !data.nama_lengkap) return setGalat('Isi username dan nama.');
+    if (password.length < PASSWORD_MIN) return setGalat(`Password minimal ${PASSWORD_MIN} karakter.`);
+    if (password !== ulang) return setGalat('Ulangi password dengan isi yang sama.');
+    return jalankan(() => tambahAkunPetugas({ ...data, username: username.trim().toLowerCase(), password }), `Akun ${username.trim().toLowerCase()} dibuat. Beri tahu pemiliknya username dan password-nya.`);
+  };
+
+  const simpanReset = (event: FormEvent, akun: AkunPetugas) => {
+    event.preventDefault();
+    if (!reset) return;
+    if (reset.password.length < PASSWORD_MIN) return setGalat(`Password minimal ${PASSWORD_MIN} karakter.`);
+    return jalankan(() => ubahAkunPetugas(akun.id_user, { password: reset.password }), `Password ${akun.username} diganti. Sesi yang sedang terbuka di akun itu ditutup.`);
+  };
+
+  return (
+    <>
+      <Topbar kecil="Pengaturan" judul="Kelola Akun Petugas" kanan={<Button label="Tambah Akun" arrow onClick={() => bukaForm()} />} />
+      <div className="admin__konten">
+        {pesan && <p className="pemberitahuan pemberitahuan--hijau pemberitahuan--kecil">{pesan}</p>}
+        {form && (
+          <Kartu judul={form.id ? `Ubah akun ${form.isian.username}` : 'Tambah akun petugas'}>
+            <form className="berita-form" onSubmit={simpan} noValidate>
+              {!form.id && (
+                <label className="field">
+                  <span className="field__label">Username *</span>
+                  <input
+                    className="field__input"
+                    maxLength={50}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    placeholder="Contoh: kasi.tapem"
+                    value={form.isian.username}
+                    onChange={(event) => ubahIsian('username', event.target.value)}
+                  />
+                  <span className="baris__meta">Huruf kecil, angka, titik, garis bawah, atau tanda hubung. Tidak bisa diubah setelah dibuat.</span>
+                </label>
+              )}
+              <label className="field">
+                <span className="field__label">Nama lengkap *</span>
+                <input className="field__input" maxLength={120} value={form.isian.nama_lengkap} onChange={(event) => ubahIsian('nama_lengkap', event.target.value)} />
+              </label>
+              <label className="field">
+                <span className="field__label">Peran *</span>
+                <select className="field__input field__select" value={form.isian.role} onChange={(event) => ubahIsian('role', event.target.value)}>
+                  {PILIHAN_PERAN.map((p) => (
+                    <option key={p.nilai} value={p.nilai}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {form.isian.role === 'KASI' && (
+                <label className="field">
+                  <span className="field__label">Seksi *</span>
+                  <select className="field__input field__select" value={form.isian.seksi} onChange={(event) => ubahIsian('seksi', event.target.value)}>
+                    {Object.entries(NAMA_SEKSI).map(([nilai, label]) => (
+                      <option key={nilai} value={nilai}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="baris__meta">Kasi hanya melihat berkas dari seksinya. Saat ini semua layanan masuk Seksi Tata Pemerintahan.</span>
+                </label>
+              )}
+              {!form.id && (
+                <>
+                  <label className="field">
+                    <span className="field__label">Password *</span>
+                    <input className="field__input" type="password" autoComplete="new-password" value={form.isian.password} onChange={(event) => ubahIsian('password', event.target.value)} />
+                    <span className="baris__meta">Minimal {PASSWORD_MIN} karakter. Pemilik akun bisa menggantinya sendiri lewat menu Ganti Password.</span>
+                  </label>
+                  <label className="field">
+                    <span className="field__label">Ulangi password *</span>
+                    <input className="field__input" type="password" autoComplete="new-password" value={form.isian.ulang} onChange={(event) => ubahIsian('ulang', event.target.value)} />
+                  </label>
+                </>
+              )}
+              <Galat pesan={galat} />
+              <div className="berita-form__aksi">
+                <Button label={mengirim ? 'Menyimpan…' : 'Simpan'} type="submit" disabled={mengirim} />
+                <Button label="Batal" style="secondary" disabled={mengirim} onClick={tutupSemua} />
+              </div>
+            </form>
+          </Kartu>
+        )}
+        {!form && <Galat pesan={galat} />}
+        <section className="kartu kartu--tabel">
+          <div className="periksa__judul">
+            <h2 className="timeline__judul">Akun petugas ({daftar?.length ?? 0})</h2>
+          </div>
+          {daftar === null && <p className="info-kosong tabel-kosong">{galatMuat ?? 'Memuat akun…'}</p>}
+          {daftar?.map((akun) => (
+            <article className="berita-admin" key={akun.id_user}>
+              <div className="berita-admin__teks">
+                <p className="overline">
+                  {labelPeran(akun)}
+                  {akun.id_user === saya ? ' · akun Anda' : ''}
+                </p>
+                <h3 className="baris__judul">{akun.nama_lengkap}</h3>
+                <p className="baris__meta">
+                  Username: {akun.username} · <span className={`status status--${akun.aktif ? 'hijau' : 'merah'}`}>{akun.aktif ? 'Aktif' : 'Nonaktif'}</span>
+                </p>
+                {reset?.id === akun.id_user && (
+                  <form className="berita-form" onSubmit={(event) => simpanReset(event, akun)} noValidate>
+                    <label className="field">
+                      <span className="field__label">Password baru untuk {akun.username}</span>
+                      <input className="field__input" type="password" autoComplete="new-password" value={reset.password} onChange={(event) => setReset({ ...reset, password: event.target.value })} />
+                    </label>
+                    <Galat pesan={galat} />
+                    <div className="berita-form__aksi">
+                      <Button label={mengirim ? 'Menyimpan…' : 'Simpan Password'} type="submit" size="small" disabled={mengirim} />
+                      <Button label="Batal" style="secondary" size="small" disabled={mengirim} onClick={tutupSemua} />
+                    </div>
+                  </form>
+                )}
+              </div>
+              <div className="berita-admin__aksi">
+                {konfirmasi === akun.id_user ? (
+                  <>
+                    <span className="baris__meta">{akun.aktif ? 'Nonaktifkan akun ini?' : 'Aktifkan lagi?'}</span>
+                    <button
+                      type="button"
+                      className={`tautan-polos${akun.aktif ? ' tautan-polos--bahaya' : ''}`}
+                      disabled={mengirim}
+                      onClick={() => jalankan(() => ubahAkunPetugas(akun.id_user, { aktif: !akun.aktif }), `Akun ${akun.username} ${akun.aktif ? 'dinonaktifkan' : 'diaktifkan lagi'}.`)}
+                    >
+                      Ya
+                    </button>
+                    <button type="button" className="tautan-polos" onClick={() => setKonfirmasi(null)}>
+                      Batal
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="tautan-polos" onClick={() => bukaForm(akun)}>
+                      Ubah
+                    </button>
+                    {akun.id_user !== saya && (
+                      <>
+                        <button
+                          type="button"
+                          className="tautan-polos"
+                          onClick={() => {
+                            tutupSemua();
+                            setReset({ id: akun.id_user, password: '' });
+                          }}
+                        >
+                          Reset password
+                        </button>
+                        <button
+                          type="button"
+                          className={`tautan-polos${akun.aktif ? ' tautan-polos--bahaya' : ''}`}
+                          onClick={() => {
+                            tutupSemua();
+                            setKonfirmasi(akun.id_user);
+                          }}
+                        >
+                          {akun.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            </article>
+          ))}
+        </section>
+      </div>
+    </>
+  );
+}
+
+function GantiPassword() {
+  const [isian, setIsian] = useState({ lama: '', baru: '', ulang: '' });
+  const [galat, setGalat] = useState<string | null>(null);
+  const [pesan, setPesan] = useState<string | null>(null);
+  const { mengirim, mulai, lepas } = useKunciKirim();
+
+  const simpan = async (event: FormEvent) => {
+    event.preventDefault();
+    setPesan(null);
+    if (!isian.lama) return setGalat('Isi password lama.');
+    if (isian.baru.length < PASSWORD_MIN) return setGalat(`Password baru minimal ${PASSWORD_MIN} karakter.`);
+    if (isian.baru !== isian.ulang) return setGalat('Ulangi password baru dengan isi yang sama.');
+    if (!mulai()) return;
+    setGalat(null);
+    try {
+      await gantiPassword(isian.lama, isian.baru);
+      setIsian({ lama: '', baru: '', ulang: '' });
+      setPesan('Password berhasil diganti. Pakai password baru saat masuk berikutnya.');
+    } catch (error) {
+      setGalat(error instanceof ApiError ? error.message : 'Gagal mengganti password.');
+    } finally {
+      lepas();
+    }
+  };
+
+  const kolom = (kunci: keyof typeof isian, label: string, autoComplete: string) => (
+    <label className="field">
+      <span className="field__label">{label}</span>
+      <input className="field__input" type="password" autoComplete={autoComplete} value={isian[kunci]} onChange={(event) => setIsian({ ...isian, [kunci]: event.target.value })} />
+    </label>
+  );
+
+  return (
+    <>
+      <Topbar kecil="Pengaturan" judul="Ganti Password" />
+      <div className="admin__konten">
+        <Kartu judul="Password akun Anda">
+          <form className="berita-form" onSubmit={simpan} noValidate>
+            {kolom('lama', 'Password lama', 'current-password')}
+            {kolom('baru', `Password baru (minimal ${PASSWORD_MIN} karakter)`, 'new-password')}
+            {kolom('ulang', 'Ulangi password baru', 'new-password')}
+            <Galat pesan={galat} />
+            {pesan && <p className="pemberitahuan pemberitahuan--hijau pemberitahuan--kecil">{pesan}</p>}
+            <div className="berita-form__aksi">
+              <Button label={mengirim ? 'Menyimpan…' : 'Simpan'} type="submit" disabled={mengirim} />
+            </div>
+          </form>
+        </Kartu>
+      </div>
+    </>
+  );
+}
+
 /** Menu bisa dibuka langsung lewat alamat, mis. /admin?tab=Berita. */
 const tabAwal = () => {
   const diminta = new URLSearchParams(window.location.search).get('tab');
-  return diminta && (diminta === TAB_BERITA || TAB.some((t) => t.label === diminta)) ? diminta : 'Semua';
+  return diminta && ([TAB_BERITA, TAB_AKUN, TAB_PASSWORD].includes(diminta) || TAB.some((t) => t.label === diminta)) ? diminta : 'Semua';
 };
 
 export function Admin() {
@@ -883,11 +1203,15 @@ export function Admin() {
       <main className="admin__utama">
         <Galat pesan={galat} />
         {data &&
-          (petugas.role === 'ADMIN' ? (
+          (tab === TAB_PASSWORD && !id ? (
+            <GantiPassword />
+          ) : petugas.role === 'ADMIN' ? (
             id ? (
               <DetailAdmin id={id} />
             ) : tab === TAB_BERITA ? (
               <KelolaBerita />
+            ) : tab === TAB_AKUN ? (
+              <KelolaAkun saya={petugas.id_user} />
             ) : (
               <Dashboard data={data} tab={tab} setTab={setTab} />
             )

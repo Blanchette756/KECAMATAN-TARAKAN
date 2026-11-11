@@ -66,6 +66,7 @@ const kirimJson = <T>(method: string, path: string, data?: unknown) =>
   panggil<T>(path, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(data ?? {}) });
 
 export const masukTiruan = (email: string) => kirimJson<{ token: string; user: Pengguna }>('POST', '/auth/mock-login', { email });
+export const masukPetugas = (username: string, password: string) => kirimJson<{ token: string; user: Pengguna }>('POST', '/auth/login-petugas', { username, password });
 export const keluarAkun = () => panggil<unknown>('/auth/logout', { method: 'POST' }).catch(() => null);
 
 export interface FieldFormulir {
@@ -129,7 +130,7 @@ export interface Ringkas {
   tgl_pengajuan: string;
   tgl_diperbarui: string;
   version: number;
-  pemohon?: { nama_lengkap: string; no_hp_tersamar: string };
+  pemohon?: { nama_lengkap: string; no_hp_tersamar: string | null };
 }
 
 export interface DetailPengajuan extends Omit<Ringkas, 'pemohon'> {
@@ -137,7 +138,7 @@ export interface DetailPengajuan extends Omit<Ringkas, 'pemohon'> {
   alasan_penolakan: string | null;
   nomor_surat: string | null;
   data_formulir: Record<string, unknown>;
-  pemohon: { nama_lengkap: string; nik: string; no_hp_tersamar: string; email: string; alamat: string } | null;
+  pemohon: { nama_lengkap: string; nik: string | null; no_hp_tersamar: string | null; email: string | null; alamat: string | null } | null;
   berkas: BerkasDetail[];
   riwayat: { ke: string; label: string; aksi: string; oleh_role: string; catatan: string | null; waktu: string }[];
 }
@@ -170,6 +171,29 @@ export const ambilBerita = () => panggil<Berita[]>('/berita');
 /** Khusus petugas pelayanan. Tanpa `id` = tambah, dengan `id` = ubah. */
 export const simpanBerita = (input: InputBerita, id?: string) => (id ? kirimJson<Berita>('PATCH', `/berita/${id}`, input) : kirimJson<Berita>('POST', '/berita', input));
 export const hapusBerita = (id: string) => kirimJson<{ id_berita: string }>('DELETE', `/berita/${id}`);
+
+export type PeranPetugas = 'ADMIN' | 'KASI' | 'CAMAT';
+export interface AkunPetugas {
+  id_user: string;
+  username: string;
+  nama_lengkap: string;
+  role: PeranPetugas;
+  seksi: string | null;
+  aktif: boolean;
+}
+export interface InputAkunPetugas {
+  username: string;
+  nama_lengkap: string;
+  role: PeranPetugas;
+  seksi: string | null;
+  password: string;
+}
+
+/** Khusus Petugas Pelayanan. */
+export const daftarAkunPetugas = () => panggil<AkunPetugas[]>('/petugas');
+export const tambahAkunPetugas = (data: InputAkunPetugas) => kirimJson<AkunPetugas>('POST', '/petugas', data);
+export const ubahAkunPetugas = (id: string, data: Partial<Omit<InputAkunPetugas, 'username'> & { aktif: boolean }>) => kirimJson<AkunPetugas>('PATCH', `/petugas/${id}`, data);
+export const gantiPassword = (password_lama: string, password_baru: string) => kirimJson<{ berhasil: boolean }>('PATCH', '/auth/password', { password_lama, password_baru });
 
 /** Backend membatasi 50 berkas per halaman, jadi semua halaman diambil agar daftar dan angka dashboard lengkap. */
 export async function ambilAntrian(semua: boolean): Promise<Ringkas[]> {

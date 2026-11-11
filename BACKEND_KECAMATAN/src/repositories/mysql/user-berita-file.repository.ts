@@ -1,4 +1,4 @@
-import { teksAtauNull, type Db, type ResultSetHeader, type RowDataPacket } from '../../database/mysql/pool.js';
+import { dalamTransaksi, teksAtauNull, type Db, type ResultSetHeader, type RowDataPacket } from '../../database/mysql/pool.js';
 import type { Berita } from '../../types/berita.js';
 import type { FileUnggahan, MimeDiizinkan } from '../../types/berkas.js';
 import type { Role, Seksi } from '../../types/common.js';
@@ -11,16 +11,18 @@ function userDariBaris(r: RowDataPacket): User {
   return {
     id_user: String(r.id_user),
     id_kelurahan: teksAtauNull(r.id_kelurahan),
-    nik: String(r.nik),
+    nik: teksAtauNull(r.nik),
     nama_lengkap: String(r.nama_lengkap),
-    email: String(r.email),
-    no_hp: String(r.no_hp),
+    email: teksAtauNull(r.email),
+    no_hp: teksAtauNull(r.no_hp),
     role: r.role as Role,
     seksi: teksAtauNull(r.seksi) as Seksi | null,
-    alamat: String(r.alamat),
+    alamat: teksAtauNull(r.alamat),
     aktif: Number(r.aktif) === 1,
   };
 }
+
+const nilaiUser = (u: User, kolom: readonly (typeof KOLOM_USER)[number][]) => kolom.map((k) => (k === 'aktif' ? (u.aktif ? 1 : 0) : u[k]));
 
 export class MysqlUserRepository implements UserRepository {
   constructor(private readonly db: Db) {}
@@ -34,6 +36,62 @@ export class MysqlUserRepository implements UserRepository {
     // Kolasi utf8mb4_unicode_ci tidak membedakan huruf besar dan kecil.
     const [rows] = await this.db.execute<RowDataPacket[]>(`SELECT ${KOLOM_USER.join(', ')} FROM users WHERE email = ?`, [email.trim()]);
     return rows[0] ? userDariBaris(rows[0]) : null;
+  }
+
+  async findKredensial(username: string): Promise<{ user: User; password_hash: string } | null> {
+    const [rows] = await this.db.execute<RowDataPacket[]>(
+      `SELECT ${KOLOM_USER.join(', ')}, password_hash FROM users WHERE username = ? AND password_hash IS NOT NULL`,
+      [username.trim().toLowerCase()],
+    );
+    const r = rows[0];
+    return r ? { user: userDariBaris(r), password_hash: String(r.password_hash) } : null;
+  }
+
+  async findKredensialById(idUser: string): Promise<{ user: User; username: string; password_hash: string } | null> {
+    const [rows] = await this.db.execute<RowDataPacket[]>(
+      `SELECT ${KOLOM_USER.join(', ')}, username, password_hash FROM users WHERE id_user = ? AND username IS NOT NULL AND password_hash IS NOT NULL`,
+      [idUser],
+    );
+    const r = rows[0];
+    return r ? { user: userDariBaris(r), username: String(r.username), password_hash: String(r.password_hash) } : null;
+  }
+
+  async listPetugas(): Promise<{ user: User; username: string }[]> {
+    const [rows] = await this.db.query<RowDataPacket[]>(`SELECT ${KOLOM_USER.join(', ')}, username FROM users WHERE username IS NOT NULL ORDER BY nama_lengkap`);
+    return rows.map((r) => ({ user: userDariBaris(r), username: String(r.username) }));
+  }
+
+  async updatePetugas(idUser: string, data: Pick<User, 'nama_lengkap' | 'role' | 'seksi' | 'aktif'>, passwordHash: string | null): Promise<void> {
+    const kolom = ['nama_lengkap = ?', 'role = ?', 'seksi = ?', 'aktif = ?'];
+    const nilai: (string | number | null)[] = [data.nama_lengkap, data.role, data.seksi, data.aktif ? 1 : 0];
+    if (passwordHash !== null) {
+      kolom.push('password_hash = ?');
+      nilai.push(passwordHash);
+    }
+    const [hasil] = await this.db.execute<ResultSetHeader>(`UPDATE users SET ${kolom.join(', ')} WHERE id_user = ? AND username IS NOT NULL`, [...nilai, idUser]);
+    if (hasil.affectedRows !== 1) throw new Error(`Akun petugas ${idUser} tidak ada`);
+  }
+
+  async simpanPetugas(user: User, username: string, passwordHash: string): Promise<{ id_user: string; baru: boolean }> {
+    const kunci = username.trim().toLowerCase();
+    return dalamTransaksi(this.db, async (conn) => {
+      const [ada] = await conn.execute<RowDataPacket[]>('SELECT id_user FROM users WHERE username = ? FOR UPDATE', [kunci]);
+      const lama = ada[0] ? String(ada[0].id_user) : null;
+      if (lama) {
+        const ubah = KOLOM_USER.filter((k) => k !== 'id_user');
+        await conn.execute(`UPDATE users SET ${ubah.map((k) => `${k} = ?`).join(', ')}, password_hash = ? WHERE id_user = ?`, [
+          ...nilaiUser(user, ubah),
+          passwordHash,
+          lama,
+        ]);
+        return { id_user: lama, baru: false };
+      }
+      await conn.execute(
+        `INSERT INTO users (${KOLOM_USER.join(', ')}, username, password_hash) VALUES (${KOLOM_USER.map(() => '?').join(', ')}, ?, ?)`,
+        [...nilaiUser(user, KOLOM_USER), kunci, passwordHash],
+      );
+      return { id_user: user.id_user, baru: true };
+    });
   }
 }
 
