@@ -448,13 +448,23 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-12);
+  min-width: 0;
   color: var(--color-text-secondary);
 }
 
 .donat__legenda li {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-4) var(--space-8);
+}
+
+/* HP: diagram dan keterangan tidak muat berdampingan (halaman jadi bisa digeser ke samping), jadi ditumpuk. */
+@media (max-width: 520px) {
+  .donat {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 .donat__legenda strong {
