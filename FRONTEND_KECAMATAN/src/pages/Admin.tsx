@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { aksiPengajuan, ambilAntrian, ambilFileBerkas, ApiError, detailPengajuan, keluarAkun, type BerkasDetail, type DetailPengajuan, type Ringkas } from '../api';
 import { Icon, type IconName } from '../components/Icon';
 import { BarisData, Galat, Kartu, Riwayat, tanggal, ukuranFile } from '../components/portal';
@@ -239,11 +239,37 @@ function Dashboard({ data, tab, setTab }: { data: Ringkas[]; tab: string; setTab
 
 function PratinjauBerkas({ daftar, indeks, setIndeks }: { daftar: BerkasDetail[]; indeks: number; setIndeks: (indeks: number) => void }) {
   const [pratinjau, setPratinjau] = useState<string | null>(null);
+  const [layarPenuh, setLayarPenuh] = useState(false);
+  const penampil = useRef<HTMLDialogElement>(null);
   const berkas = daftar[indeks];
+  const adaSebelumnya = indeks > 0;
+  const adaBerikutnya = indeks < daftar.length - 1;
+
   useEffect(() => {
     setPratinjau(null);
     if (berkas?.file_url) ambilFileBerkas(berkas.file_url).then(setPratinjau).catch(() => setPratinjau(null));
   }, [berkas?.id_berkas]);
+
+  // Berkas dilindungi token, jadi dibuka di halaman ini (bukan tab baru yang hanya berisi salinan blob sementara).
+  useEffect(() => {
+    if (layarPenuh && penampil.current && !penampil.current.open) {
+      penampil.current.showModal();
+      // Fokus awal ke Tutup, bukan Unduh, supaya Enter tidak langsung mengunduh berkas.
+      penampil.current.querySelector<HTMLButtonElement>('.penampil__tutup')?.focus();
+    }
+  }, [layarPenuh]);
+
+  const isi = (kelas: string) =>
+    pratinjau && berkas?.mime_type.startsWith('image/') ? (
+      <img className={kelas} src={pratinjau} alt={berkas.nama_syarat} />
+    ) : pratinjau && berkas?.mime_type === 'application/pdf' ? (
+      <iframe className={kelas} src={pratinjau} title={berkas.nama_syarat} />
+    ) : (
+      <>
+        <Icon name="image" />
+        {berkas?.file_url ? 'Memuat…' : `${berkas?.nama_file ?? 'Berkas'} (data contoh tanpa file)`}
+      </>
+    );
 
   return (
     <Kartu
@@ -254,29 +280,68 @@ function PratinjauBerkas({ daftar, indeks, setIndeks }: { daftar: BerkasDetail[]
         </span>
       }
     >
-      <div className="pratinjau">
-        {pratinjau && berkas?.mime_type.startsWith('image/') && <img src={pratinjau} alt={berkas.nama_syarat} />}
-        {pratinjau && berkas?.mime_type === 'application/pdf' && <iframe src={pratinjau} title={berkas.nama_syarat} />}
-        {!pratinjau && (
-          <>
-            <Icon name="image" />
-            {berkas?.file_url ? 'Memuat…' : `${berkas?.nama_file ?? 'Berkas'} (data contoh tanpa file)`}
-          </>
-        )}
-      </div>
+      <div className="pratinjau">{isi('')}</div>
       <div className="pratinjau__kontrol">
-        <button type="button" className="tautan-polos" disabled={indeks === 0} onClick={() => setIndeks(indeks - 1)}>
+        <button type="button" className="tautan-polos" disabled={!adaSebelumnya} onClick={() => setIndeks(indeks - 1)}>
           ‹ Sebelumnya
         </button>
         {pratinjau && (
-          <a className="tautan-polos" href={pratinjau} target="_blank" rel="noreferrer">
-            Perbesar
-          </a>
+          <span className="pratinjau__tengah">
+            <button type="button" className="tautan-polos" onClick={() => setLayarPenuh(true)}>
+              Perbesar
+            </button>
+            <a className="tautan-polos" href={pratinjau} download={berkas?.nama_file}>
+              Unduh
+            </a>
+          </span>
         )}
-        <button type="button" className="tautan-polos" disabled={indeks >= daftar.length - 1} onClick={() => setIndeks(indeks + 1)}>
+        <button type="button" className="tautan-polos" disabled={!adaBerikutnya} onClick={() => setIndeks(indeks + 1)}>
           Berikutnya ›
         </button>
       </div>
+
+      {layarPenuh && berkas && (
+        <dialog
+          ref={penampil}
+          className="penampil"
+          aria-labelledby="penampil-judul"
+          onClose={() => setLayarPenuh(false)}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowLeft' && adaSebelumnya) setIndeks(indeks - 1);
+            if (event.key === 'ArrowRight' && adaBerikutnya) setIndeks(indeks + 1);
+          }}
+        >
+          <div className="penampil__atas">
+            <div className="penampil__judul">
+              <p className="overline">
+                Berkas {indeks + 1} dari {daftar.length}
+              </p>
+              <h2 id="penampil-judul" className="baris__judul">
+                {berkas.nama_syarat}
+              </h2>
+              <p className="baris__meta">{berkas.nama_file}</p>
+            </div>
+            {pratinjau && (
+              <a className="penampil__tombol" href={pratinjau} download={berkas.nama_file}>
+                <Icon name="download" />
+                Unduh
+              </a>
+            )}
+            <button type="button" className="penampil__tombol penampil__tutup" onClick={() => penampil.current?.close()}>
+              ✕ Tutup
+            </button>
+          </div>
+          <div className="penampil__isi">
+            {isi('penampil__media')}
+            <button type="button" className="penampil__panah penampil__panah--kiri" aria-label="Berkas sebelumnya" disabled={!adaSebelumnya} onClick={() => setIndeks(indeks - 1)}>
+              <Icon name="chevron-left-16" ukuran={20} />
+            </button>
+            <button type="button" className="penampil__panah penampil__panah--kanan" aria-label="Berkas berikutnya" disabled={!adaBerikutnya} onClick={() => setIndeks(indeks + 1)}>
+              <Icon name="chevron-right-16" ukuran={20} />
+            </button>
+          </div>
+        </dialog>
+      )}
     </Kartu>
   );
 }
