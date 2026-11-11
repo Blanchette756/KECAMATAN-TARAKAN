@@ -62,9 +62,6 @@ function KartuKelurahan({ nama, lurah, alamat }: KantorKelurahan) {
         <br />
         Kantor: {alamat}
       </p>
-      <a className="link" href="/kontak#kontak-kelurahan">
-        Lihat kontak
-      </a>
     </article>
   );
 }

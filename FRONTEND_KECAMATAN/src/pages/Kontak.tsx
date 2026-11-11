@@ -4,7 +4,7 @@ import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button, InputField, PageBanner, SectionHeading, SelectField, TextareaField } from '../components/ui';
 import { KANTOR_KELURAHAN } from '../data/kelurahan';
-import { ALAMAT, EMAIL, JAM_PELAYANAN, MEDIA_SOSIAL, TAUTAN_PETA, TAUTAN_WA, TELEPON, tautanPeta, WHATSAPP } from '../data/kontak';
+import { ALAMAT, EMAIL, JAM_PELAYANAN, MEDIA_SOSIAL, TAUTAN_PETA, TAUTAN_WA, TELEPON, WHATSAPP } from '../data/kontak';
 
 const INFO: { ikon: IconName; judul: string; isi: string }[] = [
   { ikon: 'map-pin-22', judul: 'Alamat Kantor', isi: ALAMAT },
@@ -113,7 +113,7 @@ export function Kontak() {
         <section className="section section--page" id="kontak-kelurahan">
           <SectionHeading overline="Kantor kelurahan" judul="Kontak Kelurahan" deskripsi={<span className="only-desktop">Hubungi kantor kelurahan untuk layanan administrasi tingkat kelurahan.</span>} />
           <div className="wilayah-grid">
-            {KANTOR_KELURAHAN.map(({ nama, lurah, alamat, whatsapp, email, lat, lng }) => (
+            {KANTOR_KELURAHAN.map(({ nama, lurah, alamat, whatsapp, email }) => (
               <article className="tile tile--auto" key={nama}>
                 <span className="tile__icon">
                   <Icon name="map-pin-md" />
@@ -128,9 +128,6 @@ export function Kontak() {
                   <br />
                   Email: {email}
                 </p>
-                <a className="link" href={tautanPeta(lat, lng)} target="_blank" rel="noreferrer">
-                  Petunjuk arah
-                </a>
               </article>
             ))}
             <div className="ppid">
