@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { aksiPengajuan, ambilAntrian, ambilFileBerkas, ApiError, detailPengajuan, keluarAkun, type DetailPengajuan, type Ringkas } from '../api';
+import { aksiPengajuan, ambilAntrian, ambilFileBerkas, ApiError, detailPengajuan, keluarAkun, type BerkasDetail, type DetailPengajuan, type Ringkas } from '../api';
 import { Icon, type IconName } from '../components/Icon';
 import { BarisData, Galat, Kartu, Riwayat, tanggal, ukuranFile } from '../components/portal';
 import { Button, Logo, SelectField } from '../components/ui';
@@ -7,6 +7,7 @@ import { LAYANAN } from '../data/layanan';
 import { ambilSesi, hapusSesi, inisial, type Pengguna } from '../sesi';
 
 const PERAN: Record<string, string> = { ADMIN: 'Petugas Pelayanan', KASI: 'Kasi Tata Pemerintahan', CAMAT: 'Camat' };
+const PANEL: Record<string, string> = { ADMIN: 'Admin Pelayanan', KASI: 'Panel Kasi', CAMAT: 'Panel Camat' };
 const PER_HALAMAN = 8;
 
 const BADGE: Record<string, { label: string; warna: string }> = {
@@ -22,6 +23,13 @@ const BADGE: Record<string, { label: string; warna: string }> = {
 
 const Badge = ({ status }: { status: string }) => <span className={`status status--${BADGE[status]?.warna}`}>{BADGE[status]?.label ?? status}</span>;
 
+// Hasil pemeriksaan petugas per berkas, ditampilkan ke Kasi sebagai bahan pemeriksaan.
+const HASIL_PETUGAS: Record<BerkasDetail['status_berkas'], { label: string; warna: string }> = {
+  VALID: { label: 'Sesuai', warna: 'hijau' },
+  PERLU_PERBAIKAN: { label: 'Tidak sesuai', warna: 'merah' },
+  MENUNGGU: { label: 'Belum dicek', warna: 'netral' },
+};
+
 const TAB: { label: string; status: string[] }[] = [
   { label: 'Semua', status: [] },
   { label: 'Perlu Diperiksa', status: ['DIAJUKAN', 'DIKEMBALIKAN_KE_ADMIN'] },
@@ -36,14 +44,19 @@ const hariIni = (iso: string) => new Date(iso).toDateString() === new Date().toD
 
 function Sidebar({ user, data, tab, keTab }: { user: Pengguna; data: Ringkas[]; tab: string; keTab: (label: string) => void }) {
   const hitung = (label: string) => data.filter((item) => TAB.find((t) => t.label === label)!.status.includes(item.status_pengajuan)).length;
-  const antrianKerja = user.role === 'ADMIN' ? hitung('Perlu Diperiksa') : data.length;
-  const menu: { label: string; ikon: IconName; ikonAktif?: IconName; jumlah?: number; tab: string }[] = [
-    { label: 'Ringkasan', ikon: 'nav-grid', tab: 'Semua' },
-    { label: 'Berkas Masuk', ikon: 'nav-file', ikonAktif: 'nav-inbox-aktif', jumlah: antrianKerja, tab: 'Perlu Diperiksa' },
-    { label: 'Menunggu Paraf Kasi', ikon: 'nav-clipboard', jumlah: hitung('Menunggu Paraf'), tab: 'Menunggu Paraf' },
-    { label: 'Menunggu TTD Camat', ikon: 'nav-pen', jumlah: hitung('Menunggu TTD'), tab: 'Menunggu TTD' },
-    { label: 'Selesai', ikon: 'nav-selesai', tab: 'Selesai' },
-  ];
+  const admin = user.role === 'ADMIN';
+  // Kasi dan Camat hanya punya satu antrean kerja (lihat Standar Pelayanan), jadi menunya satu.
+  const menu: { label: string; ikon: IconName; ikonAktif?: IconName; jumlah?: number; tab: string }[] = admin
+    ? [
+        { label: 'Ringkasan', ikon: 'nav-grid', tab: 'Semua' },
+        { label: 'Berkas Masuk', ikon: 'nav-file', ikonAktif: 'nav-inbox-aktif', jumlah: hitung('Perlu Diperiksa'), tab: 'Perlu Diperiksa' },
+        { label: 'Menunggu Paraf Kasi', ikon: 'nav-clipboard', jumlah: hitung('Menunggu Paraf'), tab: 'Menunggu Paraf' },
+        { label: 'Menunggu TTD Camat', ikon: 'nav-pen', jumlah: hitung('Menunggu TTD'), tab: 'Menunggu TTD' },
+        { label: 'Selesai', ikon: 'nav-selesai', tab: 'Selesai' },
+      ]
+    : user.role === 'KASI'
+      ? [{ label: 'Perlu Paraf', ikon: 'nav-clipboard', jumlah: data.length, tab: 'Semua' }]
+      : [{ label: 'Perlu Tanda Tangan', ikon: 'nav-pen', jumlah: data.length, tab: 'Semua' }];
   const keluar = async () => {
     await keluarAkun();
     hapusSesi();
@@ -54,18 +67,18 @@ function Sidebar({ user, data, tab, keTab }: { user: Pengguna; data: Ringkas[]; 
       <a className="sidebar__brand" href="/admin">
         <Logo variant="sidebar" />
         <span>
-          <span className="sidebar__peran">Admin Pelayanan</span>
+          <span className="sidebar__peran">{PANEL[user.role]}</span>
           <span className="sidebar__nama">Kec. Tarakan Timur</span>
         </span>
       </a>
       <nav className="sidebar__menu" aria-label="Menu admin">
         {menu.map(({ label, ikon, ikonAktif, jumlah, tab: tujuan }) => {
-          const aktif = tujuan === tab && label !== 'Ringkasan';
+          const aktif = !admin || (tujuan === tab && label !== 'Ringkasan');
           return (
             <button key={label} type="button" className={`sidebar__item${aktif ? ' sidebar__item--aktif' : ''}`} onClick={() => keTab(tujuan)}>
               <Icon name={aktif && ikonAktif ? ikonAktif : ikon} />
               <span className="sidebar__label">{label}</span>
-              {jumlah !== undefined && user.role === 'ADMIN' && <span className="sidebar__jumlah">{jumlah}</span>}
+              {jumlah !== undefined && <span className="sidebar__jumlah">{jumlah}</span>}
             </button>
           );
         })}
@@ -224,19 +237,56 @@ function Dashboard({ data, tab, setTab }: { data: Ringkas[]; tab: string; setTab
   );
 }
 
+function PratinjauBerkas({ daftar, indeks, setIndeks }: { daftar: BerkasDetail[]; indeks: number; setIndeks: (indeks: number) => void }) {
+  const [pratinjau, setPratinjau] = useState<string | null>(null);
+  const berkas = daftar[indeks];
+  useEffect(() => {
+    setPratinjau(null);
+    if (berkas?.file_url) ambilFileBerkas(berkas.file_url).then(setPratinjau).catch(() => setPratinjau(null));
+  }, [berkas?.id_berkas]);
+
+  return (
+    <Kartu
+      judul="Pratinjau berkas"
+      aksi={
+        <span className="baris__meta">
+          {indeks + 1} / {daftar.length}
+        </span>
+      }
+    >
+      <div className="pratinjau">
+        {pratinjau && berkas?.mime_type.startsWith('image/') && <img src={pratinjau} alt={berkas.nama_syarat} />}
+        {pratinjau && berkas?.mime_type === 'application/pdf' && <iframe src={pratinjau} title={berkas.nama_syarat} />}
+        {!pratinjau && (
+          <>
+            <Icon name="image" />
+            {berkas?.file_url ? 'Memuat…' : `${berkas?.nama_file ?? 'Berkas'} (data contoh tanpa file)`}
+          </>
+        )}
+      </div>
+      <div className="pratinjau__kontrol">
+        <button type="button" className="tautan-polos" disabled={indeks === 0} onClick={() => setIndeks(indeks - 1)}>
+          ‹ Sebelumnya
+        </button>
+        {pratinjau && (
+          <a className="tautan-polos" href={pratinjau} target="_blank" rel="noreferrer">
+            Perbesar
+          </a>
+        )}
+        <button type="button" className="tautan-polos" disabled={indeks >= daftar.length - 1} onClick={() => setIndeks(indeks + 1)}>
+          Berikutnya ›
+        </button>
+      </div>
+    </Kartu>
+  );
+}
+
 function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () => void }) {
   const dapatDiproses = ['DIAJUKAN', 'DIKEMBALIKAN_KE_ADMIN'].includes(data.status_pengajuan);
   const [nilai, setNilai] = useState<Record<string, { sesuai: boolean; catatan: string }>>({});
   const [catatan, setCatatan] = useState('');
   const [indeks, setIndeks] = useState(0);
-  const [pratinjau, setPratinjau] = useState<string | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
-
-  const berkas = data.berkas[indeks];
-  useEffect(() => {
-    setPratinjau(null);
-    if (berkas?.file_url) ambilFileBerkas(berkas.file_url).then(setPratinjau).catch(() => setPratinjau(null));
-  }, [berkas?.id_berkas]);
 
   const jumlahSesuai = Object.values(nilai).filter((n) => n.sesuai).length;
   const tidakSesuai = Object.entries(nilai).filter(([, n]) => !n.sesuai);
@@ -340,38 +390,7 @@ function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () 
           </section>
         </div>
         <aside className="admin__samping">
-          <Kartu
-            judul="Pratinjau berkas"
-            aksi={
-              <span className="baris__meta">
-                {indeks + 1} / {data.berkas.length}
-              </span>
-            }
-          >
-            <div className="pratinjau">
-              {pratinjau && berkas?.mime_type.startsWith('image/') && <img src={pratinjau} alt={berkas.nama_syarat} />}
-              {pratinjau && berkas?.mime_type === 'application/pdf' && <iframe src={pratinjau} title={berkas.nama_syarat} />}
-              {!pratinjau && (
-                <>
-                  <Icon name="image" />
-                  {berkas?.file_url ? 'Memuat…' : `${berkas?.nama_file ?? 'Berkas'} (data contoh tanpa file)`}
-                </>
-              )}
-            </div>
-            <div className="pratinjau__kontrol">
-              <button type="button" className="tautan-polos" disabled={indeks === 0} onClick={() => setIndeks(indeks - 1)}>
-                ‹ Sebelumnya
-              </button>
-              {pratinjau && (
-                <a className="tautan-polos" href={pratinjau} target="_blank" rel="noreferrer">
-                  Perbesar
-                </a>
-              )}
-              <button type="button" className="tautan-polos" disabled={indeks >= data.berkas.length - 1} onClick={() => setIndeks(indeks + 1)}>
-                Berikutnya ›
-              </button>
-            </div>
-          </Kartu>
+          <PratinjauBerkas daftar={data.berkas} indeks={indeks} setIndeks={setIndeks} />
           {dapatDiproses && (
             <Kartu judul="Keputusan petugas">
               {tidakSesuai.length > 0 && <p className="pemberitahuan pemberitahuan--merah pemberitahuan--kecil">{tidakSesuai.length} persyaratan tidak sesuai. Kirim permintaan perbaikan kepada pemohon.</p>}
@@ -471,10 +490,12 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
   const [id, setId] = useState(idAwal ?? antrian[0]?.id_pengajuan ?? null);
   const [data, setData] = useState<DetailPengajuan | null>(null);
   const [catatan, setCatatan] = useState('');
+  const [indeks, setIndeks] = useState(0);
   const [galat, setGalat] = useState<string | null>(null);
 
   useEffect(() => {
     setData(null);
+    setIndeks(0);
     if (id)
       detailPengajuan(id)
         .then(setData)
@@ -492,12 +513,40 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
     }
   };
 
+  const jumlahSesuai = data ? data.berkas.filter((b) => b.status_berkas === 'VALID').length : 0;
+  // Standar Pelayanan: Kasi memeriksa berkas lalu memaraf, Camat hanya menandatangani surat.
+  const paraf = data && [...data.riwayat].reverse().find((r) => r.aksi === 'KASI_PARAF');
+
+  const keputusan = data && (
+    <>
+      <label className="field">
+        <span className="field__label">Catatan (wajib jika mengembalikan atau menolak)</span>
+        <textarea className="field__input periksa__catatan" value={catatan} onChange={(event) => setCatatan(event.target.value)} />
+      </label>
+      <Galat pesan={galat} />
+      <Button label={kasi ? 'Paraf & Teruskan ke Camat' : 'Tanda Tangani'} arrow onClick={() => kirim('SETUJUI')} />
+      <Button label="Kembalikan ke Petugas" style="secondary" disabled={!catatan.trim()} onClick={() => kirim('KEMBALIKAN')} />
+      <button type="button" className="tautan-polos tautan-polos--bahaya" disabled={!catatan.trim()} onClick={() => kirim('TOLAK')}>
+        Tolak permohonan
+      </button>
+      <p className="baris__meta">
+        {kasi
+          ? 'Setelah diparaf, berkas diteruskan ke Camat untuk ditandatangani.'
+          : 'Setelah ditandatangani, berkas diteruskan ke petugas pelayanan untuk diberi nomor registrasi dan stempel.'}
+      </p>
+    </>
+  );
+
   return (
     <>
-      <Topbar kecil={kasi ? 'Menunggu Paraf' : 'Menunggu Tanda Tangan'} judul={kasi ? 'Pemeriksaan & Paraf' : 'Persetujuan & Tanda Tangan'} kanan={<span className="pil pil--aksen">{antrian.length} berkas menunggu</span>} />
+      <Topbar
+        kecil={kasi ? 'Kasi Tata Pemerintahan › Menunggu Paraf' : 'Camat › Menunggu Tanda Tangan'}
+        judul={kasi ? 'Pemeriksaan Berkas & Paraf' : 'Tanda Tangan Surat'}
+        kanan={<span className="pil pil--aksen">{kasi ? `${antrian.length} berkas menunggu paraf` : `${antrian.length} surat menunggu tanda tangan`}</span>}
+      />
       <div className="persetujuan-admin">
-        <Kartu judul={`Antrean (${antrian.length})`}>
-          {antrian.length === 0 && <p className="heading__desc">Tidak ada berkas menunggu.</p>}
+        <Kartu judul={`${kasi ? 'Antrean paraf' : 'Antrean tanda tangan'} (${antrian.length})`}>
+          {antrian.length === 0 && <p className="heading__desc">{kasi ? 'Tidak ada berkas yang menunggu paraf.' : 'Tidak ada surat yang menunggu tanda tangan.'}</p>}
           {antrian.map((item) => (
             <button type="button" key={item.id_pengajuan} className={`antrean${item.id_pengajuan === id ? ' antrean--aktif' : ''}`} onClick={() => setId(item.id_pengajuan)}>
               <span className="overline">{item.no_registrasi}</span>
@@ -506,7 +555,47 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
             </button>
           ))}
         </Kartu>
-        {data && (
+        {data && kasi && (
+          <>
+            <div className="admin__kiri">
+              <section className="kartu kartu--tabel">
+                <div className="periksa__judul">
+                  <h2 className="timeline__judul">Berkas persyaratan ({data.berkas.length})</h2>
+                  <span className="status status--hijau">{jumlahSesuai} sesuai menurut petugas</span>
+                </div>
+                {data.berkas.map((item, urutan) => (
+                  <div className={`periksa__baris${urutan === indeks ? ' periksa__baris--aktif' : ''}`} key={item.id_berkas}>
+                    <div className="periksa__atas">
+                      <span className="syarat__nomor">{urutan + 1}</span>
+                      <div className="dokumen__teks">
+                        <p className="baris__judul">{item.nama_syarat}</p>
+                        <p className="baris__meta">
+                          {item.nama_file} · {ukuranFile(item.ukuran_byte)} ·{' '}
+                          <button type="button" className="tautan-polos" onClick={() => setIndeks(urutan)}>
+                            Lihat berkas
+                          </button>
+                        </p>
+                        {item.catatan_admin && <p className="baris__meta">Catatan petugas: {item.catatan_admin}</p>}
+                      </div>
+                      <span className={`status status--${HASIL_PETUGAS[item.status_berkas].warna}`}>{HASIL_PETUGAS[item.status_berkas].label}</span>
+                    </div>
+                  </div>
+                ))}
+              </section>
+              <PratinjauBerkas daftar={data.berkas} indeks={indeks} setIndeks={setIndeks} />
+            </div>
+            <Kartu judul="Paraf Kasi" aksi={<Badge status={data.status_pengajuan} />}>
+              <dl>
+                <BarisData label="Pemohon" nilai={data.pemohon?.nama_lengkap} />
+                <BarisData label="Layanan" nilai={namaLayanan(data.id_layanan, data.nama_layanan)} />
+                <BarisData label="Kode" nilai={data.no_registrasi} />
+                <BarisData label="Diajukan" nilai={tanggal(data.tgl_pengajuan)} />
+              </dl>
+              {keputusan}
+            </Kartu>
+          </>
+        )}
+        {data && !kasi && (
           <>
             <Kartu judul="Draf surat" aksi={<Badge status={data.status_pengajuan} />}>
               <div className="draf">
@@ -526,24 +615,20 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
                 </div>
               </div>
             </Kartu>
-            <Kartu judul="Ringkasan pemeriksaan">
+            <Kartu judul="Tanda tangan Camat">
+              {paraf && (
+                <p className="pemberitahuan pemberitahuan--hijau pemberitahuan--kecil">
+                  Sudah diperiksa dan diparaf Kasi Tata Pemerintahan, {tanggal(paraf.waktu)} WITA
+                  {paraf.catatan ? `. Catatan: ${paraf.catatan}` : ''}
+                </p>
+              )}
               <dl>
                 <BarisData label="Pemohon" nilai={data.pemohon?.nama_lengkap} />
                 <BarisData label="Layanan" nilai={namaLayanan(data.id_layanan, data.nama_layanan)} />
-                <BarisData label="Persyaratan" nilai={`${data.berkas.filter((b) => b.status_berkas === 'VALID').length}/${data.berkas.length} sesuai`} />
-                <BarisData label="Diperbarui" nilai={tanggal(data.tgl_diperbarui)} />
+                <BarisData label="Persyaratan" nilai={`${jumlahSesuai}/${data.berkas.length} sesuai`} />
+                <BarisData label="Kode" nilai={data.no_registrasi} />
               </dl>
-              <label className="field">
-                <span className="field__label">Catatan (wajib jika mengembalikan atau menolak)</span>
-                <textarea className="field__input periksa__catatan" value={catatan} onChange={(event) => setCatatan(event.target.value)} />
-              </label>
-              <Galat pesan={galat} />
-              <Button label={kasi ? 'Paraf & Teruskan ke Camat' : 'Tanda Tangani'} arrow onClick={() => kirim('SETUJUI')} />
-              <Button label="Kembalikan ke Petugas" style="secondary" disabled={!catatan.trim()} onClick={() => kirim('KEMBALIKAN')} />
-              <button type="button" className="tautan-polos tautan-polos--bahaya" disabled={!catatan.trim()} onClick={() => kirim('TOLAK')}>
-                Tolak permohonan
-              </button>
-              <p className="baris__meta">Setelah ditandatangani, berkas diteruskan ke petugas pelayanan untuk diberi nomor registrasi dan stempel.</p>
+              {keputusan}
             </Kartu>
           </>
         )}
