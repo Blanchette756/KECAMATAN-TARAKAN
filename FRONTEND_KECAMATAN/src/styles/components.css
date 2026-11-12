@@ -58,24 +58,18 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: var(--color-accent);
-  color: var(--color-text-on-accent);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 16px;
-  letter-spacing: 0.48px;
+  /* Lambang Kota Tarakan (gambar): dijaga proporsinya, tidak dipotong atau dilebarkan. */
+  object-fit: contain;
 }
 
 .logo--header {
   width: 44px;
   height: 52px;
-  border-radius: var(--radius-md);
 }
 
 .logo--footer {
-  width: 42px;
+  width: 36px;
   height: 42px;
-  border-radius: var(--radius-full);
 }
 
 /* Teks tautan */
@@ -595,12 +589,13 @@
 }
 
 .hero__photo {
-  background: var(--color-border-default);
+  /* Foto Kantor Kecamatan Tarakan Timur; warna polos sebagai cadangan selama foto dimuat. */
+  background: url('/foto/kantor-kecamatan.jpg') center / cover no-repeat var(--color-border-default);
 }
 
 .hero__overlay {
   background: var(--color-footer);
-  opacity: 0.72;
+  opacity: 0.66;
 }
 
 .hero__pill,

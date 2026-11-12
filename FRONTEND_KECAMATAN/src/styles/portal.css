@@ -829,7 +829,6 @@
 .logo--sidebar {
   width: 36px;
   height: 42px;
-  border-radius: var(--radius-md);
 }
 
 .sidebar {

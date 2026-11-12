@@ -76,7 +76,7 @@ export function PageBanner({ halaman, overline, judul, deskripsi }: PageBannerPr
 }
 
 export function Logo({ variant }: { variant: 'header' | 'footer' | 'sidebar' }) {
-  return <span className={`logo logo--${variant}`}>LOGO</span>;
+  return <img className={`logo logo--${variant}`} src="/foto/lambang-kota-tarakan.png" alt="Lambang Kota Tarakan" />;
 }
 
 interface InputFieldProps {
