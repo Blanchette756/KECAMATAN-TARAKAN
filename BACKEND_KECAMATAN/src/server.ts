@@ -62,6 +62,19 @@ async function main(): Promise<void> {
     }
   }
 
+  // Berkas yang diunggah tetapi tidak pernah dipakai pengajuan dibuang berkala, supaya database hosting tidak penuh.
+  const bersihkanBerkasYatim = () =>
+    container.services.unggah
+      .bersihkanYatim()
+      .then((n) => {
+        if (n > 0) app.log.info(`Pembersihan: ${n} berkas unggahan yang tidak dipakai dihapus`);
+      })
+      .catch((err: unknown) => app.log.warn({ err }, 'Pembersihan berkas unggahan gagal'));
+  void bersihkanBerkasYatim();
+  const pewaktuPembersihan = setInterval(() => void bersihkanBerkasYatim(), 6 * 3_600_000);
+  pewaktuPembersihan.unref();
+  app.addHook('onClose', async () => clearInterval(pewaktuPembersihan));
+
   // Hentikan server dengan rapi saat Hostinger me-restart/deploy.
   for (const sinyal of ['SIGINT', 'SIGTERM'] as const) {
     process.once(sinyal, () => {

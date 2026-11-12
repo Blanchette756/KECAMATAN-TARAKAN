@@ -14,7 +14,7 @@ const INFO: { ikon: IconName; judul: string; deskripsi: string }[] = [
 ];
 
 const ALUR = [
-  { judul: 'Masuk dengan Google', deskripsi: 'Pilih akun Google, lalu isi kode OTP yang dikirim ke WhatsApp Anda.' },
+  { judul: 'Masuk dengan Google', deskripsi: 'Pilih akun Google Anda. Saat pertama kali masuk, lengkapi NIK, nomor HP, dan alamat.' },
   { judul: 'Pilih layanan & unggah berkas', deskripsi: 'Unggah foto atau scan persyaratan sesuai layanan.' },
   { judul: 'Berkas diperiksa', deskripsi: 'Petugas mengecek kelengkapan. Jika kurang, Anda diminta memperbaiki.' },
   { judul: 'Validasi Kasi Tata Pemerintahan', deskripsi: 'Berkas diperiksa ulang dan diparaf.' },
@@ -180,12 +180,6 @@ export function Pelayanan() {
               <>
                 <span className="only-desktop">Pilih layanan untuk melihat persyaratan lengkap, lalu ajukan secara online.</span>
                 <span className="only-mobile">Ketuk layanan untuk melihat persyaratan.</span>
-              </>
-            }
-            tautan={
-              <>
-                <span className="only-desktop">Unduh Standar Pelayanan (PDF)</span>
-                <span className="only-mobile">Unduh Standar Pelayanan</span>
               </>
             }
           />

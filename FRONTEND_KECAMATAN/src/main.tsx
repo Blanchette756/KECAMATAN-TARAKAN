@@ -2,7 +2,7 @@ import '@fontsource/inter/400.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 import '@fontsource/inter/800.css';
-import { StrictMode, useEffect, type JSX } from 'react';
+import { Component, StrictMode, useEffect, type JSX, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/tokens.css';
 import './styles/halaman.css';
@@ -49,11 +49,47 @@ function Aplikasi() {
   return <Halaman />;
 }
 
+/**
+ * Tanpa ini, satu galat saat menampilkan halaman membuat seluruh layar putih tanpa penjelasan.
+ * Sekarang pengunjung mendapat pesan dan tombol muat ulang.
+ */
+class BatasGalat extends Component<{ children: ReactNode }, { gagal: boolean }> {
+  state = { gagal: false };
+
+  static getDerivedStateFromError() {
+    return { gagal: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error(error);
+  }
+
+  render() {
+    if (!this.state.gagal) return this.props.children;
+    return (
+      <main style={{ maxWidth: 480, margin: '15vh auto', padding: '0 24px', fontFamily: 'Inter, system-ui, sans-serif', lineHeight: 1.5 }}>
+        <h1 style={{ fontSize: 24, margin: '0 0 12px' }}>Halaman tidak dapat ditampilkan</h1>
+        <p style={{ margin: '0 0 20px' }}>
+          Terjadi gangguan saat memuat halaman ini. Muat ulang halaman. Bila masih sama, perbarui browser Anda atau hubungi petugas kecamatan lewat WhatsApp.
+        </p>
+        <button type="button" onClick={() => window.location.reload()} style={{ padding: '12px 20px', fontSize: 16, borderRadius: 999, border: 0, background: '#ffcc00', fontWeight: 700 }}>
+          Muat ulang
+        </button>{' '}
+        <a href="/" style={{ marginLeft: 12 }}>
+          Ke beranda
+        </a>
+      </main>
+    );
+  }
+}
+
 const akar = document.getElementById('root')!;
 pasangAnimasiMuncul(akar);
 
 createRoot(akar).render(
   <StrictMode>
-    <Aplikasi />
+    <BatasGalat>
+      <Aplikasi />
+    </BatasGalat>
   </StrictMode>,
 );

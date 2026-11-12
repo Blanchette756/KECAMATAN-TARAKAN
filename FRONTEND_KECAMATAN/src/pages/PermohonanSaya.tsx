@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ApiError, detailPengajuan, keluarAkun, kirimRevisi, pengajuanSaya, unggahBerkas, type BerkasDetail, type BerkasKirim, type DetailPengajuan, type Ringkas } from '../api';
+import { ambilLayanan, ApiError, detailPengajuan, keluarAkun, kirimRevisi, pengajuanSaya, unggahBerkas, type BerkasDetail, type BerkasKirim, type DetailLayananApi, type DetailPengajuan, type Ringkas } from '../api';
 import { Icon } from '../components/Icon';
 import { PenampilDaftarBerkas } from '../components/PenampilBerkas';
-import { BarisData, cekBerkas, Galat, jumlahTahapSelesai, Kartu, StatusBadge, TahapPermohonan, TandaUnggah, tanggal, tanpaKunci, useCegahBukaFile, useKunciKirim, useSeretLepas, type ProsesUnggah } from '../components/portal';
+import { BarisData, berlaku, Galat, isianSama, isianUntukDikirim, jumlahTahapSelesai, Kartu, KartuIsian, KolomIsian, siapkanBerkas, StatusBadge, TahapPermohonan, TandaUnggah, tanggal, tanpaKunci, useCegahBukaFile, useKunciKirim, useSeretLepas, type ProsesUnggah } from '../components/portal';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button } from '../components/ui';
@@ -189,13 +189,32 @@ function Perbaikan({ data, onSelesai }: { data: DetailPengajuan; onSelesai: () =
   const [galat, setGalat] = useState<string | null>(null);
   useCegahBukaFile();
 
-  const pilih = async (idSyarat: string, file: File) => {
+  // Petugas bisa meminta perbaikan isian formulir (bukan hanya berkas), jadi isian ikut bisa diubah di sini.
+  const [layanan, setLayanan] = useState<DetailLayananApi | null>(null);
+  const [isian, setIsian] = useState<Record<string, string>>(() => Object.fromEntries(Object.entries(data.data_formulir ?? {}).map(([kunci, nilai]) => [kunci, String(nilai)])));
+  useEffect(() => {
+    let batal = false;
+    ambilLayanan(data.id_layanan)
+      .then((hasil) => !batal && setLayanan(hasil))
+      .catch(() => undefined);
+    return () => {
+      batal = true;
+    };
+  }, [data.id_layanan]);
+  const fields = layanan?.form_fields.filter((field) => berlaku(field.kondisi, isian)) ?? [];
+  const dataKirim = isianUntukDikirim(fields, isian);
+  // Sebelum definisi layanan termuat, isian dianggap belum berubah.
+  const isianBerubah = layanan !== null && !isianSama(dataKirim, data.data_formulir ?? {});
+
+  const pilih = async (idSyarat: string, asli: File) => {
     if (proses[idSyarat]) return;
-    const masalah = cekBerkas(file);
-    setGalat(masalah);
-    if (masalah) return;
-    setProses((lama) => ({ ...lama, [idSyarat]: { nama: file.name, persen: 0 } }));
+    setGalat(null);
     try {
+      // Foto lebih dari 2 MB dikecilkan otomatis dulu; yang tidak bisa diproses ditolak dengan pesan jelas.
+      const siap = await siapkanBerkas(asli, () => setProses((lama) => ({ ...lama, [idSyarat]: { nama: asli.name, persen: 0, siapkan: true } })));
+      if (siap.file === null) return setGalat(siap.galat);
+      const file = siap.file;
+      setProses((lama) => ({ ...lama, [idSyarat]: { nama: file.name, persen: 0 } }));
       const hasil = await unggahBerkas(file, (persen) => setProses((lama) => (lama[idSyarat] ? { ...lama, [idSyarat]: { ...lama[idSyarat], persen } } : lama)));
       setBaru((lama) => ({ ...lama, [idSyarat]: { id_syarat: idSyarat, ...hasil } }));
     } catch (error) {
@@ -206,10 +225,13 @@ function Perbaikan({ data, onSelesai }: { data: DetailPengajuan; onSelesai: () =
   };
 
   const kirim = async () => {
+    const kosong = fields.filter((field) => field.wajib && !isian[field.key]?.trim());
+    if (kosong.length > 0) return setGalat(`Lengkapi ${kosong.map((field) => field.label).join(', ')}.`);
     if (!mulaiKirim()) return;
     setGalat(null);
     try {
-      await kirimRevisi(data.id_pengajuan, Object.values(baru), data.version);
+      // Isian hanya dikirim bila memang diubah; backend lalu mengganti seluruh isian lama.
+      await kirimRevisi(data.id_pengajuan, Object.values(baru), data.version, isianBerubah ? dataKirim : undefined);
       onSelesai();
     } catch (error) {
       setGalat(error instanceof ApiError ? error.message : 'Gagal mengirim perbaikan.');
@@ -217,30 +239,37 @@ function Perbaikan({ data, onSelesai }: { data: DetailPengajuan; onSelesai: () =
     }
   };
 
+  // Harus ada yang diperbaiki: semua berkas yang ditandai sudah diganti, atau isian sudah diubah.
+  const siapKirim = Object.keys(proses).length === 0 && Object.keys(baru).length >= ditandai.length && (ditandai.length > 0 || isianBerubah);
+
   return (
-    <Kartu judul="Perbaiki berkas">
-      {ditandai.map((berkas) => (
-        <SlotPerbaikan
-          key={berkas.id_berkas}
-          berkas={berkas}
-          pengganti={baru[berkas.id_syarat]}
-          proses={proses[berkas.id_syarat]}
-          onPilih={(file) => pilih(berkas.id_syarat, file)}
-        />
-      ))}
-      <p className="baris__meta">
-        {Object.keys(baru).length} dari {ditandai.length} berkas sudah diperbaiki
-      </p>
-      <Galat pesan={galat} />
-      <div>
-        <Button
-          label={mengirim ? 'Mengirim…' : 'Kirim Perbaikan'}
-          arrow={!mengirim}
-          disabled={mengirim || Object.keys(proses).length > 0 || Object.keys(baru).length < ditandai.length}
-          onClick={kirim}
-        />
-      </div>
-    </Kartu>
+    <>
+      {fields.length > 0 && (
+        <Kartu judul="Isian formulir">
+          <p className="heading__desc">{ditandai.length > 0 ? 'Ubah isian hanya bila diminta petugas.' : 'Perbaiki isian sesuai catatan petugas di atas.'}</p>
+          <KolomIsian fields={fields} nilai={isian} onUbah={(kunci, isi) => setIsian({ ...isian, [kunci]: isi })} />
+        </Kartu>
+      )}
+      <Kartu judul={ditandai.length > 0 ? 'Perbaiki berkas' : 'Kirim perbaikan'}>
+        {ditandai.map((berkas) => (
+          <SlotPerbaikan
+            key={berkas.id_berkas}
+            berkas={berkas}
+            pengganti={baru[berkas.id_syarat]}
+            proses={proses[berkas.id_syarat]}
+            onPilih={(file) => pilih(berkas.id_syarat, file)}
+          />
+        ))}
+        <p className="baris__meta">
+          {ditandai.length > 0 ? `${Object.keys(baru).length} dari ${ditandai.length} berkas sudah diperbaiki` : isianBerubah ? 'Isian sudah diubah. Periksa kembali, lalu kirim.' : 'Ubah isian di atas, lalu kirim perbaikan.'}
+          {ditandai.length > 0 && isianBerubah ? ' · isian sudah diubah' : ''}
+        </p>
+        <Galat pesan={galat} />
+        <div>
+          <Button label={mengirim ? 'Mengirim…' : 'Kirim Perbaikan'} arrow={!mengirim} disabled={mengirim || !siapKirim} onClick={kirim} />
+        </div>
+      </Kartu>
+    </>
   );
 }
 
@@ -269,6 +298,7 @@ function Detail({ id }: { id: string }) {
   const siap = status === 'SIAP_DIAMBIL' || status === 'SELESAI';
   // Hanya berkas yang benar-benar punya file (data contoh tidak punya) yang bisa dibuka di penampil.
   const adaFile = data.berkas.filter((berkas) => berkas.file_url);
+  const jumlahPerbaikan = data.berkas.filter((berkas) => berkas.status_berkas === 'PERLU_PERBAIKAN').length;
 
   return (
     <>
@@ -291,8 +321,8 @@ function Detail({ id }: { id: string }) {
           {status === 'PERLU_REVISI' && (
             <>
               <div className="pemberitahuan pemberitahuan--merah">
-                <strong>{data.berkas.filter((berkas) => berkas.status_berkas === 'PERLU_PERBAIKAN').length} berkas perlu diperbaiki</strong>
-                <span>{data.catatan_revisi ?? 'Unggah ulang berkas yang diminta. Proses akan dilanjutkan setelah perbaikan dikirim.'}</span>
+                <strong>{jumlahPerbaikan > 0 ? `${jumlahPerbaikan} berkas perlu diperbaiki` : 'Isian permohonan perlu diperbaiki'}</strong>
+                <span>{data.catatan_revisi ?? 'Perbaiki yang diminta petugas, lalu kirim. Proses akan dilanjutkan setelah perbaikan dikirim.'}</span>
               </div>
               <Perbaikan data={data} onSelesai={muat} />
             </>
@@ -318,6 +348,7 @@ function Detail({ id }: { id: string }) {
           <Kartu judul="Tahapan permohonan">
             <TahapPermohonan data={data} />
           </Kartu>
+          <KartuIsian data={data} judul="Isian permohonan Anda" />
         </div>
         <aside className="portal__samping">
           {siap && (

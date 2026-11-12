@@ -51,4 +51,17 @@ export function pasangAnimasiMuncul(akar: HTMLElement) {
         node.querySelectorAll(TARGET).forEach(daftarkan);
       }
   }).observe(akar, { childList: true, subtree: true });
+
+  // Jaring pengaman: elemen yang disembunyikan menunggu pengamat. Bila pengamat tidak juga bereaksi
+  // (browser lama atau HP yang sangat lambat), elemen yang sedang terlihat tetap ditampilkan,
+  // supaya halaman tidak tampak kosong.
+  window.setTimeout(() => {
+    document.querySelectorAll<HTMLElement>('.muncul:not(.muncul--tampil)').forEach((el) => {
+      const kotak = el.getBoundingClientRect();
+      if (kotak.top < window.innerHeight && kotak.bottom > 0) {
+        io.unobserve(el);
+        el.classList.remove('muncul');
+      }
+    });
+  }, 4000);
 }

@@ -16,8 +16,8 @@ export class AuthController {
     return respons(await this.s.auth.mockLogin(body.email));
   }
 
-  async loginPetugas(body: LoginPetugasBody) {
-    return respons(await this.s.auth.loginPetugas(body.username, body.password));
+  async loginPetugas(body: LoginPetugasBody, ip: string) {
+    return respons(await this.s.auth.loginPetugas(body.username, body.password, ip));
   }
 
   async loginGoogle(body: LoginGoogleBody) {

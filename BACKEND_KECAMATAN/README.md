@@ -28,7 +28,7 @@ Data contoh tidak pernah diisi ke MySQL.
 | Perintah | Fungsi |
 |---|---|
 | `npm run dev` | Mode pengembangan, auto-reload saat file diubah |
-| `npm test` | Menjalankan semua tes otomatis (109 tes, memakai data di memori) |
+| `npm test` | Menjalankan semua tes otomatis (122 tes, memakai data di memori) |
 | `npm run typecheck` | Cek tipe TypeScript |
 | `npm run validate-data` | Cek isi folder `data/` (jalankan setiap kali data diubah) |
 | `npm run check` | Ketiganya sekaligus, jalankan sebelum commit |
@@ -113,11 +113,11 @@ Semua endpoint diawali `/api/v1`. Format sukses `{ "data": ..., "meta"?: ... }`,
 | POST | `/auth/logout` | login | Cabut token |
 | POST | `/pengajuan` | WARGA | Ajukan permohonan baru |
 | GET | `/pengajuan/saya` | WARGA | Pengajuan milik sendiri (`?page=&limit=`) |
-| PATCH | `/pengajuan/:id/revisi` | WARGA | Kirim perbaikan saat `PERLU_REVISI` |
+| PATCH | `/pengajuan/:id/revisi` | WARGA | Kirim perbaikan saat `PERLU_REVISI`: berkas pengganti dan/atau `data_formulir` baru. Harus ada yang berubah, perbaikan kosong ditolak |
 | POST | `/berkas/unggah?nama_file=` | WARGA | Unggah satu file (body = isi file, PDF/JPG/PNG), hasilnya `file_id` |
 | GET | `/berkas/:id/file` | login | Isi berkas, hanya untuk pemilik dan petugas yang berhak |
 | GET | `/pengajuan/:id` | login | Detail (warga: miliknya; Kasi: seksinya; Admin/Camat: semua) |
-| GET | `/pengajuan/antrian` | ADMIN/KASI/CAMAT | Antrian kerja sesuai role. Admin bisa memakai `?semua=true` |
+| GET | `/pengajuan/antrian` | ADMIN/KASI/CAMAT | Antrian kerja sesuai role, maksimal 100 per halaman (`?limit=`). Admin bisa memakai `?semua=true` |
 | GET | `/pengajuan/statistik` | ADMIN/KASI/CAMAT | Jumlah per status & durasi tiap tahap |
 | PATCH | `/pengajuan/:id/verifikasi` | ADMIN | `SETUJUI` / `MINTA_REVISI` / `TOLAK` |
 | PATCH | `/pengajuan/:id/paraf-kasi` | KASI | `SETUJUI` / `KEMBALIKAN` / `TOLAK` |
@@ -132,6 +132,12 @@ memproses berkas yang sama bersamaan, yang kedua mendapat `409 VERSI_KEDALUWARSA
 Unggah tiap file ke `POST /berkas/unggah`, lalu sertakan `file_id` hasilnya di item `berkas` saat `POST /pengajuan`
 atau `PATCH /pengajuan/:id/revisi`. Isi file dicek berdasarkan tanda tangan file, bukan Content-Type dari klien.
 Dengan `DB_DRIVER=mysql` isi file disimpan di tabel `file_unggahan`, jadi tetap ada setelah restart atau deploy.
+
+File yang diunggah tetapi tidak pernah dipakai pengajuan ("yatim") dibatasi dan dibersihkan:
+- Satu warga paling banyak punya 40 file yatim (`MAKS_FILE_YATIM_PER_WARGA`); unggahan berikutnya dijawab `429 TERLALU_BANYAK_UNGGAHAN`.
+- Rute unggah punya batas permintaan sendiri, `RATE_LIMIT_UNGGAH` (bawaan 40 per menit per IP).
+- File lama yang diganti lewat revisi dihapus setelah berkas penggantinya tersimpan, kecuali file itu masih dipakai berkas lain.
+- Saat server start dan setiap 6 jam, file yatim yang lebih tua dari 24 jam (`UMUR_FILE_YATIM_JAM`) dihapus.
 
 ### Contoh mengajukan permohonan
 
@@ -225,8 +231,10 @@ Untuk beberapa nilai, pakai `"salah_satu": ["A", "B"]`.
 - **Autentikasi dicek paling awal** (hook `onRequest`), sebelum body dibaca.
 - **Token sesi** acak 256-bit dengan masa berlaku. Yang disimpan hanya hash SHA-256-nya.
   Maksimal 5 sesi aktif per akun (`MAX_SESI_PER_USER`); login ke-6 mencabut sesi tertua.
-- **Password petugas** disimpan sebagai hash scrypt. Setelah 5 kali salah, username itu dikunci 15 menit.
-  Pesan galat sama untuk username tidak ada dan password salah.
+- **Password petugas** disimpan sebagai hash scrypt. Pesan galat sama untuk username tidak ada dan password salah.
+  Kunci percobaan gagal dibuat per pasangan username + IP: setelah 5 kali salah, hanya IP itu yang dikunci 15 menit,
+  jadi orang iseng tidak bisa mengunci akun petugas dari luar. Tebakan yang disebar dari banyak IP ditahan oleh
+  ambang kedua per username (30 kali salah, kunci 15 menit untuk semua IP).
 - **Otorisasi per objek (anti-IDOR).** Warga hanya bisa membuka pengajuannya sendiri, dan Kasi
   hanya seksinya. Data milik orang lain dijawab 404, bukan 403, supaya keberadaannya tidak bocor.
   ID pengajuan berupa UUID acak.
@@ -262,7 +270,10 @@ Untuk beberapa nilai, pakai `"salah_satu": ["A", "B"]`.
   Token disensor dari log.
 - **Dokumentasi `/docs`** dan **data contoh** otomatis mati di production. `/health` tidak menyebut
   mode auth di production.
-- **Dependensi:** `npm audit` menunjukkan 0 kerentanan saat repositori dibuat.
+- **Dependensi:** `npm audit` menunjukkan 0 kerentanan (dicek ulang 2026-11-12; `glob`/`minimatch` di jalur `@fastify/swagger-ui` diperbarui).
+  Jalankan `npm run audit:deps` secara berkala.
+- **Nomor surat tidak loncat:** bila penyimpanan status TTE gagal (bentrok versi atau galat database), nomor surat yang
+  sudah diambil dikembalikan, selama belum ada nomor yang lebih baru.
 - **Diaudit** dengan `cloudflare/security-audit-skill` (run-1). Tes regresinya ada di `test/audit-run1.test.ts`.
 
 ---
@@ -328,7 +339,7 @@ src/
 ├── plugins/           Keamanan, autentikasi, penanganan error
 ├── scripts/           validate-data
 └── utils/             Error, ID acak, masking
-test/                  109 tes otomatis (alur, otorisasi/IDOR, lacak, unggah, login & akun petugas, data, konfigurasi, regresi audit)
+test/                  122 tes otomatis (alur, otorisasi/IDOR, lacak, unggah, login & akun petugas, data, konfigurasi, regresi audit, perbaikan isian, berkas yatim, kunci login per IP, nomor surat)
 ```
 
 ---

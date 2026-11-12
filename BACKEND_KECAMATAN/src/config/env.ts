@@ -39,7 +39,7 @@ export interface AppConfig {
   enableDocs: boolean;
   maxFileBytes: number;
   maxFilesPerPengajuan: number;
-  rateLimit: { global: number; lacak: number; login: number };
+  rateLimit: { global: number; lacak: number; login: number; unggah: number };
   /** Kunci lacak per nomor registrasi setelah sejumlah percobaan gagal. */
   lacakLockout: { maxGagal: number; menit: number };
   seedDemoPengajuan: boolean;
@@ -243,6 +243,7 @@ export function loadConfig(env: Env = process.env): AppConfig {
       global: int(env, 'RATE_LIMIT_GLOBAL', 120, 1, 100_000),
       lacak: int(env, 'RATE_LIMIT_LACAK', 10, 1, 10_000),
       login: int(env, 'RATE_LIMIT_LOGIN', 10, 1, 10_000),
+      unggah: int(env, 'RATE_LIMIT_UNGGAH', 40, 1, 10_000),
     },
     lacakLockout: {
       maxGagal: int(env, 'LACAK_MAX_GAGAL', 5, 1, 1000),

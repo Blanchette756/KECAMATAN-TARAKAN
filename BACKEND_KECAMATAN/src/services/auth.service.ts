@@ -13,7 +13,13 @@ export interface HasilLogin {
 }
 
 const PESAN_LOGIN_PETUGAS_GAGAL = 'Username atau password salah';
-const LOGIN_PETUGAS_MAKS_GAGAL = 5;
+/** Percobaan gagal per pasangan username + IP sebelum dikunci. */
+export const LOGIN_PETUGAS_MAKS_GAGAL = 5;
+/**
+ * Percobaan gagal per username dari semua IP sekaligus. Jauh lebih longgar, hanya untuk menahan tebakan password
+ * yang disebar dari banyak IP. Dibuat longgar supaya satu orang iseng tidak bisa mengunci akun petugas dari luar.
+ */
+export const LOGIN_PETUGAS_MAKS_GAGAL_SEMUA_IP = 30;
 const LOGIN_PETUGAS_KUNCI_MENIT = 15;
 
 /**
@@ -22,8 +28,10 @@ const LOGIN_PETUGAS_KUNCI_MENIT = 15;
  * Yang disimpan untuk sesi hanya hash SHA-256 token.
  */
 export class AuthService {
-  /** Kunci per username setelah beberapa kali password salah, melengkapi rate limit per IP. */
+  /** Kunci per pasangan username + IP setelah beberapa kali password salah, melengkapi rate limit per IP. */
   private readonly gagalPetugas = new AttemptLimiter(LOGIN_PETUGAS_MAKS_GAGAL, LOGIN_PETUGAS_KUNCI_MENIT * 60_000);
+  /** Kunci per username dari semua IP, untuk tebakan password yang disebar. */
+  private readonly gagalPetugasSemuaIp = new AttemptLimiter(LOGIN_PETUGAS_MAKS_GAGAL_SEMUA_IP, LOGIN_PETUGAS_KUNCI_MENIT * 60_000);
 
   constructor(private readonly deps: ServiceDeps) {}
 
@@ -40,20 +48,26 @@ export class AuthService {
     return this.buatSesi(user);
   }
 
-  async loginPetugas(username: string, password: string): Promise<HasilLogin> {
+  /**
+   * `ip` dipakai agar kunci akun tidak bisa dipicu orang lain: yang terkunci hanya pengguna dari IP yang salah berkali-kali,
+   * bukan seluruh akun. Tanpa `ip` (mis. dipanggil dari skrip), semua dianggap satu sumber.
+   */
+  async loginPetugas(username: string, password: string, ip = 'tak-diketahui'): Promise<HasilLogin> {
     const kunci = username.trim().toLowerCase();
+    const kunciIp = `${kunci}|${ip}`;
     const nowMs = this.deps.now().getTime();
-    if (this.gagalPetugas.terkunci(kunci, nowMs)) {
+    if (this.gagalPetugas.terkunci(kunciIp, nowMs) || this.gagalPetugasSemuaIp.terkunci(kunci, nowMs)) {
       throw new AppError(429, 'TERLALU_BANYAK_PERCOBAAN', `Terlalu banyak percobaan gagal. Coba lagi dalam ${LOGIN_PETUGAS_KUNCI_MENIT} menit.`);
     }
     const akun = await this.deps.repos.users.findKredensial(kunci);
     // Username yang tidak ada tetap melewati scrypt, supaya waktu jawabnya tidak membocorkan username mana yang ada.
     const cocok = await cocokPassword(password, akun?.password_hash ?? (await hashUntukUsernameTakAda()));
     if (!akun || !cocok || !akun.user.aktif || akun.user.role === 'WARGA') {
-      this.gagalPetugas.catatGagal(kunci, nowMs);
+      this.gagalPetugas.catatGagal(kunciIp, nowMs);
+      this.gagalPetugasSemuaIp.catatGagal(kunci, nowMs);
       throw unauthorized(PESAN_LOGIN_PETUGAS_GAGAL);
     }
-    this.gagalPetugas.reset(kunci);
+    this.gagalPetugas.reset(kunciIp);
     return this.buatSesi(akun.user);
   }
 

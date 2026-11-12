@@ -174,6 +174,9 @@ export class MysqlBeritaRepository implements BeritaRepository {
 
 const KOLOM_FILE = 'file_id, id_user, nama_file, mime_type, ukuran_byte, dibuat_pada';
 
+/** Syarat "yatim": file (alias `f`) yang tidak dipakai berkas pengajuan mana pun. Berkas menautkan file lewat `unggah://<file_id>`. */
+const YATIM = "NOT EXISTS (SELECT 1 FROM berkas b WHERE b.file_url = CONCAT('unggah://', f.file_id))";
+
 function fileDariBaris(r: RowDataPacket): FileUnggahan {
   return {
     file_id: String(r.file_id),
@@ -210,5 +213,23 @@ export class MysqlFileRepository implements FileRepository {
     const [rows] = await this.db.execute<RowDataPacket[]>(`SELECT ${KOLOM_FILE}, isi FROM file_unggahan WHERE file_id = ?`, [fileId]);
     const r = rows[0];
     return r ? { info: fileDariBaris(r), data: Buffer.from(r.isi as Buffer) } : null;
+  }
+
+  async hitungYatim(idUser: string): Promise<number> {
+    const [rows] = await this.db.execute<RowDataPacket[]>(
+      `SELECT COUNT(*) AS n FROM file_unggahan f WHERE f.id_user = ? AND ${YATIM}`,
+      [idUser],
+    );
+    return Number(rows[0]?.n ?? 0);
+  }
+
+  async hapusBilaYatim(fileId: string): Promise<boolean> {
+    const [hasil] = await this.db.execute<ResultSetHeader>(`DELETE f FROM file_unggahan f WHERE f.file_id = ? AND ${YATIM}`, [fileId]);
+    return hasil.affectedRows > 0;
+  }
+
+  async hapusYatimSebelum(sebelumIso: string): Promise<number> {
+    const [hasil] = await this.db.execute<ResultSetHeader>(`DELETE f FROM file_unggahan f WHERE f.dibuat_pada < ? AND ${YATIM}`, [sebelumIso]);
+    return hasil.affectedRows;
   }
 }

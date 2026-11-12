@@ -130,6 +130,11 @@ export class MysqlPengajuanRepository implements PengajuanRepository {
     });
   }
 
+  async batalkanNomorSurat(tahun: string, urut: number): Promise<void> {
+    // Hanya bila masih nomor terakhir, supaya nomor yang sudah dipakai TTE lain tidak terhapus.
+    await this.db.execute('UPDATE nomor_surat_counter SET terakhir = terakhir - 1 WHERE tahun = ? AND terakhir = ?', [tahun, urut]);
+  }
+
   private async halaman(where: string, nilai: Nilai[], arah: 'ASC' | 'DESC', { page, limit }: Paging): Promise<Halaman<PengajuanPelayanan>> {
     const [total] = await this.db.query<RowDataPacket[]>(`SELECT COUNT(*) AS n FROM pengajuan ${where}`, nilai);
     // page dan limit sudah divalidasi skema sebagai bilangan bulat.

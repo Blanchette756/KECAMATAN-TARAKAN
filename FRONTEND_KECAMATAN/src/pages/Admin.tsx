@@ -22,7 +22,7 @@ import {
 } from '../api';
 import { Icon, type IconName } from '../components/Icon';
 import { MediaBerkas, PenampilBerkas, useUrlBerkas } from '../components/PenampilBerkas';
-import { BarisData, Galat, Kartu, Riwayat, tanggal, ukuranFile, useKunciKirim } from '../components/portal';
+import { BarisData, BarisIsian, Galat, Kartu, KartuIsian, Riwayat, tanggal, ukuranFile, useIsianFormulir, useKunciKirim } from '../components/portal';
 import { Button, Logo, SelectField } from '../components/ui';
 import { tanggalBerita } from '../data/berita';
 import { LAYANAN } from '../data/layanan';
@@ -181,7 +181,7 @@ function Dashboard({ data, tab, setTab }: { data: Ringkas[]; tab: string; setTab
         kanan={
           <label className="search search--topbar">
             <Icon name="search" />
-            <input className="search__input" type="search" placeholder="Cari kode, nama, atau email…" aria-label="Cari berkas" value={cari} onChange={(event) => setCari(event.target.value)} />
+            <input className="search__input" type="search" placeholder="Cari kode, nama, atau layanan…" aria-label="Cari berkas" value={cari} onChange={(event) => setCari(event.target.value)} />
           </label>
         }
       />
@@ -325,12 +325,20 @@ function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () 
   const [indeks, setIndeks] = useState(0);
   const [galat, setGalat] = useState<string | null>(null);
   const { mengirim, mulai: mulaiKirim, lepas: lepasKirim } = useKunciKirim();
+  // Isian formulir (bukan hanya berkas) juga bisa diminta diperbaiki. Pilihan ini hanya ada bila layanan punya isian.
+  const adaIsian = useIsianFormulir(data).length > 0;
+  const [isianSalah, setIsianSalah] = useState(false);
 
   const jumlahSesuai = Object.values(nilai).filter((n) => n.sesuai).length;
   const tidakSesuai = Object.entries(nilai).filter(([, n]) => !n.sesuai);
   const semuaDinilai = data.berkas.every((b) => nilai[b.id_berkas]);
 
   const kirim = async (aksi: 'SETUJUI' | 'MINTA_REVISI' | 'TOLAK') => {
+    // Catatan wajib saat meminta perbaikan atau menolak; dicek di sini supaya pesannya jelas bagi petugas.
+    if (aksi !== 'SETUJUI' && catatan.trim().length < 5) {
+      setGalat(aksi === 'MINTA_REVISI' ? 'Tulis catatan untuk pemohon: apa yang perlu diperbaiki (minimal 5 karakter).' : 'Tulis alasan penolakan (minimal 5 karakter).');
+      return;
+    }
     if (!mulaiKirim()) return;
     setGalat(null);
     try {
@@ -377,6 +385,7 @@ function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () 
               </dl>
             </div>
           </Kartu>
+          <KartuIsian data={data} />
           <section className="kartu kartu--tabel">
             <div className="periksa__judul">
               <h2 className="timeline__judul">Pemeriksaan persyaratan ({data.berkas.length})</h2>
@@ -429,14 +438,20 @@ function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () 
           {dapatDiproses && (
             <Kartu judul="Keputusan petugas">
               {tidakSesuai.length > 0 && <p className="pemberitahuan pemberitahuan--merah pemberitahuan--kecil">{tidakSesuai.length} persyaratan tidak sesuai. Kirim permintaan perbaikan kepada pemohon.</p>}
+              {adaIsian && (
+                <label className="persetujuan">
+                  <input type="checkbox" checked={isianSalah} onChange={(event) => setIsianSalah(event.target.checked)} />
+                  <span>Isian formulir perlu diperbaiki pemohon (jelaskan di catatan)</span>
+                </label>
+              )}
               <label className="field">
                 <span className="field__label">Catatan untuk pemohon</span>
                 <textarea className="field__input field__textarea" value={catatan} placeholder="Tuliskan catatan" onChange={(event) => setCatatan(event.target.value)} />
               </label>
               <Galat pesan={galat} />
-              <Button label="Kirim Permintaan Perbaikan" arrow disabled={mengirim || tidakSesuai.length === 0} onClick={() => kirim('MINTA_REVISI')} />
-              <Button label="Teruskan ke Kasi Tata Pemerintahan" style="secondary" disabled={mengirim || !semuaDinilai || tidakSesuai.length > 0} onClick={() => kirim('SETUJUI')} />
-              <p className="baris__meta">Tombol teruskan aktif jika semua persyaratan wajib sudah sesuai.</p>
+              <Button label="Kirim Permintaan Perbaikan" arrow disabled={mengirim || (tidakSesuai.length === 0 && !isianSalah)} onClick={() => kirim('MINTA_REVISI')} />
+              <Button label="Teruskan ke Kasi Tata Pemerintahan" style="secondary" disabled={mengirim || !semuaDinilai || tidakSesuai.length > 0 || isianSalah} onClick={() => kirim('SETUJUI')} />
+              <p className="baris__meta">Tombol teruskan aktif jika semua persyaratan wajib sudah sesuai dan isian tidak perlu diperbaiki.</p>
               <button type="button" className="tautan-polos tautan-polos--bahaya" disabled={mengirim || !catatan.trim()} onClick={() => kirim('TOLAK')}>
                 Tolak permohonan (isi catatan alasan)
               </button>
@@ -516,6 +531,7 @@ function Finalisasi({ data }: { data: DetailPengajuan }) {
               <BarisData label="Layanan" nilai={namaLayanan(data.id_layanan, data.nama_layanan)} />
               <BarisData label="Kode" nilai={data.no_registrasi} />
               <BarisData label="Diajukan" nilai={tanggal(data.tgl_pengajuan)} />
+              <BarisIsian data={data} />
             </dl>
           </Kartu>
           <Kartu judul="Riwayat proses">
@@ -607,6 +623,7 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
         {data && kasi && (
           <>
             <div className="admin__kiri">
+              <KartuIsian data={data} />
               <section className="kartu kartu--tabel">
                 <div className="periksa__judul">
                   <h2 className="timeline__judul">Berkas persyaratan ({data.berkas.length})</h2>
@@ -677,6 +694,7 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
                 <BarisData label="Layanan" nilai={namaLayanan(data.id_layanan, data.nama_layanan)} />
                 <BarisData label="Persyaratan" nilai={`${jumlahSesuai}/${data.berkas.length} sesuai`} />
                 <BarisData label="Kode" nilai={data.no_registrasi} />
+                <BarisIsian data={data} />
               </dl>
               {keputusan}
             </Kartu>

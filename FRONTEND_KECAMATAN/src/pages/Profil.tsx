@@ -90,7 +90,7 @@ export function Profil() {
                 <label className="field">
                   <span className="field__label">Nomor HP/WhatsApp *</span>
                   <input className="field__input" name="hp" inputMode="tel" autoComplete="tel" maxLength={20} placeholder="Contoh: 0812 3456 7890" value={isian.no_hp} onChange={(event) => ubah('no_hp', event.target.value)} />
-                  <span className="baris__meta">4 angka terakhirnya dipakai untuk melacak status permohonan tanpa masuk.</span>
+                  <span className="baris__meta">Gunakan nomor yang aktif. Di daftar permohonan, nomor ini ditampilkan tersamar.</span>
                 </label>
                 <label className="field">
                   <span className="field__label">Alamat *</span>

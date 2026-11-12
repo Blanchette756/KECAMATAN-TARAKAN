@@ -22,7 +22,8 @@ export type PagingQuery = Static<typeof PagingQuerySchema>;
 export const AntrianQuerySchema = Type.Object(
   {
     page: Type.Optional(Type.Integer({ minimum: 1, maximum: 10_000, default: 1 })),
-    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, default: 20 })),
+    // 100 per halaman supaya dashboard petugas dengan ratusan berkas tidak menembus batas permintaan per menit.
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, default: 20 })),
     semua: Type.Optional(Type.Boolean({ description: 'Admin: tampilkan semua berkas masuk, bukan hanya antrian kerjanya' })),
   },
   { additionalProperties: false },

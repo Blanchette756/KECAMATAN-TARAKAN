@@ -23,6 +23,8 @@ export const berkasRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { servi
     '/berkas/unggah',
     {
       bodyLimit: config.maxFileBytes,
+      // Lebih ketat dari batas global: tiap unggahan memakan ruang database.
+      config: { rateLimit: { max: config.rateLimit.unggah, timeWindow: '1 minute' } },
       onRequest: guards.wajibRole('WARGA'),
       schema: {
         tags: ['Berkas'],

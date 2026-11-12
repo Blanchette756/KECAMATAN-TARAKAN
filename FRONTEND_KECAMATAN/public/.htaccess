@@ -4,3 +4,14 @@ RewriteRule ^index\.html$ - [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . /index.html [L]
+
+# Header keamanan dasar. Dibungkus IfModule supaya situs tetap jalan bila modulnya tidak tersedia.
+# X-Frame-Options melarang halaman ini dipasang di dalam frame situs lain (mencegah clickjacking,
+# terutama pada halaman masuk petugas). Sengaja belum memasang Content-Security-Policy: aturannya harus
+# menyertakan skrip Google Sign-In dan alamat API, dan salah satu kekeliruan membuat login warga gagal.
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "microphone=(), geolocation=(), payment=()"
+</IfModule>

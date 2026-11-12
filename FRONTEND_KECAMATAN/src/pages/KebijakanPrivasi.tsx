@@ -29,7 +29,6 @@ const BAGIAN: { judul: string; isi: (string | string[])[] }[] = [
       [
         'Memeriksa dan memproses permohonan layanan administrasi yang Anda ajukan, sampai surat selesai.',
         'Menghubungi Anda bila ada berkas yang perlu diperbaiki atau surat sudah siap diambil.',
-        'Fitur lacak status tanpa masuk, yang memakai nomor registrasi dan 4 angka terakhir nomor HP Anda.',
         'Menjaga keamanan layanan, misalnya membatasi percobaan masuk yang berulang.',
       ],
       'Data Anda tidak dipakai untuk promosi dan tidak dijual kepada siapa pun.',

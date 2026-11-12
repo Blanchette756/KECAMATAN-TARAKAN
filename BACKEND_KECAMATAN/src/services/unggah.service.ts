@@ -1,6 +1,7 @@
+import { MAKS_FILE_YATIM_PER_WARGA, UMUR_FILE_YATIM_JAM } from '../constants/penomoran.js';
 import { MIME_DIIZINKAN, type FileUnggahan, type MimeDiizinkan } from '../types/berkas.js';
 import type { User } from '../types/user.js';
-import { badRequest, forbidden, notFound, validationFailed } from '../utils/errors.js';
+import { AppError, badRequest, forbidden, notFound, validationFailed } from '../utils/errors.js';
 import { newId } from '../utils/ids.js';
 import type { ServiceDeps } from './deps.js';
 import { rapikanNamaFile } from './form-validator.js';
@@ -21,6 +22,13 @@ export class UnggahService {
     if (!(MIME_DIIZINKAN as readonly string[]).includes(mime)) throw badRequest('Tipe file harus PDF, JPG, atau PNG');
     const mime_type = mime as MimeDiizinkan;
     if (data.length === 0 || !CEK_ISI[mime_type](data)) throw validationFailed('Isi file tidak sesuai dengan tipenya');
+
+    // Batasi file yang belum dipakai, supaya unggahan berulang dari satu akun tidak memenuhi database.
+    // Gangguan pada penghitungan ini tidak boleh menggagalkan unggahan warga yang sah, jadi dianggap 0.
+    const yatim = await this.deps.repos.files.hitungYatim(user.id_user).catch(() => 0);
+    if (yatim >= MAKS_FILE_YATIM_PER_WARGA) {
+      throw new AppError(429, 'TERLALU_BANYAK_UNGGAHAN', 'Terlalu banyak berkas yang diunggah tetapi belum dipakai. Kirim permohonan Anda, atau coba lagi besok.');
+    }
 
     const f: FileUnggahan = {
       file_id: newId('FIL'),
@@ -45,5 +53,11 @@ export class UnggahService {
     const hasil = await this.deps.repos.files.baca(fileId);
     if (!hasil) throw notFound('File tidak ditemukan. Unggah ulang berkasnya.');
     return hasil;
+  }
+
+  /** Buang file yang diunggah tetapi tidak pernah dipakai pengajuan (lebih tua dari UMUR_FILE_YATIM_JAM). Mengembalikan jumlahnya. */
+  async bersihkanYatim(): Promise<number> {
+    const batas = new Date(this.deps.now().getTime() - UMUR_FILE_YATIM_JAM * 3_600_000);
+    return this.deps.repos.files.hapusYatimSebelum(batas.toISOString());
   }
 }

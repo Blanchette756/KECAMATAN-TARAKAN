@@ -186,6 +186,14 @@ export const MIGRASI: readonly Migrasi[] = [
       if (!(await indeksAda(conn, 'users', 'uk_users_google_sub'))) await conn.query('ALTER TABLE users ADD UNIQUE KEY uk_users_google_sub (google_sub)');
     },
   },
+  {
+    versi: 4,
+    nama: 'indeks tautan file untuk pembersihan berkas yatim',
+    // Pencarian "file yang tidak dipakai berkas mana pun" mencocokkan berkas.file_url, jadi perlu indeks.
+    sql: async (conn) => {
+      if (!(await indeksAda(conn, 'berkas', 'idx_berkas_file_url'))) await conn.query('ALTER TABLE berkas ADD KEY idx_berkas_file_url (file_url)');
+    },
+  },
 ];
 
 /** Pasang migrasi yang belum jalan. GET_LOCK mencegah dua proses memasang bersamaan. */

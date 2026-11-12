@@ -7,7 +7,38 @@
     <link rel="icon" href="data:," />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Isi sementara: diganti otomatis begitu aplikasi tampil. Bila aplikasi gagal dimuat, pengunjung melihat petunjuk, bukan layar putih. -->
+    <div id="root">
+      <p id="muat-awal" style="font-family: system-ui, sans-serif; padding: 24px; color: #444">Memuat situs Kecamatan Tarakan Timur…</p>
+    </div>
+    <noscript>
+      <p style="font-family: system-ui, sans-serif; padding: 24px">Situs ini memerlukan JavaScript. Aktifkan JavaScript di browser Anda, lalu muat ulang halaman.</p>
+    </noscript>
+    <script nomodule>
+      document.getElementById('muat-awal').innerHTML = 'Browser Anda terlalu lama untuk membuka situs ini. Perbarui browser (Chrome atau Firefox) lalu muat ulang halaman.';
+    </script>
+    <script>
+      (function () {
+        var PESAN_GAGAL = 'Situs gagal dimuat. Periksa koneksi internet, lalu <a href="">muat ulang halaman</a>. Bila masih sama, perbarui browser Anda.';
+        function tampilkan(pesan) {
+          var el = document.getElementById('muat-awal');
+          if (el) el.innerHTML = pesan;
+        }
+        // Berkas skrip atau gaya gagal diunduh (jaringan putus, atau berkas lama sudah diganti saat deploy).
+        window.addEventListener(
+          'error',
+          function (e) {
+            var t = e.target;
+            if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) tampilkan(PESAN_GAGAL);
+          },
+          true,
+        );
+        // Aplikasi belum tampil setelah lama: HP lambat atau jaringan buruk.
+        setTimeout(function () {
+          tampilkan('Situs masih dimuat. Bila jaringan Anda lambat, tunggu sebentar. Bila tidak berubah, <a href="">muat ulang halaman</a>.');
+        }, 12000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

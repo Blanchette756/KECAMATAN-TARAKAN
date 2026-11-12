@@ -67,6 +67,11 @@ export interface PengajuanRepository {
   /** Simpan hanya jika versi di penyimpanan masih `expectedVersion`. false = sudah diubah orang lain. */
   updateIfVersion(p: PengajuanPelayanan, expectedVersion: number): Promise<boolean>;
   nextNomorSurat(tahun: string): Promise<number>;
+  /**
+   * Kembalikan nomor `urut` yang baru diambil tetapi tidak jadi dipakai (penyimpanan status gagal), supaya
+   * nomor surat tidak loncat. Hanya berlaku bila itu masih nomor terakhir; bila sudah ada nomor yang lebih baru, diabaikan.
+   */
+  batalkanNomorSurat(tahun: string, urut: number): Promise<void>;
 }
 
 export interface BerkasRepository {
@@ -103,6 +108,12 @@ export interface FileRepository {
   create(f: FileUnggahan, isi: Buffer): Promise<void>;
   findMeta(fileId: string): Promise<FileUnggahan | null>;
   baca(fileId: string): Promise<{ info: FileUnggahan; data: Buffer } | null>;
+  /** Jumlah file milik satu warga yang belum dipakai berkas pengajuan mana pun ("yatim"). */
+  hitungYatim(idUser: string): Promise<number>;
+  /** Hapus satu file, tetapi hanya bila tidak dipakai berkas pengajuan mana pun. true = terhapus. */
+  hapusBilaYatim(fileId: string): Promise<boolean>;
+  /** Hapus semua file yatim yang dibuat sebelum `sebelumIso` (ISO-8601). Mengembalikan jumlah yang dihapus. */
+  hapusYatimSebelum(sebelumIso: string): Promise<number>;
 }
 
 export interface SesiRepository {

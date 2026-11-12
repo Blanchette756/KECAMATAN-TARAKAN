@@ -69,4 +69,8 @@ export class MemoryPengajuanRepository implements PengajuanRepository {
     this.store.nomorSuratCounter.set(tahun, next);
     return next;
   }
+
+  async batalkanNomorSurat(tahun: string, urut: number): Promise<void> {
+    if (this.store.nomorSuratCounter.get(tahun) === urut) this.store.nomorSuratCounter.set(tahun, urut - 1);
+  }
 }

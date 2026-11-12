@@ -79,7 +79,7 @@ export const authRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { control
         response: { 200: LoginResponseSchema, 401: errorResponses[401], 429: errorResponses[429] },
       },
     },
-    async (req) => controller.loginPetugas(req.body),
+    async (req) => controller.loginPetugas(req.body, req.ip),
   );
 
   app.get(

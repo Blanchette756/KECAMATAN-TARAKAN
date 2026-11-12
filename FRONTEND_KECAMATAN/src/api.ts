@@ -205,7 +205,9 @@ export const kirimPengajuan = (id_layanan: string, data_formulir: Record<string,
   kirimJson<DetailPengajuan>('POST', '/pengajuan', { id_layanan, data_formulir, berkas });
 export const pengajuanSaya = () => panggil<Ringkas[]>('/pengajuan/saya?limit=50');
 export const detailPengajuan = (id: string) => panggil<DetailPengajuan>(`/pengajuan/${id}`);
-export const kirimRevisi = (id: string, berkas: BerkasKirim[], version: number) => kirimJson<DetailPengajuan>('PATCH', `/pengajuan/${id}/revisi`, { berkas, version });
+/** `data_formulir` diisi hanya bila isian diubah; backend lalu mengganti seluruh isian lama. */
+export const kirimRevisi = (id: string, berkas: BerkasKirim[], version: number, data_formulir?: Record<string, unknown>) =>
+  kirimJson<DetailPengajuan>('PATCH', `/pengajuan/${id}/revisi`, { berkas, version, ...(data_formulir ? { data_formulir } : {}) });
 export interface Berita {
   id_berita: string;
   judul: string;
@@ -245,13 +247,26 @@ export const tambahAkunPetugas = (data: InputAkunPetugas) => kirimJson<AkunPetug
 export const ubahAkunPetugas = (id: string, data: Partial<Omit<InputAkunPetugas, 'username'> & { aktif: boolean }>) => kirimJson<AkunPetugas>('PATCH', `/petugas/${id}`, data);
 export const gantiPassword = (password_lama: string, password_baru: string) => kirimJson<{ berhasil: boolean }>('PATCH', '/auth/password', { password_lama, password_baru });
 
-/** Backend membatasi 50 berkas per halaman, jadi semua halaman diambil agar daftar dan angka dashboard lengkap. */
+/**
+ * Backend membatasi jumlah berkas per halaman, jadi semua halaman diambil agar daftar dan angka dashboard lengkap.
+ * Backend baru mengizinkan 100; backend lama hanya 50 (menolak dengan 400), jadi bila ditolak kita turun ke 50.
+ * Frontend dan backend di-deploy terpisah, jadi keduanya harus tetap berfungsi saat versinya sempat berbeda.
+ */
+let limitAntrian = 100;
 export async function ambilAntrian(semua: boolean): Promise<Ringkas[]> {
   const hasil: Ringkas[] = [];
-  for (let halaman = 1; ; halaman++) {
-    const { data, meta } = await panggilLengkap<Ringkas[]>(`/pengajuan/antrian?limit=50&page=${halaman}${semua ? '&semua=true' : ''}`);
-    hasil.push(...data);
-    if (!meta || data.length === 0 || halaman >= meta.total_halaman) return hasil;
+  try {
+    for (let halaman = 1; ; halaman++) {
+      const { data, meta } = await panggilLengkap<Ringkas[]>(`/pengajuan/antrian?limit=${limitAntrian}&page=${halaman}${semua ? '&semua=true' : ''}`);
+      hasil.push(...data);
+      if (!meta || data.length === 0 || halaman >= meta.total_halaman) return hasil;
+    }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 400 && limitAntrian > 50) {
+      limitAntrian = 50;
+      return ambilAntrian(semua);
+    }
+    throw error;
   }
 }
 export const aksiPengajuan = (id: string, aksi: 'verifikasi' | 'paraf-kasi' | 'tte-camat' | 'serahkan', data: Record<string, unknown>) =>

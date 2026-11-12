@@ -71,6 +71,8 @@ export class WorkflowService {
     else ke = t.ke;
 
     const next: PengajuanPelayanan = { ...p, status_pengajuan: ke, tgl_diperbarui: iso };
+    /** Nomor surat yang diambil untuk transisi ini; dikembalikan bila penyimpanan status gagal. */
+    let nomorDiambil: { tahun: string; urut: number } | null = null;
 
     switch (aksi) {
       case 'KIRIM_REVISI':
@@ -95,6 +97,7 @@ export class WorkflowService {
         next.id_camat = user.id_user;
         const th = tahun(waktu, config.timezone);
         const urut = await repos.pengajuan.nextNomorSurat(th);
+        nomorDiambil = { tahun: th, urut };
         next.nomor_surat = formatNomorSurat(layanan.kode, urut, th);
         // Simulasi, bukan tanda tangan elektronik tersertifikasi BSrE.
         next.qr_code_tte = `SIMULASI-TTE-${sha256(`${p.no_registrasi}|${next.nomor_surat}`).slice(0, 16).toUpperCase()}`;
@@ -120,7 +123,13 @@ export class WorkflowService {
         break;
     }
 
-    const ok = await repos.pengajuan.updateIfVersion(next, expectedVersion);
+    let ok = false;
+    try {
+      ok = await repos.pengajuan.updateIfVersion(next, expectedVersion);
+    } finally {
+      // Status tidak jadi tersimpan (bentrok versi atau galat database): nomor surat tidak boleh terbuang.
+      if (!ok && nomorDiambil) await repos.pengajuan.batalkanNomorSurat(nomorDiambil.tahun, nomorDiambil.urut).catch(() => undefined);
+    }
     if (!ok) {
       throw conflict('VERSI_KEDALUWARSA', 'Data pengajuan sudah berubah. Muat ulang halaman lalu coba lagi.');
     }

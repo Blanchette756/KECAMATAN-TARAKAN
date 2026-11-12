@@ -42,6 +42,13 @@ export interface InputKeputusan {
 }
 
 const PESAN_LACAK_GAGAL = 'Nomor registrasi atau 4 digit nomor HP tidak cocok';
+const AWALAN_UNGGAH = 'unggah://';
+
+/** Dua isian formulir dianggap sama bila kunci dan nilainya sama, apa pun urutan kuncinya. */
+function sama(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const urut = (x: Record<string, unknown>) => JSON.stringify(Object.entries(x).sort(([k1], [k2]) => k1.localeCompare(k2)));
+  return urut(a) === urut(b);
+}
 
 export class PengajuanService {
   /** Kunci lacak per nomor registrasi setelah beberapa percobaan HP salah. */
@@ -253,6 +260,10 @@ export class PengajuanService {
       if (s.wajib && !adaSetelah.has(s.id_syarat)) masalah.push(`berkas: "${s.nama_syarat}" (${s.id_syarat}) wajib dilampirkan`);
     }
     if (adaSetelah.size > this.deps.config.maxFilesPerPengajuan) masalah.push('berkas: jumlah berkas melebihi batas');
+    // Perbaikan harus mengubah sesuatu (isian atau berkas); tanpa itu permohonan hanya berputar kembali ke petugas.
+    if (masalah.length === 0 && input.berkas.length === 0 && sama(dataBaru, p.data_formulir)) {
+      masalah.push('Belum ada yang diperbaiki: ubah isian formulir atau unggah ulang berkas yang diminta petugas');
+    }
     if (masalah.length > 0) throw validationFailed('Perbaikan belum lengkap atau tidak valid', masalah);
     // Cek file dulu, supaya status dan berkas lama tidak berubah kalau ada file yang ditolak.
     const files = await this.cariFile(user, input.berkas);
@@ -261,10 +272,16 @@ export class PengajuanService {
 
     // 4) Simpan perubahan status dulu (dijaga versi), baru ganti berkas.
     const diperbarui = await this.workflow.jalankan(user, { ...p, data_formulir: dataBaru }, layanan, 'KIRIM_REVISI', null, input.version);
+    const fileLama: string[] = [];
     for (const b of lama) {
-      if (!tetap.includes(b)) await repos.berkas.delete(b.id_berkas);
+      if (tetap.includes(b)) continue;
+      await repos.berkas.delete(b.id_berkas);
+      if (b.file_url.startsWith(AWALAN_UNGGAH)) fileLama.push(b.file_url.slice(AWALAN_UNGGAH.length));
     }
     await repos.berkas.createMany(berkasBaru);
+    // File lama yang diganti dibuang setelah berkas baru tersimpan. hapusBilaYatim melewati file yang masih dipakai
+    // (misalnya klien memakai ulang file yang sama), jadi urutan ini penting.
+    for (const id of fileLama) await repos.files.hapusBilaYatim(id);
     return this.detailUntuk(user, diperbarui);
   }
 
@@ -344,9 +361,17 @@ export class PengajuanService {
     // Dashboard semua berkas: terbaru di atas (sesuai Figma D1). Antrean kerja: yang paling lama menunggu di atas.
     const hal = await repos.pengajuan.listByStatus(statuses, filter, paging, semuaBerkas ? 'terbaru' : 'terlama');
     const layanan = new Map((await repos.master.listLayanan()).map((l) => [l.id_layanan, l]));
-    const items = await Promise.all(
-      hal.items.map(async (p) => ringkasPengajuan(p, layanan.get(p.id_layanan) ?? null, await repos.users.findById(p.id_user))),
-    );
+    // Satu pemohon bisa punya banyak berkas di halaman yang sama; cukup dicari sekali per pemohon.
+    const pemohon = new Map<string, Promise<User | null>>();
+    const cariPemohon = (id: string) => {
+      let janji = pemohon.get(id);
+      if (!janji) {
+        janji = repos.users.findById(id);
+        pemohon.set(id, janji);
+      }
+      return janji;
+    };
+    const items = await Promise.all(hal.items.map(async (p) => ringkasPengajuan(p, layanan.get(p.id_layanan) ?? null, await cariPemohon(p.id_user))));
     return { ...hal, status_antrian: statuses, items };
   }
 

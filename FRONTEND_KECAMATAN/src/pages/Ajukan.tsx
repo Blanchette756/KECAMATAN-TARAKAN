@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { ambilLayanan, ApiError, kirimPengajuan, unggahBerkas, type DetailLayananApi, type HasilUnggah, type Kondisi, type SyaratLengkap } from '../api';
+import { ambilLayanan, ApiError, kirimPengajuan, unggahBerkas, type DetailLayananApi, type HasilUnggah, type SyaratLengkap } from '../api';
 import { Icon } from '../components/Icon';
-import { BarisData, cekBerkas, Galat, Kartu, TandaUnggah, tanpaKunci, ukuranFile, useCegahBukaFile, useKunciKirim, useSeretLepas, type ProsesUnggah } from '../components/portal';
+import { BarisData, berlaku, Galat, isianUntukDikirim, Kartu, KolomIsian, siapkanBerkas, TandaUnggah, tanpaKunci, ukuranFile, useCegahBukaFile, useKunciKirim, useSeretLepas, type ProsesUnggah } from '../components/portal';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button } from '../components/ui';
@@ -9,12 +9,6 @@ import { LAYANAN } from '../data/layanan';
 import { ambilSesi } from '../sesi';
 
 const LANGKAH = ['Pilih Layanan', 'Unggah Berkas', 'Periksa & Kirim'];
-
-const berlaku = (kondisi: Kondisi | undefined, data: Record<string, string>) => {
-  if (!kondisi) return true;
-  const nilai = data[kondisi.field];
-  return kondisi.sama_dengan !== undefined ? nilai === kondisi.sama_dengan : (kondisi.salah_satu ?? []).includes(nilai);
-};
 
 function KepalaHalaman({ langkah }: { langkah: number }) {
   return (
@@ -94,7 +88,7 @@ function SlotUnggah({ syarat, file, onPilih, proses }: { syarat: SyaratLengkap; 
           <span>
             Seret file ke sini atau <strong>pilih file</strong>
           </span>
-          <span className="baris__meta">Format JPG, PNG, atau PDF · maks. 2 MB</span>
+          <span className="baris__meta">JPG, PNG, atau PDF · foto dikecilkan otomatis, PDF maks. 2 MB</span>
           {masukan}
         </label>
       )}
@@ -155,13 +149,15 @@ export function Ajukan() {
   const wajibTerisi = wajib.filter((item) => berkas[item.id_syarat]).length;
   const terunggah = syarat.filter((item) => berkas[item.id_syarat]);
 
-  const pilihFile = async (id: string, file: File) => {
+  const pilihFile = async (id: string, asli: File) => {
     if (proses[id]) return;
-    const masalah = cekBerkas(file);
-    setGalat(masalah);
-    if (masalah) return;
-    setProses((lama) => ({ ...lama, [id]: { nama: file.name, persen: 0 } }));
+    setGalat(null);
     try {
+      // Foto lebih dari 2 MB dikecilkan otomatis dulu; yang tidak bisa diproses ditolak dengan pesan jelas.
+      const siap = await siapkanBerkas(asli, () => setProses((lama) => ({ ...lama, [id]: { nama: asli.name, persen: 0, siapkan: true } })));
+      if (siap.file === null) return setGalat(siap.galat);
+      const file = siap.file;
+      setProses((lama) => ({ ...lama, [id]: { nama: file.name, persen: 0 } }));
       const hasil = await unggahBerkas(file, (persen) => setProses((lama) => (lama[id] ? { ...lama, [id]: { ...lama[id], persen } } : lama)));
       setBerkas((lama) => ({ ...lama, [id]: hasil }));
     } catch (error) {
@@ -187,11 +183,7 @@ export function Ajukan() {
     // Cegah klik ganda: tanpa ini, dua klik cepat membuat dua permohonan yang sama.
     if (!mulaiKirim()) return;
     setGalat(null);
-    const data: Record<string, unknown> = {};
-    for (const field of fields) {
-      const nilai = isian[field.key];
-      if (nilai) data[field.key] = field.tipe === 'angka' ? Number(nilai) : nilai;
-    }
+    const data = isianUntukDikirim(fields, isian);
     try {
       const hasil = await kirimPengajuan(
         idLayanan,
@@ -282,43 +274,7 @@ export function Ajukan() {
                 }
               >
                 <p className="heading__desc">Gunakan foto atau scan yang jelas dan seluruh tulisan terbaca. Berkas bertanda Wajib harus diunggah.</p>
-                {fields.length > 0 && (
-                  <div className="isian">
-                    {fields.map((field) =>
-                      field.tipe === 'pilihan' ? (
-                        <label className="field" key={field.key}>
-                          <span className="field__label">
-                            {field.label}
-                            {field.wajib ? ' *' : ''}
-                          </span>
-                          <select className="field__input field__select" value={isian[field.key] ?? ''} onChange={(event) => setIsian({ ...isian, [field.key]: event.target.value })}>
-                            <option value="">Pilih</option>
-                            {field.opsi?.map((opsi) => (
-                              <option key={opsi.nilai} value={opsi.nilai}>
-                                {opsi.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ) : (
-                        <label className="field" key={field.key}>
-                          <span className="field__label">
-                            {field.label}
-                            {field.wajib ? ' *' : ''}
-                          </span>
-                          <input
-                            className="field__input"
-                            type={field.tipe === 'tanggal' ? 'date' : field.tipe === 'angka' ? 'number' : 'text'}
-                            placeholder={field.keterangan ?? ''}
-                            name={field.key}
-                            value={isian[field.key] ?? ''}
-                            onChange={(event) => setIsian({ ...isian, [field.key]: event.target.value })}
-                          />
-                        </label>
-                      ),
-                    )}
-                  </div>
-                )}
+                <KolomIsian fields={fields} nilai={isian} onUbah={(kunci, isi) => setIsian({ ...isian, [kunci]: isi })} />
                 {syarat.map((item) => (
                   <SlotUnggah key={item.id_syarat} syarat={item} file={berkas[item.id_syarat]} proses={proses[item.id_syarat]} onPilih={(file) => pilihFile(item.id_syarat, file)} />
                 ))}
