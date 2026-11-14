@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Icon } from '../components/Icon';
+import { useEffect, useState } from 'react';
+import { Icon, type IconName } from '../components/Icon';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { FotoPlaceholder, PageBanner, SectionHeading } from '../components/ui';
@@ -7,13 +7,16 @@ import { KANTOR_KELURAHAN, type KantorKelurahan } from '../data/kelurahan';
 import { angka, desimal, TAHUN_MONOGRAFI, TOTAL_LUAS, TOTAL_PENDUDUK } from '../data/monografi';
 import { CAMAT, PEJABAT_STRUKTURAL, SEKRETARIS } from '../data/pejabat';
 
-const BAGIAN = [
-  { id: 'gambaran-umum', label: 'Gambaran Umum' },
-  { id: 'sejarah', label: 'Sejarah' },
-  { id: 'visi-misi', label: 'Visi & Misi' },
-  { id: 'wilayah', label: 'Wilayah' },
-  { id: 'struktur-organisasi', label: 'Struktur Organisasi' },
+const BAGIAN: { id: string; label: string; ikon: IconName; ringkas: string }[] = [
+  { id: 'gambaran-umum', label: 'Gambaran Umum', ikon: 'file-text', ringkas: 'Letak, fungsi, dan data pokok Kecamatan Tarakan Timur.' },
+  { id: 'sejarah', label: 'Sejarah', ikon: 'award', ringkas: 'Perjalanan pembentukan wilayah dari 1981 sampai sekarang.' },
+  { id: 'visi-misi', label: 'Visi & Misi', ikon: 'stamp', ringkas: 'Arah pembangunan kecamatan.' },
+  { id: 'wilayah', label: 'Wilayah', ikon: 'map-pin-md', ringkas: 'Tujuh kelurahan beserta lurah dan alamat kantornya.' },
+  { id: 'struktur-organisasi', label: 'Struktur Organisasi', ikon: 'users', ringkas: 'Camat, sekretaris, dan para kepala seksi.' },
 ];
+
+// Bagian aktif diambil dari bagian # pada alamat; kosong berarti pengunjung belum memilih.
+const bacaBagian = () => BAGIAN.find(({ id }) => id === window.location.hash.slice(1))?.id ?? null;
 
 const FAKTA = [
   { label: 'Provinsi', nilai: 'Kalimantan Utara' },
@@ -79,7 +82,16 @@ function KartuJabatan({ jabatan, nama }: { jabatan: string; nama: string }) {
 }
 
 export function ProfilKecamatan() {
-  const [bagianAktif, setBagianAktif] = useState(BAGIAN[0].id);
+  const [bagianAktif, setBagianAktif] = useState<string | null>(bacaBagian);
+
+  useEffect(() => {
+    const ikutiAlamat = () => {
+      setBagianAktif(bacaBagian());
+      window.scrollTo({ top: 0 });
+    };
+    window.addEventListener('hashchange', ikutiAlamat);
+    return () => window.removeEventListener('hashchange', ikutiAlamat);
+  }, []);
 
   return (
     <>
@@ -92,21 +104,36 @@ export function ProfilKecamatan() {
           deskripsi="Gambaran umum, sejarah singkat, visi dan misi, wilayah kelurahan, serta struktur organisasi Kecamatan Tarakan Timur."
         />
 
-        <nav className="section-nav" aria-label="Bagian halaman">
-          {BAGIAN.map(({ id, label }) => (
-            <a
-              key={id}
-              href={`#${id}`}
-              className={`section-nav__item${id === bagianAktif ? ' section-nav__item--active' : ''}`}
-              aria-current={id === bagianAktif ? 'true' : undefined}
-              onClick={() => setBagianAktif(id)}
-            >
-              {label}
+        {bagianAktif ? (
+          <nav className="section-nav" aria-label="Bagian halaman">
+            <a href="/profil-kecamatan" className="section-nav__item section-nav__item--kembali">
+              ← Semua bagian
             </a>
-          ))}
-        </nav>
+            {BAGIAN.map(({ id, label }) => (
+              <a key={id} href={`#${id}`} className={`section-nav__item${id === bagianAktif ? ' section-nav__item--active' : ''}`} aria-current={id === bagianAktif ? 'true' : undefined}>
+                {label}
+              </a>
+            ))}
+          </nav>
+        ) : (
+          <section className="section pilih-bagian">
+            <SectionHeading overline="Pilih bagian" judul="Apa yang ingin Anda ketahui?" deskripsi="Pilih salah satu bagian untuk melihat isinya." />
+            <div className="pilih-bagian__grid">
+              {BAGIAN.map(({ id, label, ikon, ringkas }) => (
+                <a className="tile tile--auto tile--tautan" href={`#${id}`} key={id}>
+                  <span className="tile__icon">
+                    <Icon name={ikon} />
+                  </span>
+                  <h3 className="tile__title">{label}</h3>
+                  <p className="tile__desc">{ringkas}</p>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
-        <section className="profil-umum" id="gambaran-umum">
+        {bagianAktif === 'gambaran-umum' && (
+          <section className="profil-umum" id="gambaran-umum">
           <FotoPlaceholder keterangan="Foto kantor Kecamatan Tarakan Timur (placeholder)" className="profil-umum__foto" />
           <div className="profil-umum__teks">
             <p className="overline">Gambaran umum</p>
@@ -126,9 +153,11 @@ export function ProfilKecamatan() {
               ))}
             </dl>
           </div>
-        </section>
+          </section>
+        )}
 
-        <section className="sejarah" id="sejarah">
+        {bagianAktif === 'sejarah' && (
+          <section className="sejarah" id="sejarah">
           <div className="sejarah__judul">
             <p className="overline">Sejarah singkat</p>
             <h2 className="heading__title">Perjalanan Tarakan Timur</h2>
@@ -151,9 +180,11 @@ export function ProfilKecamatan() {
               </li>
             ))}
           </ol>
-        </section>
+          </section>
+        )}
 
-        <section className="section section--visi" id="visi-misi">
+        {bagianAktif === 'visi-misi' && (
+          <section className="section section--visi" id="visi-misi">
           <SectionHeading overline="Arah pembangunan" judul="Visi & Misi" deskripsi={
               <>
                 <span className="only-desktop">Isi sesuai dokumen Rencana Strategis (Renstra) Kecamatan Tarakan Timur yang berlaku.</span>
@@ -177,9 +208,11 @@ export function ProfilKecamatan() {
               </ol>
             </div>
           </div>
-        </section>
+          </section>
+        )}
 
-        <section className="section" id="wilayah">
+        {bagianAktif === 'wilayah' && (
+          <section className="section" id="wilayah">
           <SectionHeading overline="Wilayah administrasi" judul="7 Kelurahan di Tarakan Timur" deskripsi={<span className="only-desktop">Setiap kelurahan memiliki kantor pelayanan untuk layanan administrasi tingkat kelurahan.</span>} />
           <div className="wilayah-grid">
             {KANTOR_KELURAHAN.map((kelurahan) => (
@@ -187,9 +220,11 @@ export function ProfilKecamatan() {
             ))}
             <FotoPlaceholder keterangan="Peta wilayah (placeholder)" className="wilayah-grid__peta only-desktop" />
           </div>
-        </section>
+          </section>
+        )}
 
-        <section className="section section--page section--struktur" id="struktur-organisasi">
+        {bagianAktif === 'struktur-organisasi' && (
+          <section className="section section--page section--struktur" id="struktur-organisasi">
           <SectionHeading
             overline="Struktur organisasi"
             judul="Perangkat Kecamatan"
@@ -215,7 +250,8 @@ export function ProfilKecamatan() {
               ))}
             </div>
           </div>
-        </section>
+          </section>
+        )}
       </main>
       <SiteFooter />
     </>

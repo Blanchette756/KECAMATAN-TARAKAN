@@ -386,7 +386,29 @@
   color: var(--color-primary);
 }
 
-/* Menu turunan: terbuka saat kursor di atas menu, atau saat menu difokus lewat keyboard (Tab). */
+/* Menu turunan: terbuka saat tombol menu diklik, tertutup saat klik di luar atau tekan Esc. */
+.nav__item--tombol {
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.drawer__judul {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.drawer__sub {
+  padding-block: var(--space-8);
+  padding-left: var(--space-16);
+  font-weight: 500;
+}
+
 .nav__cabang {
   position: relative;
 }
@@ -395,8 +417,7 @@
   transition: transform 180ms ease;
 }
 
-.nav__cabang:hover .nav__item .icon,
-.nav__cabang:focus-within .nav__item .icon {
+.nav__cabang--buka .nav__item .icon {
   transform: rotate(180deg);
 }
 
@@ -422,8 +443,7 @@
     visibility 180ms;
 }
 
-.nav__cabang:hover .nav__sub,
-.nav__cabang:focus-within .nav__sub {
+.nav__cabang--buka .nav__sub {
   opacity: 1;
   visibility: visible;
   transform: none;
@@ -1811,5 +1831,32 @@
 @media (max-width: 1099px) {
   .only-desktop {
     display: none;
+  }
+}
+
+/* Pilihan bagian Profil Kecamatan: isi baru tampil setelah pengunjung memilih. */
+.pilih-bagian__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-16);
+}
+
+.tile--tautan {
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.tile--tautan:hover,
+.tile--tautan:focus-visible {
+  border-color: var(--color-primary);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 8%);
+}
+
+.section-nav__item--kembali {
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 900px) {
+  .pilih-bagian__grid {
+    grid-template-columns: 1fr;
   }
 }

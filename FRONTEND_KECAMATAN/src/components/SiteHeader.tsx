@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { JAM_PELAYANAN, JAM_PELAYANAN_SINGKAT } from '../data/kontak';
 import { ambilSesi, inisial } from '../sesi';
@@ -33,6 +33,22 @@ const MENU: { label: string; href: string; sub?: { label: string; href: string }
 
 export function SiteHeader({ aktif }: { aktif: string }) {
   const [menuTerbuka, setMenuTerbuka] = useState(false);
+  const [cabangTerbuka, setCabangTerbuka] = useState<string | null>(null);
+
+  // Menu bersubmenu hanyalah tombol: tertutup lagi bila klik di luar atau menekan Esc.
+  useEffect(() => {
+    if (!cabangTerbuka) return;
+    const klikDiLuar = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('.nav__cabang')) setCabangTerbuka(null);
+    };
+    const tekanEsc = (e: KeyboardEvent) => e.key === 'Escape' && setCabangTerbuka(null);
+    document.addEventListener('click', klikDiLuar);
+    document.addEventListener('keydown', tekanEsc);
+    return () => {
+      document.removeEventListener('click', klikDiLuar);
+      document.removeEventListener('keydown', tekanEsc);
+    };
+  }, [cabangTerbuka]);
   const sesi = ambilSesi();
   const akun =
     sesi?.user.role === 'WARGA' ? (
@@ -81,11 +97,22 @@ export function SiteHeader({ aktif }: { aktif: string }) {
         <nav className="nav" aria-label="Navigasi utama">
           <ul className="nav__list">
             {MENU.map((item) => (
-              <li key={item.label} className={item.sub ? 'nav__cabang' : undefined}>
-                <a className={`nav__item${item.label === aktif ? ' nav__item--active' : ''}`} href={item.href} aria-current={item.label === aktif ? 'page' : undefined}>
-                  {item.label}
-                  {item.sub && <Icon name="chevron-nav" />}
-                </a>
+              <li key={item.label} className={item.sub ? `nav__cabang${cabangTerbuka === item.label ? ' nav__cabang--buka' : ''}` : undefined}>
+                {item.sub ? (
+                  <button
+                    type="button"
+                    className={`nav__item nav__item--tombol${item.label === aktif ? ' nav__item--active' : ''}`}
+                    aria-expanded={cabangTerbuka === item.label}
+                    onClick={() => setCabangTerbuka(cabangTerbuka === item.label ? null : item.label)}
+                  >
+                    {item.label}
+                    <Icon name="chevron-nav" />
+                  </button>
+                ) : (
+                  <a className={`nav__item${item.label === aktif ? ' nav__item--active' : ''}`} href={item.href} aria-current={item.label === aktif ? 'page' : undefined}>
+                    {item.label}
+                  </a>
+                )}
                 {item.sub && (
                   <ul className="nav__sub" aria-label={`Bagian ${item.label}`}>
                     {item.sub.map((bagian) => (
@@ -113,16 +140,27 @@ export function SiteHeader({ aktif }: { aktif: string }) {
       </div>
 
       <nav className={`drawer${menuTerbuka ? ' drawer--open' : ''}`} aria-label="Navigasi utama">
-        {MENU.map((item) => (
-          <a
-            key={item.label}
-            className={`drawer__link${item.label === aktif ? ' drawer__link--active' : ''}`}
-            href={item.href}
-            onClick={() => setMenuTerbuka(false)}
-          >
-            {item.label}
-          </a>
-        ))}
+        {MENU.map((item) =>
+          item.sub ? (
+            <div key={item.label}>
+              <p className={`drawer__link drawer__judul${item.label === aktif ? ' drawer__link--active' : ''}`}>{item.label}</p>
+              {item.sub.map((bagian) => (
+                <a key={bagian.label} className="drawer__link drawer__sub" href={bagian.href} onClick={() => setMenuTerbuka(false)}>
+                  {bagian.label}
+                </a>
+              ))}
+            </div>
+          ) : (
+            <a
+              key={item.label}
+              className={`drawer__link${item.label === aktif ? ' drawer__link--active' : ''}`}
+              href={item.href}
+              onClick={() => setMenuTerbuka(false)}
+            >
+              {item.label}
+            </a>
+          ),
+        )}
         {akun}
       </nav>
     </header>
