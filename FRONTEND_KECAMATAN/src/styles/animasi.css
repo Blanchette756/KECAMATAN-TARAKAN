@@ -183,10 +183,6 @@
   animation: pudar var(--gerak) ease;
 }
 
-.drawer--open {
-  animation: turun var(--gerak) var(--kurva);
-}
-
 .admin__utama > * {
   animation: pudar var(--gerak) ease;
 }
@@ -206,8 +202,7 @@
     --jarak-muncul: 0px;
   }
 
-  .dialog[open],
-  .drawer--open {
+  .dialog[open] {
     animation-name: pudar;
   }
 
@@ -293,5 +288,28 @@
   .heading.muncul:not(.muncul--tampil),
   .stat.muncul:not(.muncul--tampil) {
     transform: none;
+  }
+}
+
+/* 6. Transisi Collapse Bootstrap untuk menu HP (nilai sama dengan bawaan Bootstrap: tinggi 350 ms). */
+.collapse:not(.show) {
+  display: none;
+}
+
+.collapsing {
+  height: 0;
+  overflow: hidden;
+  transition: height 350ms ease;
+}
+
+@media (min-width: 1100px) {
+  .laci-menu {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapsing {
+    transition: none;
   }
 }

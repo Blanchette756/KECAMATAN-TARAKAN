@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import Collapse from 'bootstrap/js/dist/collapse';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { JAM_PELAYANAN, JAM_PELAYANAN_SINGKAT } from '../data/kontak';
 import { ambilSesi, inisial } from '../sesi';
@@ -34,6 +35,15 @@ const MENU: { label: string; href: string; sub?: { label: string; href: string }
 export function SiteHeader({ aktif }: { aktif: string }) {
   const [menuTerbuka, setMenuTerbuka] = useState(false);
   const [cabangTerbuka, setCabangTerbuka] = useState<string | null>(null);
+  const laciMenu = useRef<HTMLDivElement>(null);
+
+  // Buka-tutup menu HP memakai komponen Collapse Bootstrap: tinggi menu bergeser halus saat buka dan tutup.
+  useEffect(() => {
+    if (!laciMenu.current) return;
+    const laci = Collapse.getOrCreateInstance(laciMenu.current, { toggle: false });
+    if (menuTerbuka) laci.show();
+    else laci.hide();
+  }, [menuTerbuka]);
 
   // Menu bersubmenu hanyalah tombol: tertutup lagi bila klik di luar atau menekan Esc.
   useEffect(() => {
@@ -139,7 +149,8 @@ export function SiteHeader({ aktif }: { aktif: string }) {
         </button>
       </div>
 
-      <nav className={`drawer${menuTerbuka ? ' drawer--open' : ''}`} aria-label="Navigasi utama">
+      <div className="collapse laci-menu" ref={laciMenu}>
+      <nav className="drawer" aria-label="Navigasi utama">
         {MENU.map((item) =>
           item.sub ? (
             <div key={item.label}>
@@ -163,6 +174,7 @@ export function SiteHeader({ aktif }: { aktif: string }) {
         )}
         {akun}
       </nav>
+      </div>
     </header>
   );
 }
