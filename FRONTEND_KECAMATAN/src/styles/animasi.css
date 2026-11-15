@@ -229,3 +229,69 @@
     transform: none;
   }
 }
+
+/* 5. Efek tambahan yang ringan (src/animasi.ts). Semua hanya memakai transform dan opacity. */
+.progres-gulir {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 60;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-primary));
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+/* Foto hero turun pelan sekali saja saat halaman dibuka (bukan animasi berulang, hemat baterai). */
+@keyframes zoom-pelan {
+  from {
+    transform: scale(1.08);
+  }
+}
+
+.hero__photo {
+  animation: zoom-pelan 1800ms var(--kurva) both;
+}
+
+.stat__number {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Arah masuk berbeda: judul dari kiri, kartu angka membesar sedikit. */
+.heading.muncul:not(.muncul--tampil) {
+  transform: translateX(calc(var(--jarak-muncul) * -0.75));
+}
+
+.stat.muncul:not(.muncul--tampil) {
+  transform: translateY(var(--jarak-muncul)) scale(0.94);
+}
+
+/* HP: gerak lebih pendek dan lebih cepat. Perangkat lemah (kelas .hemat): lebih singkat lagi dan tanpa efek hiasan. */
+@media (max-width: 1099px) {
+  :root {
+    --jarak-muncul: 20px;
+    --gerak-muncul: 600ms;
+  }
+}
+
+.hemat {
+  --jarak-muncul: 12px;
+  --gerak-muncul: 400ms;
+}
+
+.hemat .hero__photo {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__photo {
+    animation: none;
+  }
+
+  .heading.muncul:not(.muncul--tampil),
+  .stat.muncul:not(.muncul--tampil) {
+    transform: none;
+  }
+}
