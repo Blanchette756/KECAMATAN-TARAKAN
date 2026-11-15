@@ -1,12 +1,15 @@
 import type { User } from '../types/user.js';
 import { conflict, forbidden, validationFailed } from '../utils/errors.js';
 import type { ServiceDeps } from './deps.js';
+import { maskHp, maskNik } from '../utils/mask.js';
 import { KARAKTER_KONTROL, KARAKTER_TERSEMBUNYI } from './form-validator.js';
 
 export interface InputProfil {
   nama_lengkap: string;
-  nik: string;
-  no_hp: string;
+  /** Kosong = pakai NIK yang sudah tersimpan. Wajib saat profil pertama kali diisi. */
+  nik?: string;
+  /** Kosong = pakai nomor yang sudah tersimpan. Wajib saat profil pertama kali diisi. */
+  no_hp?: string;
   alamat: string;
   id_kelurahan: string;
 }
@@ -14,17 +17,36 @@ export interface InputProfil {
 export interface ProfilWarga {
   nama_lengkap: string;
   email: string | null;
-  nik: string | null;
-  no_hp: string | null;
+  nik_tersamar: string | null;
+  no_hp_tersamar: string | null;
   alamat: string | null;
   id_kelurahan: string | null;
+}
+
+/** Kode provinsi yang dipakai di dua angka pertama NIK. */
+const KODE_PROVINSI = new Set([
+  11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 31, 32, 33, 34, 35, 36, 51, 52, 53, 61, 62, 63, 64, 65, 71, 72, 73, 74, 75, 76, 81, 82, 91, 92, 93, 94, 95, 96,
+]);
+
+/** Nama: huruf (termasuk berharakat), spasi, titik, apostrof, dan tanda hubung. Tidak boleh ada angka. */
+export const POLA_NAMA = /^\p{L}[\p{L} .'’-]*$/u;
+
+/** NIK: 16 angka dengan provinsi, bulan, dan tanggal lahir yang masuk akal (tanggal perempuan ditambah 40). */
+export function nikValid(nik: string): boolean {
+  if (!/^[0-9]{16}$/.test(nik)) return false;
+  if (!KODE_PROVINSI.has(Number(nik.slice(0, 2)))) return false;
+  if (Number(nik.slice(2, 4)) === 0 || Number(nik.slice(4, 6)) === 0) return false;
+  const tanggal = Number(nik.slice(6, 8));
+  const hari = tanggal > 40 ? tanggal - 40 : tanggal;
+  const bulan = Number(nik.slice(8, 10));
+  return hari >= 1 && hari <= 31 && bulan >= 1 && bulan <= 12 && Number(nik.slice(12)) > 0;
 }
 
 const keProfil = (u: User): ProfilWarga => ({
   nama_lengkap: u.nama_lengkap,
   email: u.email,
-  nik: u.nik,
-  no_hp: u.no_hp,
+  nik_tersamar: maskNik(u.nik),
+  no_hp_tersamar: maskHp(u.no_hp),
   alamat: u.alamat,
   id_kelurahan: u.id_kelurahan,
 });
@@ -47,17 +69,21 @@ export class ProfilService {
   async simpan(user: User, input: InputProfil): Promise<User> {
     if (user.role !== 'WARGA') throw forbidden('Profil ini khusus warga');
     const { repos } = this.deps;
+    const nikBaru = (input.nik ?? '').replace(/\s/g, '');
+    const hpBaru = (input.no_hp ?? '').trim();
     const data = {
       nama_lengkap: input.nama_lengkap.trim().replace(/\s+/g, ' '),
-      nik: input.nik.replace(/\s/g, ''),
-      no_hp: rapikanNoHp(input.no_hp),
+      nik: nikBaru || user.nik || '',
+      no_hp: hpBaru ? rapikanNoHp(hpBaru) : (user.no_hp ?? ''),
       alamat: input.alamat.trim().replace(/\s+/g, ' '),
       id_kelurahan: input.id_kelurahan,
     };
     const masalah: string[] = [];
     if (data.nama_lengkap.length < 2 || data.nama_lengkap.length > 120) masalah.push('nama: 2-120 karakter');
-    if (!/^[0-9]{16}$/.test(data.nik)) masalah.push('nik: harus 16 angka sesuai KTP');
-    if (!/^08[0-9]{8,12}$/.test(data.no_hp)) masalah.push('no_hp: nomor HP Indonesia, misalnya 081234567890');
+    else if (!POLA_NAMA.test(data.nama_lengkap)) masalah.push('nama: hanya huruf, tanpa angka atau simbol lain');
+    if (user.nik && nikBaru && nikBaru !== user.nik) masalah.push('nik: tidak dapat diubah sendiri, hubungi petugas kecamatan');
+    else if (!nikValid(data.nik)) masalah.push('nik: harus 16 angka sesuai KTP');
+    if (!/^08[0-9]{8,12}$/.test(data.no_hp)) masalah.push('no_hp: hanya angka, nomor HP Indonesia, misalnya 081234567890');
     if (data.alamat.length < 5 || data.alamat.length > 250) masalah.push('alamat: 5-250 karakter');
     for (const [nama, nilai] of [
       ['nama', data.nama_lengkap],

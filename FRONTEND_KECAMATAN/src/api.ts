@@ -80,12 +80,19 @@ export const masukGoogle = (credential: string) => kirimJson<{ token: string; us
 export interface Profil {
   nama_lengkap: string;
   email: string | null;
-  nik: string | null;
-  no_hp: string | null;
+  nik_tersamar: string | null;
+  no_hp_tersamar: string | null;
   alamat: string | null;
   id_kelurahan: string | null;
 }
-export type InputProfil = { [K in Exclude<keyof Profil, 'email'>]: string };
+/** NIK dan HP kosong = pakai yang sudah tersimpan (hanya untuk profil yang sudah terisi). */
+export interface InputProfil {
+  nama_lengkap: string;
+  nik: string;
+  no_hp: string;
+  alamat: string;
+  id_kelurahan: string;
+}
 export const ambilProfil = () => panggil<Profil>('/auth/profil');
 export const simpanProfil = (data: InputProfil) => kirimJson<{ user: Pengguna }>('PATCH', '/auth/profil', data);
 export const ambilKelurahan = () => panggil<{ id_kelurahan: string; nama: string }[]>('/kelurahan');
@@ -180,7 +187,7 @@ export interface Ringkas {
   tgl_pengajuan: string;
   tgl_diperbarui: string;
   version: number;
-  pemohon?: { nama_lengkap: string; no_hp_tersamar: string | null };
+  pemohon?: { nama_lengkap: string };
 }
 
 export interface DetailPengajuan extends Omit<Ringkas, 'pemohon'> {
@@ -188,7 +195,7 @@ export interface DetailPengajuan extends Omit<Ringkas, 'pemohon'> {
   alasan_penolakan: string | null;
   nomor_surat: string | null;
   data_formulir: Record<string, unknown>;
-  pemohon: { nama_lengkap: string; nik: string | null; no_hp_tersamar: string | null; email: string | null; alamat: string | null } | null;
+  pemohon: { nama_lengkap: string; email: string | null; alamat: string | null } | null;
   berkas: BerkasDetail[];
   riwayat: { ke: string; label: string; aksi: string; oleh_role: string; catatan: string | null; waktu: string }[];
 }

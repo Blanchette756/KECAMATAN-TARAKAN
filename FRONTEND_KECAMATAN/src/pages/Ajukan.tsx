@@ -302,7 +302,6 @@ export function Ajukan() {
                 <dl>
                   <BarisData label="Nama lengkap" nilai={sesi.user.nama_lengkap} />
                   <BarisData label="Email (akun Google)" nilai={sesi.user.email} />
-                  <BarisData label="Nomor HP/WhatsApp" nilai={sesi.user.no_hp_tersamar} />
                 </dl>
               </Kartu>
               <Kartu

@@ -8,15 +8,33 @@ import { ambilSesi, simpanSesi, tujuanAman } from '../sesi';
 
 const KOSONG: InputProfil = { nama_lengkap: '', nik: '', no_hp: '', alamat: '', id_kelurahan: '' };
 
+const KODE_PROVINSI = new Set([11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 31, 32, 33, 34, 35, 36, 51, 52, 53, 61, 62, 63, 64, 65, 71, 72, 73, 74, 75, 76, 81, 82, 91, 92, 93, 94, 95, 96]);
+
+/** Sama dengan pemeriksaan di server: 16 angka dengan provinsi, tanggal lahir, dan bulan yang masuk akal. */
+function nikValid(nik: string) {
+  if (!/^[0-9]{16}$/.test(nik) || !KODE_PROVINSI.has(Number(nik.slice(0, 2)))) return false;
+  const tanggal = Number(nik.slice(6, 8));
+  const hari = tanggal > 40 ? tanggal - 40 : tanggal;
+  const bulan = Number(nik.slice(8, 10));
+  return hari >= 1 && hari <= 31 && bulan >= 1 && bulan <= 12 && Number(nik.slice(2, 4)) > 0 && Number(nik.slice(4, 6)) > 0;
+}
+
+const hanyaAngka = (teks: string, panjang: number) => teks.replace(/[^0-9]/g, '').slice(0, panjang);
+const hanyaHuruf = (teks: string) => teks.replace(/[^\p{L} .'’-]/gu, '');
+
 /** Data pemohon untuk surat. Wajib diisi warga sebelum mengajukan permohonan pertama. */
 export function Profil() {
   const sesi = ambilSesi();
   const [isian, setIsian] = useState<InputProfil | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  /** NIK dan HP yang sudah tersimpan hanya ditampilkan tersamar; kosong berarti profil belum pernah diisi. */
+  const [tersamar, setTersamar] = useState<{ nik: string | null; hp: string | null }>({ nik: null, hp: null });
   const [kelurahan, setKelurahan] = useState<{ id_kelurahan: string; nama: string }[]>([]);
   const [galat, setGalat] = useState<string | null>(null);
   const { mengirim, mulai, lepas } = useKunciKirim();
   const baru = sesi?.user.profil_lengkap === false;
+  const nikTersimpan = tersamar.nik !== null;
+  const hpTersimpan = tersamar.hp !== null;
 
   useEffect(() => {
     if (!sesi) return window.location.replace('/masuk?ke=/profil');
@@ -24,8 +42,9 @@ export function Profil() {
     Promise.all([ambilProfil(), ambilKelurahan()])
       .then(([p, k]) => {
         setEmail(p.email);
+        setTersamar({ nik: p.nik_tersamar, hp: p.no_hp_tersamar });
         setKelurahan(k);
-        setIsian({ nama_lengkap: p.nama_lengkap, nik: p.nik ?? '', no_hp: p.no_hp ?? '', alamat: p.alamat ?? '', id_kelurahan: p.id_kelurahan ?? '' });
+        setIsian({ nama_lengkap: p.nama_lengkap, nik: '', no_hp: '', alamat: p.alamat ?? '', id_kelurahan: p.id_kelurahan ?? '' });
       })
       .catch((error: Error) => {
         setGalat(error.message);
@@ -40,9 +59,11 @@ export function Profil() {
   const simpan = async (event: FormEvent) => {
     event.preventDefault();
     if (!isian) return;
-    const kosong = (Object.keys(isian) as (keyof InputProfil)[]).filter((k) => !isian[k].trim());
+    const kosong = (Object.keys(isian) as (keyof InputProfil)[]).filter((k) => !isian[k].trim() && !(k === 'nik' && nikTersimpan) && !(k === 'no_hp' && hpTersimpan));
     if (kosong.length > 0) return setGalat('Lengkapi semua isian bertanda *.');
-    if (!/^[0-9]{16}$/.test(isian.nik.replace(/\s/g, ''))) return setGalat('NIK harus 16 angka sesuai KTP.');
+    if (!/^\p{L}[\p{L} .'’-]+$/u.test(isian.nama_lengkap.trim())) return setGalat('Nama hanya boleh berisi huruf, tanpa angka atau simbol lain.');
+    if (!nikTersimpan && !nikValid(isian.nik)) return setGalat('NIK harus 16 angka dan sesuai dengan NIK di KTP.');
+    if (isian.no_hp && !/^08[0-9]{8,12}$/.test(isian.no_hp)) return setGalat('Nomor HP hanya angka, diawali 08, contoh: 081234567890.');
     if (!mulai()) return;
     setGalat(null);
     try {
@@ -81,16 +102,31 @@ export function Profil() {
                 </label>
                 <label className="field">
                   <span className="field__label">Nama lengkap sesuai KTP *</span>
-                  <input className="field__input" name="nama" autoComplete="name" maxLength={120} value={isian.nama_lengkap} onChange={(event) => ubah('nama_lengkap', event.target.value)} />
+                  <input className="field__input" name="nama" autoComplete="name" maxLength={120} value={isian.nama_lengkap} onChange={(event) => ubah('nama_lengkap', hanyaHuruf(event.target.value))} />
                 </label>
+                {nikTersimpan ? (
+                  <label className="field">
+                    <span className="field__label">NIK</span>
+                    <input className="field__input" value={tersamar.nik ?? ''} readOnly />
+                    <span className="baris__meta">NIK disembunyikan demi keamanan dan tidak dapat diubah sendiri. Hubungi petugas kecamatan bila salah.</span>
+                  </label>
+                ) : (
+                  <label className="field">
+                    <span className="field__label">NIK *</span>
+                    <input className="field__input" name="nik" inputMode="numeric" autoComplete="off" maxLength={16} placeholder="16 angka di KTP" value={isian.nik} onChange={(event) => ubah('nik', hanyaAngka(event.target.value, 16))} />
+                    <span className="baris__meta">Hanya angka, 16 digit. Setelah disimpan, NIK akan disembunyikan.</span>
+                  </label>
+                )}
+                {hpTersimpan && (
+                  <label className="field">
+                    <span className="field__label">Nomor HP/WhatsApp tersimpan</span>
+                    <input className="field__input" value={tersamar.hp ?? ''} readOnly />
+                  </label>
+                )}
                 <label className="field">
-                  <span className="field__label">NIK *</span>
-                  <input className="field__input" name="nik" inputMode="numeric" maxLength={20} placeholder="16 angka di KTP" value={isian.nik} onChange={(event) => ubah('nik', event.target.value)} />
-                </label>
-                <label className="field">
-                  <span className="field__label">Nomor HP/WhatsApp *</span>
-                  <input className="field__input" name="hp" inputMode="tel" autoComplete="tel" maxLength={20} placeholder="Contoh: 0812 3456 7890" value={isian.no_hp} onChange={(event) => ubah('no_hp', event.target.value)} />
-                  <span className="baris__meta">Gunakan nomor yang aktif. Di daftar permohonan, nomor ini ditampilkan tersamar.</span>
+                  <span className="field__label">{hpTersimpan ? 'Ganti nomor HP/WhatsApp (kosongkan bila tidak diganti)' : 'Nomor HP/WhatsApp *'}</span>
+                  <input className="field__input" name="hp" inputMode="numeric" autoComplete="tel" maxLength={14} placeholder="Contoh: 081234567890" value={isian.no_hp} onChange={(event) => ubah('no_hp', hanyaAngka(event.target.value, 14))} />
+                  <span className="baris__meta">Hanya angka. Nomor tidak ditampilkan lagi kepada siapa pun, termasuk petugas.</span>
                 </label>
                 <label className="field">
                   <span className="field__label">Alamat *</span>

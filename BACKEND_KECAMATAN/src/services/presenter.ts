@@ -32,7 +32,7 @@ export function ringkasPengajuan(p: PengajuanPelayanan, layanan: JenisLayanan | 
     tgl_pengajuan: p.tgl_pengajuan,
     tgl_diperbarui: p.tgl_diperbarui,
     version: p.version,
-    ...(pemohon ? { pemohon: { nama_lengkap: pemohon.nama_lengkap, nik_tersamar: maskNik(pemohon.nik), no_hp_tersamar: maskHp(pemohon.no_hp) } } : {}),
+    ...(pemohon ? { pemohon: { nama_lengkap: pemohon.nama_lengkap } } : {}),
   };
 }
 
@@ -91,8 +91,6 @@ export function detailPengajuan(
       ? {
           id_user: pemohon.id_user,
           nama_lengkap: pemohon.nama_lengkap,
-          nik: pemohon.nik,
-          no_hp_tersamar: maskHp(pemohon.no_hp),
           email: pemohon.email,
           alamat: pemohon.alamat,
           id_kelurahan: pemohon.id_kelurahan,

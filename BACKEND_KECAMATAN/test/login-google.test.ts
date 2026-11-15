@@ -84,7 +84,8 @@ describe('Lengkapi profil', () => {
     expect(simpan.statusCode).toBe(200);
     expect(simpan.json().data.user.profil_lengkap).toBe(true);
     const profil = (await ctx!.app.inject({ method: 'GET', url: '/api/v1/auth/profil', headers: bearer(token) })).json().data;
-    expect(profil).toMatchObject({ nik: '6571010101010001', no_hp: '081234567890', id_kelurahan: 'KEL-001' });
+    expect(profil).toMatchObject({ nik_tersamar: '6571********0001', no_hp_tersamar: '0812-****-7890', id_kelurahan: 'KEL-001' });
+    expect(JSON.stringify(profil)).not.toContain('6571010101010001');
 
     expect((await ajukan()).statusCode).toBe(201);
   });
@@ -100,6 +101,26 @@ describe('Lengkapi profil', () => {
     });
     expect(res.statusCode).toBe(422);
     expect(res.json().error.details).toHaveLength(3);
+  });
+
+  it('nama berangka, NIK tidak wajar, dan HP berhuruf ditolak', async () => {
+    await siapkan();
+    const token = (await google('token-google-budi-0001')).json().data.token;
+    for (const salah of [{ nama_lengkap: 'Budi123' }, { nik: '6571019900000001' }, { nik: '65710101010100AB' }, { no_hp: '0812abc45678' }]) {
+      const res = await ctx!.app.inject({ method: 'PATCH', url: '/api/v1/auth/profil', headers: bearer(token), payload: { ...PROFIL, ...salah } });
+      expect(res.statusCode).toBe(422);
+    }
+  });
+
+  it('setelah profil terisi, NIK dan HP boleh dikosongkan dan NIK tidak bisa diganti', async () => {
+    await siapkan();
+    const token = (await google('token-google-budi-0001')).json().data.token;
+    await ctx!.app.inject({ method: 'PATCH', url: '/api/v1/auth/profil', headers: bearer(token), payload: PROFIL });
+    const { nik: _n, no_hp: _h, ...tanpa } = PROFIL;
+    const ubah = await ctx!.app.inject({ method: 'PATCH', url: '/api/v1/auth/profil', headers: bearer(token), payload: { ...tanpa, alamat: 'Jl. Baru No. 5 RT 03' } });
+    expect(ubah.statusCode).toBe(200);
+    const ganti = await ctx!.app.inject({ method: 'PATCH', url: '/api/v1/auth/profil', headers: bearer(token), payload: { ...PROFIL, nik: '6571010202020002' } });
+    expect(ganti.statusCode).toBe(422);
   });
 
   it('NIK yang sudah dipakai akun lain ditolak', async () => {

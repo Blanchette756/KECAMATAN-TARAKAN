@@ -241,7 +241,6 @@ function Dashboard({ data, tab, setTab }: { data: Ringkas[]; tab: string; setTab
                     <td className="tabel-admin__kode">{item.no_registrasi}</td>
                     <td>
                       <strong>{item.pemohon?.nama_lengkap}</strong>
-                      <span className="baris__meta">{item.pemohon?.no_hp_tersamar}</span>
                     </td>
                     <td>{namaLayanan(item.id_layanan, item.nama_layanan)}</td>
                     <td className="baris__meta">{tanggal(item.tgl_pengajuan)} WITA</td>
@@ -374,7 +373,6 @@ function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () 
               <dl>
                 <BarisData label="Nama" nilai={data.pemohon?.nama_lengkap} />
                 <BarisData label="Email" nilai={data.pemohon?.email} />
-                <BarisData label="No. HP/WA" nilai={data.pemohon?.no_hp_tersamar} />
                 <BarisData label="Alamat" nilai={data.pemohon?.alamat} />
               </dl>
               <dl>

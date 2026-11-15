@@ -250,7 +250,7 @@ describe('Pengajuan: alur lengkap state machine', () => {
     const p = await ajukan(ctx, tWarga, 'LAYANAN-007', DATA_PENGANTAR);
     let antrian = (await ctx.app.inject({ method: 'GET', url: '/api/v1/pengajuan/antrian', headers: bearer(tAdmin) })).json();
     expect(antrian.data.map((x: { id_pengajuan: string }) => x.id_pengajuan)).toContain(p.id_pengajuan);
-    expect(antrian.data[0].pemohon.nik_tersamar).toMatch(/^\d{4}\*+\d{4}$/);
+    expect(JSON.stringify(antrian.data[0].pemohon)).not.toMatch(/nik|no_hp/);
 
     antrian = (await ctx.app.inject({ method: 'GET', url: '/api/v1/pengajuan/antrian', headers: bearer(tKasi) })).json();
     expect(antrian.meta.total).toBe(0);

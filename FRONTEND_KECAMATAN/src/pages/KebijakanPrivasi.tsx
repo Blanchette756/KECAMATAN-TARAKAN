@@ -37,7 +37,7 @@ const BAGIAN: { judul: string; isi: (string | string[])[] }[] = [
   {
     judul: 'Siapa yang dapat melihat data Anda',
     isi: [
-      'Hanya petugas kecamatan yang memproses permohonan sesuai tugasnya: petugas pelayanan, kepala seksi, dan camat. Setiap kali petugas membuka data pribadi pemohon, kejadian itu dicatat. Di daftar permohonan, NIK dan nomor HP ditampilkan tersamar.',
+      'Hanya petugas kecamatan yang memproses permohonan sesuai tugasnya: petugas pelayanan, kepala seksi, dan camat. Setiap kali petugas membuka data pribadi pemohon, kejadian itu dicatat. NIK dan nomor HP tidak ditampilkan kepada petugas; di profil Anda sendiri keduanya hanya tampil tersamar.',
       'Data tidak dibagikan kepada pihak lain, kecuali diwajibkan oleh peraturan perundang-undangan. Data disimpan di server penyedia hosting yang kami sewa untuk menjalankan situs ini.',
     ],
   },

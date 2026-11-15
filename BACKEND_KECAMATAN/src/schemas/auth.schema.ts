@@ -41,8 +41,8 @@ export type LoginGoogleBody = Static<typeof LoginGoogleBodySchema>;
 export const ProfilBodySchema = Type.Object(
   {
     nama_lengkap: Type.String({ minLength: 1, maxLength: 120 }),
-    nik: Type.String({ minLength: 1, maxLength: 30 }),
-    no_hp: Type.String({ minLength: 1, maxLength: 30 }),
+    nik: Type.Optional(Type.String({ maxLength: 30 })),
+    no_hp: Type.Optional(Type.String({ maxLength: 30 })),
     alamat: Type.String({ minLength: 1, maxLength: 250 }),
     id_kelurahan: Type.String({ minLength: 1, maxLength: 20 }),
   },
