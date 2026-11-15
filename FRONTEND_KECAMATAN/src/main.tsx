@@ -8,6 +8,7 @@ import './styles/tokens.css';
 import './styles/halaman.css';
 import './styles/portal.css';
 import './styles/components.css';
+import './styles/beranda.css';
 import './styles/animasi.css';
 import { pasangAnimasiMuncul } from './animasi';
 import { Admin } from './pages/Admin';
