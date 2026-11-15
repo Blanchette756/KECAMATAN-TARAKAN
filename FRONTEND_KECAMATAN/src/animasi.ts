@@ -6,7 +6,7 @@
  * sudah diberi kelas tersembunyi sebelum browser menggambarnya (tidak berkedip).
  * Jika "Animation effects" sistem dimatikan, CSS mengubahnya menjadi efek memudar saja.
  */
-const TARGET = '.heading, .tile, .news, .stat, .info-kartu, .grafik__kartu, .alur, .produk, .bantuan, .ppid, .kartu-sorot, .aparatur__kartu, .kelurahan__kartu, .hubungi__isi';
+const TARGET = '.heading, .tile, .news, .stat, .info-kartu, .grafik__kartu, .alur, .produk, .bantuan, .ppid';
 const JEDA_PER_ELEMEN = 120; // ms, supaya kartu yang muncul bersamaan tampil bergantian
 const JEDA_MAKS = 5;
 const LAMA_ANIMASI = 800 + JEDA_MAKS * JEDA_PER_ELEMEN + 200; // --gerak-muncul + jeda terlama + cadangan
