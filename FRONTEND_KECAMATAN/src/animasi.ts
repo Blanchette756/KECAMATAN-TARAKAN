@@ -7,9 +7,9 @@
  * Jika "Animation effects" sistem dimatikan, CSS mengubahnya menjadi efek memudar saja.
  */
 const TARGET = '.heading, .tile, .news, .stat, .info-kartu, .grafik__kartu, .alur, .produk, .bantuan, .ppid';
-const JEDA_PER_ELEMEN = 120; // ms, supaya kartu yang muncul bersamaan tampil bergantian
-const JEDA_MAKS = 5;
-const LAMA_ANIMASI = 800 + JEDA_MAKS * JEDA_PER_ELEMEN + 200; // --gerak-muncul + jeda terlama + cadangan
+const JEDA_PER_ELEMEN = 50; // ms, jeda antar kartu lebih sigap dan dinamis
+const JEDA_MAKS = 4;
+const BATAS_WAKTU_PENGAMAN = 1000; // ms, batas waktu pengaman untuk membersihkan kelas jika transitionend terlewat
 
 
 type PerambanDaya = Navigator & { deviceMemory?: number; connection?: { saveData?: boolean; effectiveType?: string } };
@@ -93,6 +93,8 @@ export function pasangAnimasiMuncul(akar: HTMLElement) {
   pasangEfekRingan(akar);
   if (!('IntersectionObserver' in window)) return;
 
+  const kurangiGerak = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   const io = new IntersectionObserver(
     (entri) => {
       let urutan = 0;
@@ -102,16 +104,30 @@ export function pasangAnimasiMuncul(akar: HTMLElement) {
         if (!e.isIntersecting && !terlewat) continue;
         const el = e.target as HTMLElement;
         io.unobserve(el);
-        el.style.transitionDelay = `${Math.min(urutan++, JEDA_MAKS) * JEDA_PER_ELEMEN}ms`;
+
+        // Jika terlewat atau pengguna memilih kurangi gerak, tidak perlu antrean jeda.
+        if (!kurangiGerak && !terlewat) {
+          el.style.transitionDelay = `${Math.min(urutan++, JEDA_MAKS) * JEDA_PER_ELEMEN}ms`;
+        }
+
         el.classList.add('muncul--tampil');
-        // Setelah selesai, kelas dilepas agar efek hover kartu kembali normal.
-        window.setTimeout(() => {
+
+        // Setelah transisi selesai, kelas dilepas seketika agar efek hover kartu kembali normal.
+        let selesai = false;
+        const bersihkan = () => {
+          if (selesai) return;
+          selesai = true;
           el.classList.remove('muncul', 'muncul--tampil');
           el.style.transitionDelay = '';
-        }, LAMA_ANIMASI);
+        };
+
+        el.addEventListener('transitionend', bersihkan, { once: true });
+        // Cadangan pengaman jika event transitionend terlewat (misal tab diminimalkan atau transisi dibatalkan)
+        window.setTimeout(bersihkan, BATAS_WAKTU_PENGAMAN);
       }
     },
-    { rootMargin: '0px 0px -40px 0px' },
+    // Jendela pengamatan: -10px bawah agar responsif di layar HP dan tidak memotong elemen di dekat footer
+    { rootMargin: '0px 0px -10px 0px' },
   );
 
   const daftarkan = (el: Element) => {

@@ -7,8 +7,8 @@
 :root {
   --gerak-cepat: 180ms;
   --gerak: 300ms;
-  --gerak-muncul: 800ms;
-  --jarak-muncul: 32px;
+  --gerak-muncul: 450ms;
+  --jarak-muncul: 24px;
   --kurva: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
@@ -188,6 +188,11 @@
 }
 
 @media (max-width: 1099px) {
+  :root {
+    --gerak-muncul: 380ms;
+    --jarak-muncul: 14px;
+  }
+
   .penampil__panah:not(:disabled):hover {
     transform: scale(1.06);
   }
