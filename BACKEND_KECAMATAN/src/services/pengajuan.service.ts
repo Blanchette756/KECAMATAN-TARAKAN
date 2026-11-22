@@ -129,11 +129,12 @@ export class PengajuanService {
 
   async detailUntuk(user: User, p: PengajuanPelayanan) {
     const { repos } = this.deps;
-    const [layanan, pemohon, berkas, riwayat] = await Promise.all([
+    const [layanan, pemohon, berkas, riwayat, penangan] = await Promise.all([
       this.layananAtauGagal(p.id_layanan),
       repos.users.findById(p.id_user),
       repos.berkas.listByPengajuan(p.id_pengajuan),
       repos.riwayat.listByPengajuan(p.id_pengajuan),
+      p.id_penangan ? repos.users.findById(p.id_penangan) : Promise.resolve(null),
     ]);
     if (user.role !== 'WARGA') {
       // Catat audit setiap kali petugas menerima data pribadi pemohon, termasuk lewat respons aksi.
@@ -146,7 +147,7 @@ export class PengajuanService {
         target_id: p.id_pengajuan,
       });
     }
-    return detailPengajuan(p, layanan, pemohon, berkas, riwayat, user.role === 'WARGA' ? 'PEMOHON' : 'PETUGAS');
+    return detailPengajuan(p, layanan, pemohon, berkas, riwayat, user.role === 'WARGA' ? 'PEMOHON' : 'PETUGAS', penangan);
   }
 
   // Warga
@@ -191,6 +192,7 @@ export class PengajuanService {
       id_kasi: null,
       id_camat: null,
       id_penyerah: null,
+      id_penangan: null,
       tgl_selesai: null,
       tgl_diperbarui: iso,
       version: 1,
@@ -216,7 +218,16 @@ export class PengajuanService {
     const { repos } = this.deps;
     const hal = await repos.pengajuan.listByUser(user.id_user, paging);
     const layanan = new Map((await repos.master.listLayanan()).map((l) => [l.id_layanan, l]));
-    return { ...hal, items: hal.items.map((p) => ringkasPengajuan(p, layanan.get(p.id_layanan) ?? null, null)) };
+    // Warga melihat nama petugas yang menangani tiap permohonannya. Petugas yang sama cukup dicari sekali.
+    const petugas = new Map<string, Promise<User | null>>();
+    const cariPetugas = (id: string) => {
+      if (!petugas.has(id)) petugas.set(id, repos.users.findById(id));
+      return petugas.get(id)!;
+    };
+    const items = await Promise.all(
+      hal.items.map(async (p) => ringkasPengajuan(p, layanan.get(p.id_layanan) ?? null, null, p.id_penangan ? await cariPetugas(p.id_penangan) : null, 'PEMOHON')),
+    );
+    return { ...hal, items };
   }
 
   async revisi(user: User, id: string, input: InputRevisi) {
@@ -361,17 +372,21 @@ export class PengajuanService {
     // Dashboard semua berkas: terbaru di atas (sesuai Figma D1). Antrean kerja: yang paling lama menunggu di atas.
     const hal = await repos.pengajuan.listByStatus(statuses, filter, paging, semuaBerkas ? 'terbaru' : 'terlama');
     const layanan = new Map((await repos.master.listLayanan()).map((l) => [l.id_layanan, l]));
-    // Satu pemohon bisa punya banyak berkas di halaman yang sama; cukup dicari sekali per pemohon.
-    const pemohon = new Map<string, Promise<User | null>>();
-    const cariPemohon = (id: string) => {
-      let janji = pemohon.get(id);
+    // Satu pemohon atau petugas bisa muncul di banyak berkas di halaman yang sama; cukup dicari sekali per orang.
+    const pengguna = new Map<string, Promise<User | null>>();
+    const cariPengguna = (id: string) => {
+      let janji = pengguna.get(id);
       if (!janji) {
         janji = repos.users.findById(id);
-        pemohon.set(id, janji);
+        pengguna.set(id, janji);
       }
       return janji;
     };
-    const items = await Promise.all(hal.items.map(async (p) => ringkasPengajuan(p, layanan.get(p.id_layanan) ?? null, await cariPemohon(p.id_user))));
+    const items = await Promise.all(
+      hal.items.map(async (p) =>
+        ringkasPengajuan(p, layanan.get(p.id_layanan) ?? null, await cariPengguna(p.id_user), p.id_penangan ? await cariPengguna(p.id_penangan) : null, 'PETUGAS'),
+      ),
+    );
     return { ...hal, status_antrian: statuses, items };
   }
 
@@ -432,5 +447,41 @@ export class PengajuanService {
     if (layanan.mode_penyerahan !== 'AMBIL_DI_KANTOR') throw badRequest('Layanan ini diunduh daring, tidak melalui penyerahan di kantor');
     const hasil = await this.workflow.jalankan(user, p, layanan, 'SERAHKAN', catatan ?? null, version);
     return this.detailUntuk(user, hasil);
+  }
+
+  /**
+   * Petugas Pelayanan mencatat berkas ini atas namanya ("Saya tangani"). Berkas yang sudah dipegang petugas lain
+   * hanya bisa diambil bila `ambilAlih` true, misalnya karena petugas itu cuti. Status pengajuan tidak berubah.
+   */
+  async tangani(user: User, id: string, version: number, ambilAlih: boolean) {
+    const { repos, now } = this.deps;
+    if (user.role !== 'ADMIN') throw forbidden('Hanya Petugas Pelayanan yang dapat menangani berkas');
+    const p = await this.ambilDenganAkses(user, id);
+    if (p.id_penangan === user.id_user) return this.detailUntuk(user, p);
+    if (STATUS_AKHIR.includes(p.status_pengajuan)) {
+      throw conflict('TRANSISI_TIDAK_VALID', 'Pengajuan sudah selesai diproses', { status_saat_ini: p.status_pengajuan });
+    }
+    if (p.version !== version) {
+      throw conflict('VERSI_KEDALUWARSA', 'Data pengajuan sudah berubah. Muat ulang halaman lalu coba lagi.', { version_terkini: p.version });
+    }
+    const pemegangLama = p.id_penangan;
+    if (pemegangLama !== null && !ambilAlih) {
+      throw conflict('DITANGANI_PETUGAS_LAIN', 'Berkas ini sudah ditangani petugas lain', { id_penangan: pemegangLama });
+    }
+    // tgl_diperbarui sengaja tidak diubah: bagi warga, statusnya tidak berubah. Versi tetap naik, jadi petugas
+    // lain yang sedang membuka berkas ini mendapat pemberitahuan bahwa berkasnya berubah.
+    const ok = await repos.pengajuan.updateIfVersion({ ...p, id_penangan: user.id_user }, version);
+    if (!ok) throw conflict('VERSI_KEDALUWARSA', 'Data pengajuan sudah berubah. Muat ulang halaman lalu coba lagi.');
+    await repos.audit.add({
+      id_log: newId('LOG'),
+      waktu: now().toISOString(),
+      id_user: user.id_user,
+      role: user.role,
+      aksi: pemegangLama === null ? 'TANGANI_PENGAJUAN' : 'AMBIL_ALIH_PENGAJUAN',
+      target_id: p.id_pengajuan,
+    });
+    const tersimpan = await repos.pengajuan.findById(p.id_pengajuan);
+    if (!tersimpan) throw new Error('Pengajuan hilang setelah disimpan');
+    return this.detailUntuk(user, tersimpan);
   }
 }

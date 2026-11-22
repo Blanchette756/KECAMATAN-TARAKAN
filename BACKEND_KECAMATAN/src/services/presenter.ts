@@ -21,7 +21,21 @@ export function toUserPublik(u: User): UserPublik {
   };
 }
 
-export function ringkasPengajuan(p: PengajuanPelayanan, layanan: JenisLayanan | null, pemohon: User | null) {
+/**
+ * Petugas Pelayanan penanggung jawab. Warga hanya menerima namanya, supaya tahu harus bertanya ke siapa;
+ * id akun hanya untuk petugas (dipakai panel admin untuk menandai "Saya").
+ */
+const keDataPenangan = (u: User | null, untukPetugas: boolean) =>
+  u ? (untukPetugas ? { id_user: u.id_user, nama_lengkap: u.nama_lengkap } : { nama_lengkap: u.nama_lengkap }) : null;
+
+/** `penangan` null = belum ada yang menangani. */
+export function ringkasPengajuan(
+  p: PengajuanPelayanan,
+  layanan: JenisLayanan | null,
+  pemohon: User | null,
+  penangan: User | null,
+  sudutPandang: 'PEMOHON' | 'PETUGAS',
+) {
   return {
     id_pengajuan: p.id_pengajuan,
     no_registrasi: p.no_registrasi,
@@ -33,6 +47,7 @@ export function ringkasPengajuan(p: PengajuanPelayanan, layanan: JenisLayanan | 
     tgl_diperbarui: p.tgl_diperbarui,
     version: p.version,
     ...(pemohon ? { pemohon: { nama_lengkap: pemohon.nama_lengkap } } : {}),
+    penangan: keDataPenangan(penangan, sudutPandang === 'PETUGAS'),
   };
 }
 
@@ -56,6 +71,7 @@ export function detailPengajuan(
   berkas: BerkasPengajuan[],
   riwayat: RiwayatStatus[],
   sudutPandang: 'PEMOHON' | 'PETUGAS',
+  penangan: User | null = null,
 ) {
   const untukPetugas = sudutPandang === 'PETUGAS';
   const syaratById = new Map(layanan.persyaratan.map((s) => [s.id_syarat, s]));
@@ -87,6 +103,7 @@ export function detailPengajuan(
           id_penyerah: p.id_penyerah,
         }
       : {}),
+    penangan: keDataPenangan(penangan, untukPetugas),
     pemohon: pemohon
       ? {
           id_user: pemohon.id_user,

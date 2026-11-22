@@ -27,6 +27,11 @@ export class WorkflowService {
     if (user.role !== t.role) throw forbidden(`Aksi ini hanya untuk ${t.role}`);
     if (user.role === 'KASI' && user.seksi !== p.seksi) throw notFound('Pengajuan tidak ditemukan');
     if (user.role === 'WARGA' && user.id_user !== p.id_user) throw notFound('Pengajuan tidak ditemukan');
+    if (user.role === 'ADMIN' && p.id_penangan !== null && p.id_penangan !== user.id_user) {
+      throw conflict('DITANGANI_PETUGAS_LAIN', 'Berkas ini sedang ditangani petugas lain. Ambil alih dulu bila Anda yang akan memprosesnya.', {
+        id_penangan: p.id_penangan,
+      });
+    }
     if (p.version !== expectedVersion) {
       throw conflict('VERSI_KEDALUWARSA', 'Data pengajuan sudah berubah. Muat ulang halaman lalu coba lagi.', {
         version_terkini: p.version,
@@ -71,6 +76,8 @@ export class WorkflowService {
     else ke = t.ke;
 
     const next: PengajuanPelayanan = { ...p, status_pengajuan: ke, tgl_diperbarui: iso };
+    // Petugas Pelayanan yang memproses berkas tanpa menekan "Saya tangani" otomatis menjadi penanggung jawabnya.
+    if (user.role === 'ADMIN' && next.id_penangan === null) next.id_penangan = user.id_user;
     /** Nomor surat yang diambil untuk transisi ini; dikembalikan bila penyimpanan status gagal. */
     let nomorDiambil: { tahun: string; urut: number } | null = null;
 

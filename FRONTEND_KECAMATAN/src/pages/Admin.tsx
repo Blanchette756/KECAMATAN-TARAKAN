@@ -11,6 +11,7 @@ import {
   keluarAkun,
   simpanBerita,
   tambahAkunPetugas,
+  tanganiPengajuan,
   ubahAkunPetugas,
   type AkunPetugas,
   type BerkasDetail,
@@ -145,10 +146,21 @@ const Topbar = ({ kecil, judul, kanan }: { kecil: ReactNode; judul: string; kana
   </header>
 );
 
-function Dashboard({ data, tab, setTab }: { data: Ringkas[]; tab: string; setTab: (tab: string) => void }) {
+const PETUGAS_SAYA = 'Berkas saya';
+const PETUGAS_KOSONG = 'Belum ditangani';
+
+/** Penanggung jawab berkas sesuai pilihan filter petugas (kosong = semua). */
+function cocokPetugas(item: Ringkas, pilihan: string, saya: string): boolean {
+  if (pilihan === PETUGAS_SAYA) return item.penangan?.id_user === saya;
+  if (pilihan === PETUGAS_KOSONG) return !item.penangan && !['SELESAI', 'DITOLAK'].includes(item.status_pengajuan);
+  return true;
+}
+
+function Dashboard({ data, tab, setTab, saya }: { data: Ringkas[]; tab: string; setTab: (tab: string) => void; saya: string }) {
   const [cari, setCari] = useState('');
   const [layanan, setLayanan] = useState('');
   const [waktu, setWaktu] = useState('');
+  const [petugas, setPetugas] = useState('');
   const [halaman, setHalaman] = useState(1);
 
   const kata = cari.trim().toLowerCase();
@@ -158,7 +170,8 @@ function Dashboard({ data, tab, setTab }: { data: Ringkas[]; tab: string; setTab
       (pilihan.status.length === 0 || pilihan.status.includes(item.status_pengajuan)) &&
       (!layanan || namaLayanan(item.id_layanan, item.nama_layanan) === layanan) &&
       (!waktu || hariIni(item.tgl_pengajuan)) &&
-      `${item.no_registrasi} ${item.pemohon?.nama_lengkap} ${item.nama_layanan}`.toLowerCase().includes(kata),
+      cocokPetugas(item, petugas, saya) &&
+      `${item.no_registrasi} ${item.pemohon?.nama_lengkap} ${item.nama_layanan} ${item.penangan?.nama_lengkap ?? ''}`.toLowerCase().includes(kata),
   );
   const jumlahHalaman = Math.max(1, Math.ceil(tersaring.length / PER_HALAMAN));
   const aktif = Math.min(halaman, jumlahHalaman);
@@ -220,12 +233,22 @@ function Dashboard({ data, tab, setTab }: { data: Ringkas[]; tab: string; setTab
             <div className="filter">
               <SelectField nama="layanan" placeholder="Semua layanan" pilihan={LAYANAN.map((item) => item.judul)} nilai={layanan} onUbah={setLayanan} />
               <SelectField nama="waktu" placeholder="Semua waktu" pilihan={['Hari ini']} nilai={waktu} onUbah={setWaktu} />
+              <SelectField
+                nama="petugas"
+                placeholder="Semua petugas"
+                pilihan={[PETUGAS_SAYA, PETUGAS_KOSONG]}
+                nilai={petugas}
+                onUbah={(nilai) => {
+                  setPetugas(nilai);
+                  setHalaman(1);
+                }}
+              />
             </div>
           </div>
           <table className="tabel-admin">
             <thead>
               <tr>
-                {['Kode Permohonan', 'Pemohon', 'Layanan', 'Diajukan', 'Status', 'Aksi'].map((kolom) => (
+                {['Kode Permohonan', 'Pemohon', 'Layanan', 'Diajukan', 'Status', 'Petugas', 'Aksi'].map((kolom) => (
                   <th scope="col" key={kolom}>
                     {kolom}
                   </th>
@@ -234,8 +257,10 @@ function Dashboard({ data, tab, setTab }: { data: Ringkas[]; tab: string; setTab
             </thead>
             <tbody>
               {baris.map((item) => {
-                const periksa = ['DIAJUKAN', 'DIKEMBALIKAN_KE_ADMIN'].includes(item.status_pengajuan);
-                const finalisasi = item.status_pengajuan === 'SIAP_DIAMBIL';
+                // Berkas yang dipegang petugas lain hanya bisa dilihat (atau diambil alih dari halaman detail).
+                const bolehProses = !item.penangan || item.penangan.id_user === saya;
+                const periksa = bolehProses && ['DIAJUKAN', 'DIKEMBALIKAN_KE_ADMIN'].includes(item.status_pengajuan);
+                const finalisasi = bolehProses && item.status_pengajuan === 'SIAP_DIAMBIL';
                 return (
                   <tr key={item.id_pengajuan}>
                     <td className="tabel-admin__kode">{item.no_registrasi}</td>
@@ -247,6 +272,7 @@ function Dashboard({ data, tab, setTab }: { data: Ringkas[]; tab: string; setTab
                     <td>
                       <Badge status={item.status_pengajuan} />
                     </td>
+                    <td className={item.penangan ? undefined : 'baris__meta'}>{item.penangan ? (item.penangan.id_user === saya ? 'Saya' : item.penangan.nama_lengkap) : '–'}</td>
                     <td>
                       <Button label={periksa ? 'Periksa' : finalisasi ? 'Finalisasi' : 'Lihat'} style={periksa || finalisasi ? 'primary' : 'secondary'} size="small" href={`/admin?id=${item.id_pengajuan}`} />
                     </td>
@@ -317,8 +343,71 @@ function PratinjauBerkas({ daftar, indeks, setIndeks }: { daftar: BerkasDetail[]
   );
 }
 
-function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () => void }) {
-  const dapatDiproses = ['DIAJUKAN', 'DIKEMBALIKAN_KE_ADMIN'].includes(data.status_pengajuan);
+/** Berkas sedang dipegang Petugas Pelayanan lain: petugas ini hanya bisa melihat atau mengambil alih. */
+const dipegangLain = (data: DetailPengajuan, saya: string) => !!data.penangan && data.penangan.id_user !== saya;
+
+/**
+ * Siapa Petugas Pelayanan yang memegang berkas ini. Berkas bisa dicatat atas nama sendiri ("Saya tangani"),
+ * atau diambil alih bila petugas yang memegangnya berhalangan. Mengambil alih perlu dikonfirmasi.
+ */
+function KartuPenangan({ data, saya, onDitangani }: { data: DetailPengajuan; saya: string; onDitangani: () => void }) {
+  const [yakin, setYakin] = useState(false);
+  const [galat, setGalat] = useState<string | null>(null);
+  const { mengirim, mulai, lepas } = useKunciKirim();
+  const penangan = data.penangan ?? null;
+  const selesai = ['SELESAI', 'DITOLAK'].includes(data.status_pengajuan);
+
+  const tangani = async (ambilAlih: boolean) => {
+    if (!mulai()) return;
+    setGalat(null);
+    try {
+      await tanganiPengajuan(data.id_pengajuan, data.version, ambilAlih);
+      onDitangani();
+    } catch (error) {
+      setGalat(error instanceof ApiError ? error.message : 'Gagal menandai berkas.');
+      setYakin(false);
+      lepas();
+    }
+  };
+
+  if (selesai && !penangan) return null;
+  return (
+    <Kartu judul="Petugas penanggung jawab">
+      {selesai ? (
+        <p className="tile__desc">Ditangani oleh {penangan?.id_user === saya ? 'Anda' : penangan?.nama_lengkap}.</p>
+      ) : !penangan ? (
+        <>
+          <p className="tile__desc">Belum ada petugas yang menangani berkas ini. Tandai supaya petugas lain tahu berkas ini sedang Anda kerjakan.</p>
+          <Galat pesan={galat} />
+          <Button label="Saya tangani" disabled={mengirim} onClick={() => tangani(false)} />
+        </>
+      ) : penangan.id_user === saya ? (
+        <p className="pemberitahuan pemberitahuan--hijau pemberitahuan--kecil">Anda yang menangani berkas ini.</p>
+      ) : (
+        <>
+          <p className="tile__desc">
+            Sedang ditangani oleh <strong>{penangan.nama_lengkap}</strong>. Hanya petugas tersebut yang dapat memproses berkas ini.
+          </p>
+          <Galat pesan={galat} />
+          {yakin ? (
+            <>
+              <p className="pemberitahuan pemberitahuan--kecil">
+                Ambil alih berkas dari {penangan.nama_lengkap}? Lakukan bila petugas tersebut berhalangan, dan pastikan ia tidak sedang memprosesnya.
+              </p>
+              <Button label="Ya, ambil alih" disabled={mengirim} onClick={() => tangani(true)} />
+              <Button label="Batal" style="secondary" disabled={mengirim} onClick={() => setYakin(false)} />
+            </>
+          ) : (
+            <Button label="Ambil alih berkas" style="secondary" onClick={() => setYakin(true)} />
+          )}
+        </>
+      )}
+    </Kartu>
+  );
+}
+
+function Verifikasi({ data, saya, onBerubah, onDitangani }: { data: DetailPengajuan; saya: string; onBerubah: () => void; onDitangani: () => void }) {
+  const dapatDiproses = ['DIAJUKAN', 'DIKEMBALIKAN_KE_ADMIN'].includes(data.status_pengajuan) && !dipegangLain(data, saya);
   const [nilai, setNilai] = useState<Record<string, { sesuai: boolean; catatan: string }>>({});
   const [catatan, setCatatan] = useState('');
   const [indeks, setIndeks] = useState(0);
@@ -432,6 +521,9 @@ function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () 
           </section>
         </div>
         <aside className="admin__samping">
+          {/* Panel keputusan disembunyikan bila berkas baru saja diambil petugas lain; pesan penolakannya tetap harus terlihat. */}
+          {!dapatDiproses && <Galat pesan={galat} />}
+          <KartuPenangan data={data} saya={saya} onDitangani={onDitangani} />
           <PratinjauBerkas daftar={data.berkas} indeks={indeks} setIndeks={setIndeks} />
           {dapatDiproses && (
             <Kartu judul="Keputusan petugas">
@@ -464,7 +556,8 @@ function Verifikasi({ data, onBerubah }: { data: DetailPengajuan; onBerubah: () 
   );
 }
 
-function Finalisasi({ data }: { data: DetailPengajuan }) {
+function Finalisasi({ data, saya, onDitangani }: { data: DetailPengajuan; saya: string; onDitangani: () => void }) {
+  const terkunci = dipegangLain(data, saya);
   const [cek, setCek] = useState<boolean[]>([false, false, false, false]);
   const [pengambil, setPengambil] = useState('');
   const [galat, setGalat] = useState<string | null>(null);
@@ -517,12 +610,14 @@ function Finalisasi({ data }: { data: DetailPengajuan }) {
               <input className="field__input" placeholder="Nama pengambil (isi jika dikuasakan)" value={pengambil} onChange={(event) => setPengambil(event.target.value)} />
             </label>
             <Galat pesan={galat} />
+            {terkunci && <p className="baris__meta">Berkas ini ditangani petugas lain. Ambil alih dulu bila Anda yang menyerahkan surat.</p>}
             <div>
-              <Button label="Tandai Sudah Diambil" style="secondary" disabled={mengirim || cek.includes(false)} onClick={serahkan} />
+              <Button label="Tandai Sudah Diambil" style="secondary" disabled={mengirim || terkunci || cek.includes(false)} onClick={serahkan} />
             </div>
           </Kartu>
         </div>
         <aside className="admin__samping">
+          <KartuPenangan data={data} saya={saya} onDitangani={onDitangani} />
           <Kartu judul="Ringkasan">
             <dl>
               <BarisData label="Pemohon" nilai={data.pemohon?.nama_lengkap} />
@@ -728,7 +823,7 @@ const PemberitahuanBerubah = ({ onMuatUlang }: { onMuatUlang: () => void }) => (
   </p>
 );
 
-function DetailAdmin({ id }: { id: string }) {
+function DetailAdmin({ id, saya }: { id: string; saya: string }) {
   const [data, setData] = useState<DetailPengajuan | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
   const muat = () =>
@@ -755,7 +850,11 @@ function DetailAdmin({ id }: { id: string }) {
           <PemberitahuanBerubah onMuatUlang={muatUlang} />
         </div>
       )}
-      {data.status_pengajuan === 'SIAP_DIAMBIL' ? <Finalisasi key={kunci} data={data} /> : <Verifikasi key={kunci} data={data} onBerubah={muat} />}
+      {data.status_pengajuan === 'SIAP_DIAMBIL' ? (
+        <Finalisasi key={kunci} data={data} saya={saya} onDitangani={muatUlang} />
+      ) : (
+        <Verifikasi key={kunci} data={data} saya={saya} onBerubah={muat} onDitangani={muatUlang} />
+      )}
     </>
   );
 }
@@ -1279,13 +1378,13 @@ export function Admin() {
             <GantiPassword />
           ) : petugas.role === 'ADMIN' ? (
             id ? (
-              <DetailAdmin id={id} />
+              <DetailAdmin id={id} saya={petugas.id_user} />
             ) : tab === TAB_BERITA ? (
               <KelolaBerita />
             ) : tab === TAB_AKUN ? (
               <KelolaAkun saya={petugas.id_user} />
             ) : (
-              <Dashboard data={data} tab={tab} setTab={setTab} />
+              <Dashboard data={data} tab={tab} setTab={setTab} saya={petugas.id_user} />
             )
           ) : (
             <Persetujuan user={petugas} antrian={data} idAwal={id} />

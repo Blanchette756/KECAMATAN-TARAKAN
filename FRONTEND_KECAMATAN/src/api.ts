@@ -188,6 +188,8 @@ export interface Ringkas {
   tgl_diperbarui: string;
   version: number;
   pemohon?: { nama_lengkap: string };
+  /** Petugas Pelayanan yang menangani; null = belum ada. `id_user` hanya dikirim ke petugas, warga hanya menerima nama. */
+  penangan?: { id_user?: string; nama_lengkap: string } | null;
 }
 
 export interface DetailPengajuan extends Omit<Ringkas, 'pemohon'> {
@@ -278,6 +280,9 @@ export async function ambilAntrian(semua: boolean): Promise<Ringkas[]> {
 }
 export const aksiPengajuan = (id: string, aksi: 'verifikasi' | 'paraf-kasi' | 'tte-camat' | 'serahkan', data: Record<string, unknown>) =>
   kirimJson<DetailPengajuan>('PATCH', `/pengajuan/${id}/${aksi}`, data);
+/** Petugas Pelayanan: catat berkas atas nama saya, atau ambil alih dari petugas lain. */
+export const tanganiPengajuan = (id: string, version: number, ambil_alih = false) =>
+  kirimJson<DetailPengajuan>('PATCH', `/pengajuan/${id}/tangani`, { version, ambil_alih });
 
 /** Berkas butuh token, jadi diambil lewat fetch lalu dibuka sebagai blob. */
 export async function ambilFileBerkas(fileUrl: string) {

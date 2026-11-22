@@ -1,7 +1,7 @@
 import type { Services } from '../container.js';
 import type { Halaman } from '../repositories/interfaces.js';
 import type { AntrianQuery, PagingQuery } from '../schemas/common.schema.js';
-import type { AjukanBody, KeputusanBody, LacakBody, RevisiBody, SerahkanBody, VerifikasiBody } from '../schemas/pengajuan.schema.js';
+import type { AjukanBody, KeputusanBody, LacakBody, RevisiBody, SerahkanBody, TanganiBody, VerifikasiBody } from '../schemas/pengajuan.schema.js';
 import type { User } from '../types/user.js';
 
 const paging = (q: PagingQuery | AntrianQuery) => ({ page: q.page ?? 1, limit: q.limit ?? 20 });
@@ -56,6 +56,10 @@ export class PengajuanController {
 
   async serahkan(user: User, id: string, body: SerahkanBody) {
     return { data: await this.s.pengajuan.serahkan(user, id, body.version, body.catatan) };
+  }
+
+  async tangani(user: User, id: string, body: TanganiBody) {
+    return { data: await this.s.pengajuan.tangani(user, id, body.version, body.ambil_alih ?? false) };
   }
 
   async statistik(user: User) {

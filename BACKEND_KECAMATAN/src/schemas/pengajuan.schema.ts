@@ -102,3 +102,12 @@ export const SerahkanBodySchema = Type.Object(
   { additionalProperties: false },
 );
 export type SerahkanBody = Static<typeof SerahkanBodySchema>;
+
+export const TanganiBodySchema = Type.Object(
+  {
+    version: VersionSchema,
+    ambil_alih: Type.Optional(Type.Boolean({ description: 'true = ambil berkas yang sedang dipegang petugas lain' })),
+  },
+  { additionalProperties: false },
+);
+export type TanganiBody = Static<typeof TanganiBodySchema>;

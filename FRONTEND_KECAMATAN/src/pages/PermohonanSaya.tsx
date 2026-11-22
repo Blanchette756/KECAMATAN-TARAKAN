@@ -107,6 +107,7 @@ function Daftar() {
                   <p className="overline">{item.no_registrasi}</p>
                   <h2 className="timeline__judul">{item.nama_layanan}</h2>
                   <p className="baris__meta">Diajukan {tanggal(item.tgl_pengajuan)} WITA</p>
+                  {item.penangan && <p className="baris__meta">Ditangani: {item.penangan.nama_lengkap}</p>}
                 </div>
                 <div className="permohonan__progres">
                   <p className="baris__meta">{item.label_status}</p>
@@ -357,6 +358,19 @@ function Detail({ id }: { id: string }) {
                 <p className="baris__meta">Kode pengambilan</p>
                 <p className="info-judul__teks">{data.no_registrasi}</p>
               </div>
+            </Kartu>
+          )}
+          {(data.penangan || !['SELESAI', 'DITOLAK'].includes(status)) && (
+            <Kartu judul="Petugas yang menangani">
+              {data.penangan ? (
+                <>
+                  <p className="tile__title">{data.penangan.nama_lengkap}</p>
+                  <p className="baris__meta">Petugas Pelayanan Kecamatan Tarakan Timur</p>
+                  <p className="tile__desc">Bila ada pertanyaan tentang permohonan ini, sebutkan nama petugas ini dan kode {data.no_registrasi} saat datang ke kantor atau menghubungi WhatsApp kecamatan.</p>
+                </>
+              ) : (
+                <p className="tile__desc">Menunggu petugas memeriksa berkas. Nama petugas yang menangani permohonan Anda akan muncul di sini.</p>
+              )}
             </Kartu>
           )}
           <Kartu judul={`Berkas Anda (${data.berkas.length})`}>

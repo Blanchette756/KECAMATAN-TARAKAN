@@ -1,4 +1,5 @@
 import { POLA_USERNAME } from '../constants/pola.js';
+import { STATUS_AKHIR } from '../constants/workflow.js';
 import type { Repositories } from '../repositories/interfaces.js';
 import type { Seksi } from '../types/common.js';
 import type { User } from '../types/user.js';
@@ -155,6 +156,9 @@ export class AkunPetugasService {
     await repos.users.updatePetugas(idUser, data, input.password !== undefined ? await hashPassword(input.password) : null);
     // Akun yang dinonaktifkan atau direset passwordnya harus login ulang.
     if (!data.aktif || input.password !== undefined) await repos.sesi.deleteByUser(idUser);
+    // Petugas Pelayanan yang dinonaktifkan atau dipindah peran tidak bisa lagi memproses berkasnya. Berkas yang belum
+    // selesai dilepas, supaya muncul di "Belum ditangani" untuk petugas lain dan warga tidak diarahkan ke orang yang sudah tidak bertugas.
+    if (akun.user.role === 'ADMIN' && !masihAdmin) await this.lepasBerkas(idUser);
     await this.catat(user, 'AKUN_UBAH', idUser);
     return keAkun({ ...akun.user, ...data }, akun.username);
   }
@@ -170,6 +174,19 @@ export class AkunPetugasService {
     const u = akun.user;
     await this.deps.repos.users.updatePetugas(u.id_user, { nama_lengkap: u.nama_lengkap, role: u.role, seksi: u.seksi, aktif: u.aktif }, await hashPassword(passwordBaru));
     await this.catat(user, 'GANTI_PASSWORD', u.id_user);
+  }
+
+  /** Kosongkan penanggung jawab pada berkas aktif milik petugas ini. Versi tetap dijaga; bentrok dicoba ulang. */
+  private async lepasBerkas(idUser: string) {
+    const { repos } = this.deps;
+    const milik = (await repos.pengajuan.listAll()).filter((p) => p.id_penangan === idUser && !STATUS_AKHIR.includes(p.status_pengajuan));
+    for (const awal of milik) {
+      for (let coba = 0; coba < 3; coba++) {
+        const p = coba === 0 ? awal : await repos.pengajuan.findById(awal.id_pengajuan);
+        if (!p || p.id_penangan !== idUser || STATUS_AKHIR.includes(p.status_pengajuan)) break;
+        if (await repos.pengajuan.updateIfVersion({ ...p, id_penangan: null }, p.version)) break;
+      }
+    }
   }
 
   private wajibPengelola(user: User) {

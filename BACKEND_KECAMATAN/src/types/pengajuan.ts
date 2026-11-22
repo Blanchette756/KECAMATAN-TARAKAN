@@ -26,6 +26,11 @@ export interface PengajuanPelayanan {
   id_kasi: string | null;
   id_camat: string | null;
   id_penyerah: string | null;
+  /**
+   * Petugas Pelayanan yang memegang berkas ini. Diisi saat petugas menekan "Saya tangani" atau saat pertama kali
+   * memproses berkas. Petugas lain harus mengambil alih dulu sebelum memproses. null = belum ada yang menangani.
+   */
+  id_penangan: string | null;
   tgl_selesai: string | null;
   tgl_diperbarui: string;
   /** Penghitung versi untuk mencegah dua petugas memproses berkas yang sama bersamaan. */
@@ -49,7 +54,7 @@ export interface AuditLog {
   waktu: string;
   id_user: string;
   role: Role;
-  aksi: 'LIHAT_PENGAJUAN' | 'LOGIN' | 'BERITA_TAMBAH' | 'BERITA_UBAH' | 'BERITA_HAPUS' | 'AKUN_TAMBAH' | 'AKUN_UBAH' | 'GANTI_PASSWORD';
+  aksi: 'LIHAT_PENGAJUAN' | 'LOGIN' | 'BERITA_TAMBAH' | 'BERITA_UBAH' | 'BERITA_HAPUS' | 'AKUN_TAMBAH' | 'AKUN_UBAH' | 'GANTI_PASSWORD' | 'TANGANI_PENGAJUAN' | 'AMBIL_ALIH_PENGAJUAN';
   target_id: string | null;
 }
 

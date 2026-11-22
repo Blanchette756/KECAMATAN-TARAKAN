@@ -194,6 +194,15 @@ export const MIGRASI: readonly Migrasi[] = [
       if (!(await indeksAda(conn, 'berkas', 'idx_berkas_file_url'))) await conn.query('ALTER TABLE berkas ADD KEY idx_berkas_file_url (file_url)');
     },
   },
+  {
+    versi: 5,
+    nama: 'petugas pelayanan penanggung jawab berkas',
+    sql: async (conn) => {
+      if (!(await kolomAda(conn, 'pengajuan', 'id_penangan'))) await conn.query('ALTER TABLE pengajuan ADD COLUMN id_penangan VARCHAR(40) NULL AFTER id_penyerah');
+      // Berkas lama: petugas yang sudah memverifikasinya dianggap penanggung jawab.
+      await conn.query('UPDATE pengajuan SET id_penangan = id_verifikator WHERE id_penangan IS NULL AND id_verifikator IS NOT NULL');
+    },
+  },
 ];
 
 /** Pasang migrasi yang belum jalan. GET_LOCK mencegah dua proses memasang bersamaan. */

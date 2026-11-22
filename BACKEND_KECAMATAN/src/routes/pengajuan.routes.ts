@@ -10,6 +10,7 @@ import {
   LacakResponseSchema,
   RevisiBodySchema,
   SerahkanBodySchema,
+  TanganiBodySchema,
   VerifikasiBodySchema,
 } from '../schemas/pengajuan.schema.js';
 import { BODY_LIMIT_KECIL } from '../constants/pola.js';
@@ -161,6 +162,22 @@ export const pengajuanRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { co
       },
     },
     async (req) => controller.serahkan(userDari(req), req.params.id, req.body),
+  );
+
+  app.patch(
+    '/pengajuan/:id/tangani',
+    {
+      onRequest: guards.wajibRole('ADMIN'),
+      schema: {
+        tags: ['Pengajuan – Petugas'],
+        summary: 'Admin: tandai berkas sebagai tanggung jawab saya, atau ambil alih dari petugas lain',
+        security: bearer,
+        params: PengajuanIdParamSchema,
+        body: TanganiBodySchema,
+        response: okResponses,
+      },
+    },
+    async (req) => controller.tangani(userDari(req), req.params.id, req.body),
   );
 
   // Semua role
