@@ -132,6 +132,45 @@
   line-height: 22px;
 }
 
+/* Kolom password + tombol ikon mata di dalam kotak isian. Area tekan 44px supaya mudah ditekan di HP. */
+.sandi {
+  position: relative;
+  display: block;
+}
+
+.sandi__input {
+  padding-right: 52px;
+}
+
+/* Edge punya tombol mata bawaan; disembunyikan supaya tidak ada dua ikon mata. */
+.sandi__input::-ms-reveal,
+.sandi__input::-ms-clear {
+  display: none;
+}
+
+.sandi__tombol {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.sandi__tombol:hover,
+.sandi__tombol[aria-pressed='true'] {
+  color: var(--color-primary);
+}
+
 .field__select {
   padding-right: 42px;
   appearance: none;

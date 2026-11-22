@@ -24,7 +24,7 @@ import {
 import { Icon, type IconName } from '../components/Icon';
 import { MediaBerkas, PenampilBerkas, useUrlBerkas } from '../components/PenampilBerkas';
 import { BarisData, BarisIsian, Galat, Kartu, KartuIsian, Riwayat, tanggal, ukuranFile, useIsianFormulir, useKunciKirim } from '../components/portal';
-import { Button, Logo, SelectField } from '../components/ui';
+import { Button, KolomPassword, Logo, SelectField } from '../components/ui';
 import { tanggalBerita } from '../data/berita';
 import { LAYANAN } from '../data/layanan';
 import { CAMAT } from '../data/pejabat';
@@ -1202,15 +1202,14 @@ function KelolaAkun({ saya }: { saya: string }) {
               )}
               {!form.id && (
                 <>
-                  <label className="field">
-                    <span className="field__label">Password *</span>
-                    <input className="field__input" type="password" autoComplete="new-password" value={form.isian.password} onChange={(event) => ubahIsian('password', event.target.value)} />
-                    <span className="baris__meta">Minimal {PASSWORD_MIN} karakter. Pemilik akun bisa menggantinya sendiri lewat menu Ganti Password.</span>
-                  </label>
-                  <label className="field">
-                    <span className="field__label">Ulangi password *</span>
-                    <input className="field__input" type="password" autoComplete="new-password" value={form.isian.ulang} onChange={(event) => ubahIsian('ulang', event.target.value)} />
-                  </label>
+                  <KolomPassword
+                    label="Password *"
+                    autoComplete="new-password"
+                    nilai={form.isian.password}
+                    onUbah={(nilai) => ubahIsian('password', nilai)}
+                    keterangan={`Minimal ${PASSWORD_MIN} karakter. Pemilik akun bisa menggantinya sendiri lewat menu Ganti Password.`}
+                  />
+                  <KolomPassword label="Ulangi password *" autoComplete="new-password" nilai={form.isian.ulang} onUbah={(nilai) => ubahIsian('ulang', nilai)} />
                 </>
               )}
               <Galat pesan={galat} />
@@ -1240,10 +1239,7 @@ function KelolaAkun({ saya }: { saya: string }) {
                 </p>
                 {reset?.id === akun.id_user && (
                   <form className="berita-form" onSubmit={(event) => simpanReset(event, akun)} noValidate>
-                    <label className="field">
-                      <span className="field__label">Password baru untuk {akun.username}</span>
-                      <input className="field__input" type="password" autoComplete="new-password" value={reset.password} onChange={(event) => setReset({ ...reset, password: event.target.value })} />
-                    </label>
+                    <KolomPassword label={`Password baru untuk ${akun.username}`} autoComplete="new-password" nilai={reset.password} onUbah={(nilai) => setReset({ ...reset, password: nilai })} />
                     <Galat pesan={galat} />
                     <div className="berita-form__aksi">
                       <Button label={mengirim ? 'Menyimpan…' : 'Simpan Password'} type="submit" size="small" disabled={mengirim} />
@@ -1333,11 +1329,8 @@ function GantiPassword() {
     }
   };
 
-  const kolom = (kunci: keyof typeof isian, label: string, autoComplete: string) => (
-    <label className="field">
-      <span className="field__label">{label}</span>
-      <input className="field__input" type="password" autoComplete={autoComplete} value={isian[kunci]} onChange={(event) => setIsian({ ...isian, [kunci]: event.target.value })} />
-    </label>
+  const kolom = (kunci: keyof typeof isian, label: string, autoComplete: 'current-password' | 'new-password') => (
+    <KolomPassword label={label} autoComplete={autoComplete} nilai={isian[kunci]} onUbah={(nilai) => setIsian({ ...isian, [kunci]: nilai })} />
   );
 
   return (

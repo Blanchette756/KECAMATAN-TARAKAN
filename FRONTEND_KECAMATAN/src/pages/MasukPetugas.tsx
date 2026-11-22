@@ -3,7 +3,7 @@ import { ApiError, masukPetugas, masukTiruan } from '../api';
 import { Galat, useKunciKirim } from '../components/portal';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
-import { Button, SelectField } from '../components/ui';
+import { Button, KolomPassword, SelectField } from '../components/ui';
 import { ambilSesi, simpanSesi } from '../sesi';
 
 // Figma tidak punya layar masuk petugas. Akun petugas dibuat Petugas Pelayanan lewat menu Kelola Akun.
@@ -72,10 +72,7 @@ export function MasukPetugas() {
               onChange={(event) => setUsername(event.target.value)}
             />
           </label>
-          <label className="field">
-            <span className="field__label">Password</span>
-            <input className="field__input" name="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
-          </label>
+          <KolomPassword label="Password" nama="password" autoComplete="current-password" nilai={password} onUbah={setPassword} />
           <Galat pesan={galat} />
           <Button label={mengirim ? 'Memeriksa…' : 'Masuk'} arrow={!mengirim} type="submit" disabled={mengirim} />
           <p className="baris__meta">Lupa password atau belum punya akun? Hubungi Petugas Pelayanan kecamatan.</p>

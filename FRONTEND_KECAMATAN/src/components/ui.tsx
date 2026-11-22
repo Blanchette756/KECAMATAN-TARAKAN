@@ -1,5 +1,70 @@
-import type { ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
+
+/** Mata terbuka = tampilkan password; mata dicoret = sembunyikan. Digambar langsung karena ikon Figma tidak punya ikon mata. */
+const IkonMata = ({ coret }: { coret: boolean }) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+    <circle cx="12" cy="12" r="3" />
+    {coret && <path d="M3 3l18 18" />}
+  </svg>
+);
+
+/**
+ * Kolom password dengan tombol ikon mata untuk melihat isinya. Banyak petugas berusia lanjut, jadi tombolnya
+ * besar (mudah ditekan di HP) dan isian bisa diperiksa sebelum dikirim, mengurangi salah ketik.
+ */
+export function KolomPassword({
+  label,
+  nilai,
+  onUbah,
+  autoComplete,
+  nama,
+  keterangan,
+}: {
+  label: string;
+  nilai: string;
+  onUbah: (nilai: string) => void;
+  autoComplete: 'current-password' | 'new-password';
+  nama?: string;
+  keterangan?: string;
+}) {
+  const id = useId();
+  const [terlihat, setTerlihat] = useState(false);
+  return (
+    <div className="field">
+      <label className="field__label" htmlFor={id}>
+        {label}
+      </label>
+      <span className="sandi">
+        <input
+          id={id}
+          className="field__input sandi__input"
+          name={nama}
+          type={terlihat ? 'text' : 'password'}
+          autoComplete={autoComplete}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={nilai}
+          onChange={(event) => onUbah(event.target.value)}
+        />
+        <button
+          type="button"
+          className="sandi__tombol"
+          aria-label={terlihat ? 'Sembunyikan password' : 'Tampilkan password'}
+          aria-pressed={terlihat}
+          aria-controls={id}
+          title={terlihat ? 'Sembunyikan password' : 'Tampilkan password'}
+          onClick={() => setTerlihat(!terlihat)}
+        >
+          <IkonMata coret={terlihat} />
+        </button>
+      </span>
+      {keterangan && <span className="baris__meta">{keterangan}</span>}
+    </div>
+  );
+}
 
 interface ButtonProps {
   label: string;
