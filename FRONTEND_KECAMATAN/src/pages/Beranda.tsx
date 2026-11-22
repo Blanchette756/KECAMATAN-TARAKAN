@@ -35,7 +35,7 @@ export function Beranda() {
             <div className="hero__overlay" />
             <p className="hero__pill">Portal pelayanan publik resmi</p>
             <h1 className="hero__title">Selamat Datang di Portal Resmi Pelayanan Publik Kecamatan Tarakan Timur</h1>
-            <p className="hero__lead">Akses informasi, pengajuan administrasi, dan layanan masyarakat secara mudah, transparan, dan terpercaya.</p>
+            <p className="hero__lead">Ada Cinta di Timur Tarakan: kolaborasi, sinergi, dan harmoni.</p>
             <Button label="Jelajahi Layanan Publik" style="accent" arrow href="#layanan" className="hero__cta" />
           </div>
         </section>
