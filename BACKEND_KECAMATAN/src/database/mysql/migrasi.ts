@@ -203,6 +203,22 @@ export const MIGRASI: readonly Migrasi[] = [
       await conn.query('UPDATE pengajuan SET id_penangan = id_verifikator WHERE id_penangan IS NULL AND id_verifikator IS NOT NULL');
     },
   },
+  {
+    versi: 6,
+    nama: 'foto berita',
+    // Satu foto per berita; ikut terhapus bila beritanya dihapus. Isi disimpan di database karena folder
+    // aplikasi di Hostinger ditimpa setiap deploy. MEDIUMBLOB menampung sampai 16 MB (batas foto 10 MB).
+    sql: [
+      `CREATE TABLE IF NOT EXISTS foto_berita (
+        id_berita VARCHAR(60) NOT NULL PRIMARY KEY,
+        mime_type VARCHAR(30) NOT NULL,
+        ukuran_byte INT NOT NULL,
+        diperbarui_pada VARCHAR(30) NOT NULL,
+        isi MEDIUMBLOB NOT NULL,
+        CONSTRAINT fk_foto_berita FOREIGN KEY (id_berita) REFERENCES berita (id_berita) ON DELETE CASCADE
+      ) ${OPSI_TABEL}`,
+    ],
+  },
 ];
 
 /** Pasang migrasi yang belum jalan. GET_LOCK mencegah dua proses memasang bersamaan. */

@@ -2,7 +2,7 @@ import type { JenisLayanan, KontakKecamatan } from '../types/layanan.js';
 import type { Kelurahan, User } from '../types/user.js';
 import type { AuditLog, PengajuanPelayanan, RiwayatStatus, Sesi } from '../types/pengajuan.js';
 import type { BerkasPengajuan, FileUnggahan } from '../types/berkas.js';
-import type { Berita } from '../types/berita.js';
+import type { Berita, FotoBerita } from '../types/berita.js';
 import type { StatusPengajuan } from '../constants/workflow.js';
 import type { Seksi } from '../types/common.js';
 
@@ -103,6 +103,17 @@ export interface BeritaRepository {
   delete(id: string): Promise<boolean>;
 }
 
+/** Foto berita (satu per berita). Disimpan terpisah dari berita supaya daftar berita tetap ringan. */
+export interface FotoBeritaRepository {
+  /** Simpan atau ganti foto berita. */
+  simpan(f: FotoBerita, isi: Buffer): Promise<void>;
+  baca(idBerita: string): Promise<{ info: FotoBerita; data: Buffer } | null>;
+  /** Metadata semua foto (tanpa isi), untuk menandai berita mana yang berfoto. */
+  listMeta(): Promise<FotoBerita[]>;
+  /** false jika berita itu tidak punya foto. */
+  hapus(idBerita: string): Promise<boolean>;
+}
+
 /** File unggahan warga, isi dan metadatanya. */
 export interface FileRepository {
   create(f: FileUnggahan, isi: Buffer): Promise<void>;
@@ -135,5 +146,6 @@ export interface Repositories {
   audit: AuditRepository;
   sesi: SesiRepository;
   berita: BeritaRepository;
+  fotoBerita: FotoBeritaRepository;
   files: FileRepository;
 }

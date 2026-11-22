@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { urlFotoBerita } from '../api';
 import type { IconName } from '../components/Icon';
 import { PersyaratanDialog } from '../components/PersyaratanDialog';
 import { SiteFooter } from '../components/SiteFooter';
@@ -70,7 +71,7 @@ export function Beranda() {
           <SectionHeading overline="Informasi pemerintah" judul="Berita Terkini" tautan="Lihat semua berita" tautanHref="/informasi-publik" />
           <div className="news-row">
             {berita?.slice(0, 3).map((item, urutan) => (
-              <NewsCard key={item.id_berita} tanggal={tanggalBerita(item.tanggal)} judul={item.judul} ringkasan={item.ringkasan} className={urutan === 2 ? 'only-desktop' : ''} />
+              <NewsCard key={item.id_berita} tanggal={tanggalBerita(item.tanggal)} judul={item.judul} ringkasan={item.ringkasan} foto={urlFotoBerita(item)} className={urutan === 2 ? 'only-desktop' : ''} />
             ))}
           </div>
           {!berita && <p className="heading__desc">{galatBerita ? 'Berita belum dapat dimuat. Coba muat ulang halaman.' : 'Memuat berita…'}</p>}

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import {
   aksiPengajuan,
   ambilAntrian,
@@ -20,10 +20,13 @@ import {
   type DetailPengajuan,
   type InputBerita,
   type Ringkas,
+  hapusFotoBerita,
+  unggahFotoBerita,
+  urlFotoBerita,
 } from '../api';
 import { Icon, type IconName } from '../components/Icon';
 import { MediaBerkas, PenampilBerkas, useUrlBerkas } from '../components/PenampilBerkas';
-import { BarisData, BarisIsian, Galat, Kartu, KartuIsian, Riwayat, tanggal, ukuranFile, useIsianFormulir, useKunciKirim } from '../components/portal';
+import { BarisData, BarisIsian, Galat, Kartu, KartuIsian, Riwayat, siapkanFotoBerita, tanggal, ukuranFile, useIsianFormulir, useKunciKirim } from '../components/portal';
 import { Button, KolomPassword, Logo, SelectField } from '../components/ui';
 import { tanggalBerita } from '../data/berita';
 import { LAYANAN } from '../data/layanan';
@@ -914,14 +917,27 @@ const BATAS = { judulMin: 5, judulMaks: 150, ringkasanMin: 10, ringkasanMaks: 60
 /** Tanggal hari ini menurut WITA, format YYYY-MM-DD (nilai bawaan isian tanggal berita). */
 const hariIniWita = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Makassar' }).format(new Date());
 
+/**
+ * Foto di form berita. `lama` = foto yang sudah tersimpan (alamat), `baru` = file pilihan yang belum diunggah,
+ * `hapus` = foto lama diminta dibuang saat Simpan.
+ */
+interface FotoForm {
+  lama: string | null;
+  baru: File | null;
+  pratinjauBaru: string | null;
+  hapus: boolean;
+}
+const FOTO_KOSONG: FotoForm = { lama: null, baru: null, pratinjauBaru: null, hapus: false };
+
 function KelolaBerita() {
   const [daftar, setDaftar] = useState<Berita[] | null>(null);
   const [galatMuat, setGalatMuat] = useState<string | null>(null);
   // null = form tertutup; id kosong = berita baru.
-  const [form, setForm] = useState<{ id?: string; isian: InputBerita } | null>(null);
+  const [form, setForm] = useState<{ id?: string; isian: InputBerita; foto: FotoForm } | null>(null);
   const [konfirmasiHapus, setKonfirmasiHapus] = useState<string | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
   const [pesan, setPesan] = useState<string | null>(null);
+  const [menyiapkanFoto, setMenyiapkanFoto] = useState(false);
   const { mengirim, mulai, lepas } = useKunciKirim();
 
   const muat = () =>
@@ -932,15 +948,40 @@ function KelolaBerita() {
     muat();
   }, []);
 
+  // Alamat pratinjau sementara dibuang saat diganti atau form ditutup, supaya memori HP tidak terus terpakai.
+  const pratinjauBaru = form?.foto.pratinjauBaru ?? null;
+  useEffect(() => () => {
+    if (pratinjauBaru) URL.revokeObjectURL(pratinjauBaru);
+  }, [pratinjauBaru]);
+
   const bukaForm = (berita?: Berita) => {
     setGalat(null);
     setPesan(null);
     setKonfirmasiHapus(null);
-    setForm(berita ? { id: berita.id_berita, isian: { judul: berita.judul, tanggal: berita.tanggal, ringkasan: berita.ringkasan } } : { isian: { judul: '', tanggal: hariIniWita(), ringkasan: '' } });
+    setForm(
+      berita
+        ? { id: berita.id_berita, isian: { judul: berita.judul, tanggal: berita.tanggal, ringkasan: berita.ringkasan }, foto: { ...FOTO_KOSONG, lama: urlFotoBerita(berita) } }
+        : { isian: { judul: '', tanggal: hariIniWita(), ringkasan: '' }, foto: FOTO_KOSONG },
+    );
     window.scrollTo(0, 0);
   };
 
   const ubahIsian = (kunci: keyof InputBerita, nilai: string) => form && setForm({ ...form, isian: { ...form.isian, [kunci]: nilai } });
+
+  const pilihFoto = async (event: ChangeEvent<HTMLInputElement>) => {
+    const asli = event.target.files?.[0];
+    // Dikosongkan supaya memilih file yang sama lagi tetap terbaca.
+    event.target.value = '';
+    if (!asli || !form) return;
+    setGalat(null);
+    setMenyiapkanFoto(true);
+    const siap = await siapkanFotoBerita(asli);
+    setMenyiapkanFoto(false);
+    if (siap.galat !== null) return setGalat(siap.galat);
+    setForm((lama) => lama && { ...lama, foto: { ...lama.foto, baru: siap.file, pratinjauBaru: URL.createObjectURL(siap.file), hapus: false } });
+  };
+
+  const buangFoto = () => form && setForm({ ...form, foto: { ...form.foto, baru: null, pratinjauBaru: null, hapus: form.foto.lama !== null } });
 
   const simpan = async (event: FormEvent) => {
     event.preventDefault();
@@ -954,13 +995,24 @@ function KelolaBerita() {
     if (masalah.length > 0) return setGalat(masalah.join(' '));
     if (!mulai()) return;
     setGalat(null);
+    let tersimpan: Berita | null = null;
     try {
-      await simpanBerita(form.isian, form.id);
+      // Berita dulu (berita baru perlu id), baru fotonya.
+      tersimpan = await simpanBerita(form.isian, form.id);
+      if (form.foto.baru) await unggahFotoBerita(tersimpan.id_berita, form.foto.baru);
+      else if (form.foto.hapus) await hapusFotoBerita(tersimpan.id_berita);
       setPesan(form.id ? 'Perubahan berita disimpan dan sudah tampil di situs.' : 'Berita baru ditambahkan dan sudah tampil di situs.');
       setForm(null);
       await muat();
     } catch (error) {
-      setGalat(error instanceof ApiError ? error.message : 'Gagal menyimpan berita.');
+      const alasan = error instanceof ApiError ? error.message : '';
+      if (tersimpan) {
+        // Teks berita sudah tersimpan; form tetap terbuka sebagai "Ubah" supaya foto bisa dicoba lagi.
+        const id = tersimpan.id_berita;
+        setForm((lama) => lama && { ...lama, id });
+        setGalat(`Berita sudah tersimpan, tetapi fotonya gagal ${form.foto.baru ? 'diunggah' : 'dihapus'}${alasan ? `: ${alasan}` : '.'} Klik Simpan untuk mencoba lagi.`);
+        await muat();
+      } else setGalat(alasan || 'Gagal menyimpan berita.');
     } finally {
       lepas();
     }
@@ -1018,9 +1070,30 @@ function KelolaBerita() {
                   {form.isian.ringkasan.length}/{BATAS.ringkasanMaks} karakter
                 </span>
               </label>
+              {(() => {
+                const pratinjau = form.foto.pratinjauBaru ?? (form.foto.hapus ? null : form.foto.lama);
+                return (
+                  <div className="field">
+                    <span className="field__label">Foto (opsional)</span>
+                    {pratinjau && <img className="berita-form__foto" src={pratinjau} alt="Pratinjau foto berita" />}
+                    <div className="berita-form__foto-aksi">
+                      <label className={`btn btn--secondary btn--small${menyiapkanFoto || mengirim ? ' btn--nonaktif' : ''}`}>
+                        {menyiapkanFoto ? 'Menyiapkan foto…' : pratinjau ? 'Ganti foto' : 'Pilih foto'}
+                        <input type="file" accept="image/jpeg,image/png" hidden disabled={menyiapkanFoto || mengirim} onChange={pilihFoto} />
+                      </label>
+                      {pratinjau && (
+                        <button type="button" className="tautan-polos tautan-polos--bahaya" disabled={menyiapkanFoto || mengirim} onClick={buangFoto}>
+                          Hapus foto
+                        </button>
+                      )}
+                    </div>
+                    <span className="baris__meta">JPG atau PNG, maksimal 10 MB. Foto besar dikecilkan otomatis supaya cepat dibuka di HP.</span>
+                  </div>
+                );
+              })()}
               <Galat pesan={galat} />
               <div className="berita-form__aksi">
-                <Button label={mengirim ? 'Menyimpan…' : 'Simpan'} type="submit" disabled={mengirim} />
+                <Button label={mengirim ? 'Menyimpan…' : 'Simpan'} type="submit" disabled={mengirim || menyiapkanFoto} />
                 <Button label="Batal" style="secondary" disabled={mengirim} onClick={() => setForm(null)} />
               </div>
             </form>
@@ -1035,6 +1108,7 @@ function KelolaBerita() {
           {daftar?.length === 0 && <p className="info-kosong tabel-kosong">Belum ada berita. Klik "Tambah Berita" untuk menulis berita pertama.</p>}
           {daftar?.map((berita) => (
             <article className="berita-admin" key={berita.id_berita}>
+              {urlFotoBerita(berita) && <img className="berita-admin__foto" src={urlFotoBerita(berita)!} alt="" loading="lazy" />}
               <div className="berita-admin__teks">
                 <p className="overline">{tanggalBerita(berita.tanggal)}</p>
                 <h3 className="baris__judul">{berita.judul}</h3>

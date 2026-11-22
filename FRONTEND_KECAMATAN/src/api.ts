@@ -227,8 +227,17 @@ export interface Berita {
   tanggal: string;
   ringkasan: string;
   diperbarui_pada?: string;
+  /** Waktu foto terakhir diganti; null/undefined = berita tanpa foto. */
+  foto_diperbarui?: string | null;
 }
 export type InputBerita = Pick<Berita, 'judul' | 'tanggal' | 'ringkasan'>;
+
+/** Alamat foto berita. `v` berganti saat foto diganti, jadi browser tidak menampilkan foto lama dari cache. */
+export const urlFotoBerita = (b: Pick<Berita, 'id_berita' | 'foto_diperbarui'>) =>
+  b.foto_diperbarui ? `${API_URL}/berita/${encodeURIComponent(b.id_berita)}/foto?v=${encodeURIComponent(b.foto_diperbarui)}` : null;
+/** Khusus petugas pelayanan. File dikirim apa adanya (sudah dikecilkan lewat siapkanFotoBerita). */
+export const unggahFotoBerita = (id: string, file: File) => panggil<Berita>(`/berita/${id}/foto`, { method: 'POST', headers: { 'content-type': file.type }, body: file });
+export const hapusFotoBerita = (id: string) => kirimJson<Berita>('DELETE', `/berita/${id}/foto`);
 
 /** Publik, terbaru di atas. */
 export const ambilBerita = () => panggil<Berita[]>('/berita');

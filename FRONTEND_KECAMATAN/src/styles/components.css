@@ -301,6 +301,14 @@
   line-height: 18px;
 }
 
+/* Foto berita sungguhan: memenuhi kotak foto tanpa gepeng (dipotong rapi di tepi). */
+.news__photo--gambar {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  object-fit: cover;
+}
+
 .news__body {
   display: flex;
   flex-direction: column;

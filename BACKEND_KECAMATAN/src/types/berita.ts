@@ -19,6 +19,22 @@ export const BeritaSchema = Type.Object(
 );
 export type Berita = Static<typeof BeritaSchema>;
 
+/** Foto berita: satu foto per berita, JPG atau PNG, maksimal 10 MB (biasanya sudah dikecilkan browser). */
+export const MIME_FOTO_BERITA = ['image/jpeg', 'image/png'] as const;
+export type MimeFotoBerita = (typeof MIME_FOTO_BERITA)[number];
+export const BATAS_FOTO_BERITA_BYTE = 10 * 1024 * 1024;
+
+export interface FotoBerita {
+  id_berita: string;
+  mime_type: MimeFotoBerita;
+  ukuran_byte: number;
+  /** ISO-8601; dipakai juga sebagai versi di alamat gambar supaya cache browser berganti saat foto diganti. */
+  diperbarui_pada: string;
+}
+
+/** Berita seperti yang dikirim API: data berita + waktu foto terakhir diganti (null = tanpa foto). */
+export type BeritaDenganFoto = Berita & { foto_diperbarui: string | null };
+
 export const BeritaFileSchema = Type.Object(
   { _catatan: Type.Optional(Type.String()), berita: Type.Array(BeritaSchema, { maxItems: 1000 }) },
   { additionalProperties: false },

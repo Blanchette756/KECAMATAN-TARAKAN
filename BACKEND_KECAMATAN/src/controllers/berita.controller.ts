@@ -21,4 +21,17 @@ export class BeritaController {
   async hapus(user: User, id: string) {
     return { data: await this.s.berita.hapus(user, id) };
   }
+
+  async simpanFoto(user: User, id: string, mime: string, data: Buffer) {
+    return { data: await this.s.berita.simpanFoto(user, id, mime, data) };
+  }
+
+  async hapusFoto(user: User, id: string) {
+    return { data: await this.s.berita.hapusFoto(user, id) };
+  }
+
+  /** Mengembalikan isi foto mentah; route yang mengatur header gambar. */
+  bacaFoto(id: string) {
+    return this.s.berita.bacaFoto(id);
+  }
 }

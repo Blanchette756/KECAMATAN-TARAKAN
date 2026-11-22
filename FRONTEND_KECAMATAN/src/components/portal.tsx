@@ -40,8 +40,8 @@ function jenisBerkas(file: File): string {
 
 const keBlob = (kanvas: HTMLCanvasElement, mutu: number) => new Promise<Blob | null>((selesai) => kanvas.toBlob(selesai, 'image/jpeg', mutu));
 
-/** Kecilkan foto menjadi JPEG di bawah SASARAN_FOTO. null bila gagal (foto rusak atau memori HP habis). */
-async function kecilkanFoto(file: File): Promise<File | null> {
+/** Kecilkan foto menjadi JPEG di bawah `sasaran` byte. null bila gagal (foto rusak atau memori HP habis). */
+async function kecilkanFoto(file: File, sasaran = SASARAN_FOTO, sisiAwal = SISI_FOTO_AWAL): Promise<File | null> {
   const url = URL.createObjectURL(file);
   try {
     const gambar = await new Promise<HTMLImageElement>((selesai, gagal) => {
@@ -58,7 +58,7 @@ async function kecilkanFoto(file: File): Promise<File | null> {
     if (!pena || sisiAsli === 0) return null;
 
     const namaDasar = file.name.replace(/\.[^.]+$/, '') || 'foto';
-    let sisi = Math.min(sisiAsli, SISI_FOTO_AWAL);
+    let sisi = Math.min(sisiAsli, sisiAwal);
     for (let putaran = 0; putaran < 6; putaran++) {
       const skala = sisi / sisiAsli;
       kanvas.width = Math.max(1, Math.round(lebar * skala));
@@ -69,7 +69,7 @@ async function kecilkanFoto(file: File): Promise<File | null> {
       pena.drawImage(gambar, 0, 0, kanvas.width, kanvas.height);
       for (const mutu of [0.85, 0.72, 0.6, 0.5]) {
         const hasil = await keBlob(kanvas, mutu);
-        if (hasil && hasil.size <= SASARAN_FOTO) return new File([hasil], `${namaDasar}.jpg`, { type: 'image/jpeg' });
+        if (hasil && hasil.size <= sasaran) return new File([hasil], `${namaDasar}.jpg`, { type: 'image/jpeg' });
       }
       sisi = Math.round(sisi * 0.8);
     }
@@ -102,6 +102,32 @@ export async function siapkanBerkas(asli: File, saatMengecilkan?: () => void): P
     // Jatuh ke pesan di bawah.
   }
   return { file: null, galat: `${asli.name} tidak dapat dikecilkan sampai di bawah 2 MB. Coba foto ulang, atau pilih foto lain.` };
+}
+
+/** Batas foto berita yang boleh dipilih petugas (sama dengan batas server). */
+export const MAKS_FOTO_BERITA = 10 * 1024 * 1024;
+/** Foto berita dikecilkan ke sekitar ukuran ini: tajam di layar, ringan dibuka warga di HP. */
+const SASARAN_FOTO_BERITA = 500 * 1024;
+const SISI_FOTO_BERITA = 1600;
+
+/**
+ * Siapkan foto berita: hanya JPG/PNG sampai 10 MB. Foto di atas ~500 KB dikecilkan menjadi JPEG;
+ * bila browser gagal mengecilkan, foto asli tetap dikirim (server menerima sampai 10 MB).
+ */
+export async function siapkanFotoBerita(asli: File): Promise<{ file: File; galat: null } | { file: null; galat: string }> {
+  const jenis = jenisBerkas(asli);
+  if (jenis !== 'image/jpeg' && jenis !== 'image/png') return { file: null, galat: `${asli.name} bukan foto JPG atau PNG.` };
+  if (asli.size > MAKS_FOTO_BERITA) return { file: null, galat: `${asli.name} (${ukuranFile(asli.size)}) melebihi batas 10 MB. Pilih foto yang lebih kecil.` };
+  const file = jenis === asli.type ? asli : new File([asli], asli.name, { type: jenis });
+  if (file.size <= SASARAN_FOTO_BERITA) return { file, galat: null };
+  await new Promise((selesai) => setTimeout(selesai, 50));
+  try {
+    const kecil = await kecilkanFoto(file, SASARAN_FOTO_BERITA, SISI_FOTO_BERITA);
+    if (kecil) return { file: kecil, galat: null };
+  } catch {
+    // Pakai foto asli di bawah.
+  }
+  return { file, galat: null };
 }
 
 /**

@@ -1271,6 +1271,41 @@
   max-width: 240px;
 }
 
+/* Pratinjau foto di form berita: rasio mirip kartu berita di situs, supaya petugas melihat potongannya. */
+.berita-form__foto {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+.berita-form__foto-aksi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.berita-form__foto-aksi .btn {
+  cursor: pointer;
+}
+
+.berita-form__foto-aksi .btn--nonaktif {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.berita-admin__foto {
+  flex: none;
+  width: 96px;
+  height: 64px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
 .berita-form__aksi {
   display: flex;
   flex-wrap: wrap;

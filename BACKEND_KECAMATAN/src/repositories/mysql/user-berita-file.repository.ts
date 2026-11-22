@@ -1,9 +1,9 @@
 import { dalamTransaksi, teksAtauNull, type Db, type ResultSetHeader, type RowDataPacket } from '../../database/mysql/pool.js';
-import type { Berita } from '../../types/berita.js';
+import type { Berita, FotoBerita, MimeFotoBerita } from '../../types/berita.js';
 import type { FileUnggahan, MimeDiizinkan } from '../../types/berkas.js';
 import type { Role, Seksi } from '../../types/common.js';
 import type { User } from '../../types/user.js';
-import type { BeritaRepository, FileRepository, UserRepository } from '../interfaces.js';
+import type { BeritaRepository, FileRepository, FotoBeritaRepository, UserRepository } from '../interfaces.js';
 
 export const KOLOM_USER = ['id_user', 'id_kelurahan', 'nik', 'nama_lengkap', 'email', 'no_hp', 'role', 'seksi', 'alamat', 'aktif'] as const;
 
@@ -168,6 +168,44 @@ export class MysqlBeritaRepository implements BeritaRepository {
 
   async delete(id: string): Promise<boolean> {
     const [hasil] = await this.db.execute<ResultSetHeader>('DELETE FROM berita WHERE id_berita = ?', [id]);
+    return hasil.affectedRows > 0;
+  }
+}
+
+const KOLOM_FOTO = 'id_berita, mime_type, ukuran_byte, diperbarui_pada';
+
+const fotoDariBaris = (r: RowDataPacket): FotoBerita => ({
+  id_berita: String(r.id_berita),
+  mime_type: r.mime_type as MimeFotoBerita,
+  ukuran_byte: Number(r.ukuran_byte),
+  diperbarui_pada: String(r.diperbarui_pada),
+});
+
+export class MysqlFotoBeritaRepository implements FotoBeritaRepository {
+  constructor(private readonly db: Db) {}
+
+  async simpan(f: FotoBerita, isi: Buffer): Promise<void> {
+    // Satu foto per berita: foto lama langsung tergantikan.
+    await this.db.execute(
+      `INSERT INTO foto_berita (${KOLOM_FOTO}, isi) VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE mime_type = VALUES(mime_type), ukuran_byte = VALUES(ukuran_byte), diperbarui_pada = VALUES(diperbarui_pada), isi = VALUES(isi)`,
+      [f.id_berita, f.mime_type, f.ukuran_byte, f.diperbarui_pada, isi],
+    );
+  }
+
+  async baca(idBerita: string): Promise<{ info: FotoBerita; data: Buffer } | null> {
+    const [rows] = await this.db.execute<RowDataPacket[]>(`SELECT ${KOLOM_FOTO}, isi FROM foto_berita WHERE id_berita = ?`, [idBerita]);
+    const r = rows[0];
+    return r ? { info: fotoDariBaris(r), data: Buffer.from(r.isi as Buffer) } : null;
+  }
+
+  async listMeta(): Promise<FotoBerita[]> {
+    const [rows] = await this.db.query<RowDataPacket[]>(`SELECT ${KOLOM_FOTO} FROM foto_berita`);
+    return rows.map(fotoDariBaris);
+  }
+
+  async hapus(idBerita: string): Promise<boolean> {
+    const [hasil] = await this.db.execute<ResultSetHeader>('DELETE FROM foto_berita WHERE id_berita = ?', [idBerita]);
     return hasil.affectedRows > 0;
   }
 }

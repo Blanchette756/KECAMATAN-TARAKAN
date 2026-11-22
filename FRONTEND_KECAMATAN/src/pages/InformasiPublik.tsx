@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Icon } from '../components/Icon';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
-import { Button, FotoPlaceholder, NewsCard, PageBanner } from '../components/ui';
+import { urlFotoBerita } from '../api';
+import { Button, FotoBerita, NewsCard, PageBanner } from '../components/ui';
 import { tanggalBerita, useBerita } from '../data/berita';
 
 // Nama unit mengikuti susunan organisasi kecamatan ("06. Nama Pejabat.xlsx").
@@ -104,7 +105,7 @@ export function InformasiPublik() {
           {utama && (
             <div className="info-utama">
               <article className="sorotan">
-                <FotoPlaceholder keterangan="Foto berita utama" className="sorotan__foto" />
+                <FotoBerita url={urlFotoBerita(utama)} alt={utama.judul} keterangan="Foto berita utama" className="sorotan__foto" />
                 <div className="sorotan__isi">
                   <span className="badge">Sorotan</span>
                   <p className="overline">{tanggalBerita(utama.tanggal)}</p>
@@ -130,7 +131,7 @@ export function InformasiPublik() {
                       const diMobile = muatSemua || urutan < KARTU_AWAL_MOBILE;
                       if (!diDesktop && !diMobile) return null;
                       const kelas = diDesktop && diMobile ? '' : diDesktop ? 'only-desktop' : 'only-mobile';
-                      return <NewsCard key={item.id_berita} tanggal={tanggalBerita(item.tanggal)} judul={item.judul} ringkasan={item.ringkasan} className={kelas} />;
+                      return <NewsCard key={item.id_berita} tanggal={tanggalBerita(item.tanggal)} judul={item.judul} ringkasan={item.ringkasan} foto={urlFotoBerita(item)} className={kelas} />;
                     })}
                   </div>
                   {jumlahHalaman > 1 && (

@@ -246,17 +246,29 @@ export function ServiceTile({ ikon, judul, deskripsi, onLihatPersyaratan, classN
   );
 }
 
+/**
+ * Foto berita bila ada; tanpa foto (atau foto gagal dimuat) tetap tampil kotak placeholder seperti sebelumnya.
+ * `loading="lazy"` supaya HP tidak mengunduh foto berita yang belum digulir.
+ */
+export function FotoBerita({ url, alt, keterangan, className = '' }: { url: string | null; alt: string; keterangan: string; className?: string }) {
+  const [gagal, setGagal] = useState(false);
+  if (!url || gagal) return <FotoPlaceholder keterangan={keterangan} className={className} />;
+  return <img className={`news__photo news__photo--gambar ${className}`.trim()} src={url} alt={alt} loading="lazy" decoding="async" onError={() => setGagal(true)} />;
+}
+
 interface NewsCardProps {
   tanggal: string;
   judul: string;
   ringkasan: string;
+  /** Alamat foto berita; null = tanpa foto. */
+  foto?: string | null;
   className?: string;
 }
 
-export function NewsCard({ tanggal, judul, ringkasan, className = '' }: NewsCardProps) {
+export function NewsCard({ tanggal, judul, ringkasan, foto = null, className = '' }: NewsCardProps) {
   return (
     <article className={`news ${className}`.trim()}>
-      <FotoPlaceholder keterangan="Foto berita" />
+      <FotoBerita url={foto} alt={judul} keterangan="Foto berita" />
       <div className="news__body">
         <p className="overline">{tanggal}</p>
         <h3 className="news__title">{judul}</h3>
