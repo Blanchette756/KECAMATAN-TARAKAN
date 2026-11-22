@@ -50,8 +50,17 @@ const SEJARAH = [
   },
 ];
 
-// Teks dalam kurung siku adalah placeholder Figma yang menunggu data resmi.
-const MISI = [1, 2, 3, 4].map((nomor) => `[Misi ke-${nomor} sesuai dokumen Renstra kecamatan]`);
+// Visi dan misi resmi, sesuai teks yang diberikan pihak kecamatan.
+const VISI =
+  'Terwujudnya Tarakan sebagai Kota Cerdas yang bertumpu pada Sektor Jasa, Perdagangan, Perikanan Kelautan dan Ekonomi Kreatif yang Berdaya Saing dan Maju menuju Masyarakat Sejahtera';
+
+const MISI = [
+  'Meningkatkan SDM yang berkualitas dan berdaya saing;',
+  'Meningkatkan pemerataan pembangunan dan infrastruktur pelayanan dasar yang handal;',
+  'Meningkatkan pembangunan ekonomi melalui dukungan kemudahan berusaha dan berkeadilan dan bertumpu pada sektor jasa, perdagangan, perikanan kelautan, ekonomi kreatif dan ekonomi kerakyatan (UMKM);',
+  'Mewujudkan tata kelola pemerintahan yang adaptif, responsif dan menjaga stabilitas ketertiban dan ketentraman kota;',
+  'Mewujudkan lingkungan hidup berkelanjutan dan tangguh menghadapi bencana.',
+];
 
 function KartuKelurahan({ nama, lurah, alamat }: KantorKelurahan) {
   return (
@@ -185,16 +194,11 @@ export function ProfilKecamatan() {
 
         {bagianAktif === 'visi-misi' && (
           <section className="section section--visi" id="visi-misi">
-          <SectionHeading overline="Arah pembangunan" judul="Visi & Misi" deskripsi={
-              <>
-                <span className="only-desktop">Isi sesuai dokumen Rencana Strategis (Renstra) Kecamatan Tarakan Timur yang berlaku.</span>
-                <span className="only-mobile">Isi sesuai dokumen Renstra kecamatan yang berlaku.</span>
-              </>
-            } />
+          <SectionHeading overline="Arah pembangunan" judul="Visi & Misi" deskripsi="Arah pembangunan yang menjadi pedoman pelayanan Kecamatan Tarakan Timur." />
           <div className="visi-misi">
             <div className="visi">
               <p className="overline overline--accent">Visi</p>
-              <p className="visi__teks">“[Tuliskan visi resmi Kecamatan Tarakan Timur sesuai dokumen Renstra]”</p>
+              <p className="visi__teks">“{VISI}”</p>
             </div>
             <div className="misi">
               <p className="overline">Misi</p>
