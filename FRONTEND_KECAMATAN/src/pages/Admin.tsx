@@ -28,7 +28,7 @@ import { Button, KolomPassword, Logo, SelectField } from '../components/ui';
 import { tanggalBerita } from '../data/berita';
 import { LAYANAN } from '../data/layanan';
 import { CAMAT } from '../data/pejabat';
-import { awalBulanWita, buatCsv, dalamRentang, tanggalWita, unduhCsv } from '../rekap';
+import { awalBulanWita, buatCsv, buatXlsx, dalamRentang, tanggalWita, TIPE_CSV, TIPE_XLSX, unduhFile } from '../rekap';
 import { useSegarkanOtomatis } from '../segarkan';
 import { ambilSesi, hapusSesi, inisial, type Pengguna } from '../sesi';
 
@@ -177,11 +177,23 @@ function Dashboard({ data, tab, setTab, saya }: { data: Ringkas[]; tab: string; 
   const tersaring = data.filter((item) => cocokFilter(item) && (!waktu || hariIni(item.tgl_pengajuan)));
   const rentangValid = ekspor !== null && ekspor.dari !== '' && ekspor.sampai !== '' && ekspor.dari <= ekspor.sampai;
   const untukEkspor = rentangValid ? data.filter((item) => cocokFilter(item) && dalamRentang(item, ekspor.dari, ekspor.sampai)) : [];
-  const unduhRekap = () => {
+  // Filter yang ikut berlaku, dicatat di kepala file Excel supaya pembaca tahu isinya sudah disaring.
+  const keteranganFilter = [
+    tab !== 'Semua' ? `Status: ${tab}` : '',
+    layanan ? `Layanan: ${layanan}` : '',
+    petugas ? `Petugas: ${petugas}` : '',
+    kata ? `Pencarian: "${cari.trim()}"` : '',
+  ]
+    .filter(Boolean)
+    .join('; ');
+  const unduhRekap = (bentuk: 'xlsx' | 'csv') => {
     if (!rentangValid || untukEkspor.length === 0) return;
-    unduhCsv(`rekap-berkas_${ekspor.dari}_sd_${ekspor.sampai}.csv`, buatCsv(untukEkspor, (item) => namaLayanan(item.id_layanan, item.nama_layanan)));
+    const nama = `rekap-berkas_${ekspor.dari}_sd_${ekspor.sampai}`;
+    const keNamaLayanan = (item: Ringkas) => namaLayanan(item.id_layanan, item.nama_layanan);
+    if (bentuk === 'xlsx') unduhFile(`${nama}.xlsx`, buatXlsx(untukEkspor, keNamaLayanan, { dari: ekspor.dari, sampai: ekspor.sampai, filter: keteranganFilter }), TIPE_XLSX);
+    else unduhFile(`${nama}.csv`, buatCsv(untukEkspor, keNamaLayanan), TIPE_CSV);
   };
-  const adaFilterLain = tab !== 'Semua' || layanan !== '' || petugas !== '' || kata !== '';
+  const adaFilterLain = keteranganFilter !== '';
   const jumlahHalaman = Math.max(1, Math.ceil(tersaring.length / PER_HALAMAN));
   const aktif = Math.min(halaman, jumlahHalaman);
   const baris = tersaring.slice((aktif - 1) * PER_HALAMAN, aktif * PER_HALAMAN);
@@ -253,7 +265,7 @@ function Dashboard({ data, tab, setTab, saya }: { data: Ringkas[]; tab: string; 
                 }}
               />
               <Button
-                label="Export CSV"
+                label="Export Rekap"
                 style="secondary"
                 className="filter__ekspor"
                 onClick={() => setEkspor(ekspor ? null : { dari: awalBulanWita(), sampai: tanggalWita(new Date()) })}
@@ -261,7 +273,7 @@ function Dashboard({ data, tab, setTab, saya }: { data: Ringkas[]; tab: string; 
             </div>
             {ekspor && (
               <div className="ekspor">
-                <p className="baris__judul">Rekap berkas (CSV)</p>
+                <p className="baris__judul">Rekap berkas</p>
                 <div className="ekspor__baris">
                   <label className="field">
                     <span className="field__label">Dari tanggal</span>
@@ -271,14 +283,15 @@ function Dashboard({ data, tab, setTab, saya }: { data: Ringkas[]; tab: string; 
                     <span className="field__label">Sampai tanggal</span>
                     <input className="field__input" type="date" value={ekspor.sampai} min={ekspor.dari || undefined} onChange={(event) => setEkspor({ ...ekspor, sampai: event.target.value })} />
                   </label>
-                  <Button label="Unduh CSV" disabled={!rentangValid || untukEkspor.length === 0} onClick={unduhRekap} />
+                  <Button label="Unduh Excel" disabled={!rentangValid || untukEkspor.length === 0} onClick={() => unduhRekap('xlsx')} />
+                  <Button label="Unduh CSV" style="secondary" disabled={!rentangValid || untukEkspor.length === 0} onClick={() => unduhRekap('csv')} />
                   <Button label="Tutup" style="secondary" onClick={() => setEkspor(null)} />
                 </div>
                 <p className="baris__meta">
                   {!rentangValid
                     ? 'Isi kedua tanggal; tanggal awal tidak boleh setelah tanggal akhir.'
                     : `${untukEkspor.length} berkas diajukan pada rentang ini${adaFilterLain ? ' (sesuai filter yang sedang dipilih)' : ''}.`}{' '}
-                  Dihitung dari tanggal permohonan diajukan (WITA). File bisa dibuka di Excel atau Google Sheets.
+                  Dihitung dari tanggal permohonan diajukan (WITA). Pilih Excel agar langsung rapi saat dibuka; CSV untuk Google Sheets atau aplikasi lain.
                 </p>
               </div>
             )}
