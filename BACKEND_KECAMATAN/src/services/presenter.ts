@@ -45,6 +45,9 @@ export function ringkasPengajuan(
     label_status: STATUS_LABEL[p.status_pengajuan],
     tgl_pengajuan: p.tgl_pengajuan,
     tgl_diperbarui: p.tgl_diperbarui,
+    // Untuk rekap/ekspor CSV di panel admin. Keduanya juga sudah terlihat di detail milik pemohon.
+    tgl_selesai: p.tgl_selesai,
+    nomor_surat: p.nomor_surat,
     version: p.version,
     ...(pemohon ? { pemohon: { nama_lengkap: pemohon.nama_lengkap } } : {}),
     penangan: keDataPenangan(penangan, sudutPandang === 'PETUGAS'),

@@ -186,6 +186,9 @@ export interface Ringkas {
   label_status: string;
   tgl_pengajuan: string;
   tgl_diperbarui: string;
+  /** Opsional: backend versi lama belum mengirim keduanya. */
+  tgl_selesai?: string | null;
+  nomor_surat?: string | null;
   version: number;
   pemohon?: { nama_lengkap: string };
   /** Petugas Pelayanan yang menangani; null = belum ada. `id_user` hanya dikirim ke petugas, warga hanya menerima nama. */

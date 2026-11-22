@@ -46,6 +46,9 @@ describe('Petugas Pelayanan penanggung jawab berkas', () => {
     const antrian = (await ctx.app.inject({ method: 'GET', url: '/api/v1/pengajuan/antrian?semua=true', headers: bearer(tAdmin2) })).json().data;
     const baris = antrian.find((x: { id_pengajuan: string }) => x.id_pengajuan === p.id_pengajuan);
     expect(baris.penangan.nama_lengkap).toBe('Petugas Satu');
+    // Dipakai rekap/ekspor CSV di panel admin.
+    expect(baris).toHaveProperty('nomor_surat', null);
+    expect(baris).toHaveProperty('tgl_selesai', null);
   });
 
   it('petugas lain tidak bisa memproses atau mengambil berkas tanpa mengambil alih', async () => {

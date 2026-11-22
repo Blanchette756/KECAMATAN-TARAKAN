@@ -1056,6 +1056,40 @@
   height: 40px;
 }
 
+/* Tombol Export CSV sejajar dengan pilihan filter (tinggi 40px), dan panel rentang tanggalnya. */
+.filter__ekspor {
+  flex: none;
+  align-self: flex-end;
+  height: 40px;
+  padding-block: 0;
+}
+
+.ekspor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.ekspor__baris {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-8);
+}
+
+.tabel-filter .ekspor__baris .field {
+  flex: none;
+  width: 180px;
+}
+
+.ekspor__baris .btn {
+  height: 40px;
+  padding-block: 0;
+}
+
 .tabel-admin {
   width: 100%;
   border-collapse: collapse;
