@@ -67,15 +67,15 @@ class BatasGalat extends Component<{ children: ReactNode }, { gagal: boolean }> 
   render() {
     if (!this.state.gagal) return this.props.children;
     return (
-      <main style={{ maxWidth: 480, margin: '15vh auto', padding: '0 24px', fontFamily: 'Inter, system-ui, sans-serif', lineHeight: 1.5 }}>
-        <h1 style={{ fontSize: 24, margin: '0 0 12px' }}>Halaman tidak dapat ditampilkan</h1>
+      <main style={{ maxWidth: 480, margin: '15vh auto', padding: '0 24px', fontFamily: 'Inter, system-ui, sans-serif', lineHeight: 1.5, color: '#333333' }}>
+        <h1 style={{ fontSize: 24, margin: '0 0 12px', color: '#091E3E' }}>Halaman tidak dapat ditampilkan</h1>
         <p style={{ margin: '0 0 20px' }}>
           Terjadi gangguan saat memuat halaman ini. Muat ulang halaman. Bila masih sama, perbarui browser Anda atau hubungi petugas kecamatan lewat WhatsApp.
         </p>
-        <button type="button" onClick={() => window.location.reload()} style={{ padding: '12px 20px', fontSize: 16, borderRadius: 999, border: 0, background: '#ffcc00', fontWeight: 700 }}>
+        <button type="button" onClick={() => window.location.reload()} style={{ padding: '12px 20px', fontSize: 16, borderRadius: 999, border: 0, background: '#06A3DA', color: '#091E3E', fontWeight: 700, cursor: 'pointer' }}>
           Muat ulang
         </button>{' '}
-        <a href="/" style={{ marginLeft: 12 }}>
+        <a href="/" style={{ marginLeft: 12, color: '#0A7EA8', fontWeight: 700 }}>
           Ke beranda
         </a>
       </main>

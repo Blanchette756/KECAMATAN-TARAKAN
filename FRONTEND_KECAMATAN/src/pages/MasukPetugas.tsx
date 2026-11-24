@@ -74,7 +74,7 @@ export function MasukPetugas() {
           </label>
           <KolomPassword label="Password" nama="password" autoComplete="current-password" nilai={password} onUbah={setPassword} />
           <Galat pesan={galat} />
-          <Button label={mengirim ? 'Memeriksa…' : 'Masuk'} arrow={!mengirim} type="submit" disabled={mengirim} />
+          <Button label={mengirim ? 'Memeriksa…' : 'Masuk'} style="dark" arrow={!mengirim} type="submit" disabled={mengirim} />
           <p className="baris__meta">Lupa password atau belum punya akun? Hubungi Petugas Pelayanan kecamatan.</p>
         </form>
 

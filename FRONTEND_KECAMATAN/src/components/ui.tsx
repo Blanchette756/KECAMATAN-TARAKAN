@@ -68,7 +68,7 @@ export function KolomPassword({
 
 interface ButtonProps {
   label: string;
-  style?: 'primary' | 'accent' | 'secondary';
+  style?: 'primary' | 'accent' | 'secondary' | 'dark';
   arrow?: boolean;
   type?: 'button' | 'submit';
   disabled?: boolean;
@@ -81,7 +81,7 @@ interface ButtonProps {
   className?: string;
 }
 
-const PANAH = { primary: 'arrow-white', accent: 'arrow-dark', secondary: 'arrow-primary' } as const;
+const PANAH = { primary: 'arrow-dark', accent: 'arrow-dark', secondary: 'arrow-primary', dark: 'arrow-white' } as const;
 
 export function Button({ label, style = 'primary', arrow = false, type = 'button', disabled = false, href, size = 'medium', luar = false, onClick, className = '' }: ButtonProps) {
   const kelas = `btn btn--${style}${size === 'medium' ? '' : ` btn--${size}`} ${className}`.trim();

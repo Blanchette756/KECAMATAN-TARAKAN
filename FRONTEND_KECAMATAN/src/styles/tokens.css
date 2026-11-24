@@ -1,24 +1,47 @@
-/* Token dari halaman "Komponen & Styles" di Figma. */
+/* Token sistem warna — mengacu pada desain.md (WCAG 2.1 AA). */
 :root {
-  --color-primary: #800020;
-  --color-primary-subtle: #fff3b8;
-  --color-accent: #ffc800;
-  --color-warning: #8a5a00;
-  --color-warning-subtle: #fff6e0;
-  --color-footer: #1a1a1a;
-  --color-bg-canvas: #f9f6ee;
-  --color-bg-muted: #f9f6ee;
+  /* Primary */
+  --color-primary: #091e3e;
+  --color-primary-light: #0d2c54;
+  --color-primary-subtle: #e6f6fc;
+
+  /* Aksen */
+  --color-accent: #06a3da;
+  --color-accent-strong: #0a7ea8;
+  --color-accent-deep: #086a8f;
+  --color-accent-soft: #e6f6fc;
+
+  /* Status */
+  --color-warning: #b45309;
+  --color-warning-subtle: #fef3c7;
+  --color-info: #0a7ea8;
+  --color-info-subtle: #e6f6fc;
+  --color-success: #15803d;
+  --color-success-subtle: #dcfce7;
+  --color-danger: #b91c1c;
+  --color-danger-hover: #991b1b;
+  --color-danger-active: #7f1d1d;
+  --color-danger-subtle: #fee2e2;
+
+  /* Background & Permukaan */
+  --color-footer: #091e3e;
+  --color-bg-canvas: #f4f6f9;
+  --color-bg-muted: #f4f6f9;
   --color-bg-page: #ffffff;
-  --color-bg-dark-surface: #343434;
-  --color-border-default: #ded8cb;
-  --color-border-strong: #cbc3b2;
-  --color-text-primary: #1a1a1a;
-  --color-text-secondary: #4d4842;
-  --color-text-muted: #66615a;
+  --color-bg-dark-surface: #0d2c54;
+
+  /* Garis */
+  --color-border-default: #e2e8f0;
+  --color-border-strong: #94a3b8;
+
+  /* Teks */
+  --color-text-primary: #333333;
+  --color-text-secondary: #333333;
+  --color-text-muted: #6b6a75;
   --color-text-on-primary: #ffffff;
-  --color-text-on-accent: #1a1a1a;
-  --color-text-on-dark: #f9f6ee;
-  --color-text-on-dark-muted: #bbb8b3;
+  --color-text-on-accent: #091e3e;
+  --color-text-on-dark: #ffffff;
+  --color-text-on-dark-muted: #cbd5e1;
 
   --space-4: 4px;
   --space-8: 8px;
@@ -35,7 +58,11 @@
   --radius-lg: 12px;
   --radius-full: 999px;
 
-  --shadow-medium: 0 10px 28px rgba(26, 26, 26, 0.09);
+  /* Bayangan & fokus berbasis navy / sky blue */
+  --shadow-card: 0 4px 12px rgba(9, 30, 62, 0.08);
+  --shadow-card-hover: 0 8px 24px rgba(9, 30, 62, 0.14);
+  --shadow-medium: 0 8px 24px rgba(9, 30, 62, 0.14);
+  --ring-focus: 0 0 0 3px rgba(6, 163, 218, 0.25);
 
   /* Frame desktop 1440 px: konten 1280 px dengan margin 80 px. Laptop lebih kecil memakai margin lebih sempit. */
   --page-gutter: max(32px, calc((100% - 1280px) / 2));
@@ -106,6 +133,6 @@ ol {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 3px solid var(--color-accent);
   outline-offset: 2px;
 }

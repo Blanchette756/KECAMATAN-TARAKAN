@@ -41,6 +41,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-bg-page);
+  box-shadow: var(--shadow-card);
 }
 
 .alur {
@@ -143,8 +144,8 @@
 
 .layanan-item--aktif {
   padding: 13.5px 15.5px;
-  border: 1.5px solid var(--color-primary);
-  background: var(--color-primary-subtle);
+  border: 1.5px solid var(--color-accent-strong);
+  background: var(--color-accent-soft);
 }
 
 .layanan-item__ikon {
@@ -178,7 +179,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-bg-page);
-  box-shadow: 0 1px 3px rgba(26, 26, 26, 0.05);
+  box-shadow: var(--shadow-card);
 }
 
 .detail-layanan__judul {
@@ -284,7 +285,7 @@
 
 .produk strong {
   margin-left: var(--space-4);
-  color: var(--color-text-primary);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -301,6 +302,10 @@
   padding: 28px var(--space-32);
   border-radius: var(--radius-lg);
   background: var(--color-footer);
+  color: var(--color-text-on-dark);
+}
+
+.bantuan .tile__title {
   color: var(--color-text-on-dark);
 }
 
@@ -354,6 +359,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-bg-page);
+  box-shadow: var(--shadow-card);
 }
 
 .grafik__kartu--donat {
@@ -403,7 +409,7 @@
 .donat__cincin--isi {
   position: relative;
   border-color: transparent;
-  color: var(--color-text-primary);
+  color: var(--color-primary);
   font-size: 18px;
 }
 
@@ -468,7 +474,7 @@
 }
 
 .donat__legenda strong {
-  color: var(--color-text-primary);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -497,6 +503,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-bg-page);
+  box-shadow: var(--shadow-card);
 }
 
 .tabel {
@@ -548,7 +555,7 @@
 .tabel thead th:first-child {
   padding-block: 12px 13px;
   background: var(--color-bg-muted);
-  color: var(--color-text-primary);
+  color: var(--color-primary);
   font-size: 12px;
   font-weight: 800;
   line-height: 16px;
@@ -600,6 +607,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-bg-page);
+  box-shadow: var(--shadow-card);
 }
 
 .kontak__kartu .info-item {
@@ -615,7 +623,7 @@
   height: 260px;
   border-radius: var(--radius-lg);
   background: var(--color-bg-dark-surface);
-  color: var(--color-text-on-dark);
+  color: var(--color-text-on-dark-muted);
   font-size: 12px;
   line-height: 18px;
 }
@@ -636,7 +644,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-bg-page);
-  box-shadow: 0 1px 3px rgba(26, 26, 26, 0.05);
+  box-shadow: var(--shadow-card);
 }
 
 .form-pesan__judul {
@@ -673,7 +681,7 @@
   width: 18px;
   height: 18px;
   margin: 0;
-  accent-color: var(--color-primary);
+  accent-color: var(--color-accent-strong);
 }
 
 .saluran {
@@ -682,7 +690,11 @@
   gap: 14px;
   padding: var(--space-20);
   border-radius: var(--radius-lg);
-  background: var(--color-primary-subtle);
+  background: var(--color-accent-soft);
+}
+
+.saluran .baris__judul {
+  color: var(--color-primary);
 }
 
 .saluran__ikon {
