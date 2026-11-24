@@ -1037,6 +1037,22 @@
   text-align: right;
 }
 
+/* Isian panjang di kartu sempit (mis. panel Camat): label di atas, isi di bawah dengan lebar penuh. */
+.fakta__baris--tumpuk {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fakta__baris--tumpuk dt {
+  white-space: normal;
+}
+
+.fakta__baris--tumpuk dd {
+  flex: none;
+  width: 100%;
+  text-align: left;
+}
+
 .sejarah {
   display: flex;
   align-items: flex-start;

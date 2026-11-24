@@ -292,8 +292,9 @@ export function Kartu({ judul, aksi, children, className = '' }: { judul?: React
   );
 }
 
-export const BarisData = ({ label, nilai }: { label: string; nilai: ReactNode }) => (
-  <div className="fakta__baris">
+/** `bertumpuk`: label di atas, isi di bawah. Untuk isian panjang di kartu sempit, supaya tidak terjepit dan terpotong di tengah kata. */
+export const BarisData = ({ label, nilai, bertumpuk = false }: { label: string; nilai: ReactNode; bertumpuk?: boolean }) => (
+  <div className={`fakta__baris${bertumpuk ? ' fakta__baris--tumpuk' : ''}`}>
     <dt>{label}</dt>
     <dd>{nilai}</dd>
   </div>
@@ -422,13 +423,13 @@ export function useIsianFormulir(data: SumberIsian): { label: string; nilai: str
 
 const NilaiIsian = ({ teks }: { teks: string }) => <span style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{teks}</span>;
 
-/** Baris isian untuk dimasukkan ke dalam <dl> yang sudah ada. */
+/** Baris isian untuk dimasukkan ke dalam <dl> yang sudah ada (kartu samping yang sempit, jadi label di atas isinya). */
 export function BarisIsian({ data }: { data: SumberIsian }) {
   const isian = useIsianFormulir(data);
   return (
     <>
       {isian.map(({ label, nilai }) => (
-        <BarisData key={label} label={label} nilai={<NilaiIsian teks={nilai} />} />
+        <BarisData key={label} label={label} nilai={<NilaiIsian teks={nilai} />} bertumpuk />
       ))}
     </>
   );
