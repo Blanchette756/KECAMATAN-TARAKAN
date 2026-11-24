@@ -3,13 +3,16 @@ import type { Role } from '../types/common.js';
 /**
  * Status pengajuan, mengikuti SP CCTI Kecamatan Tarakan Timur: petugas pelayanan memeriksa berkas,
  * Kasi Tata Pemerintahan memaraf, Camat menandatangani, lalu petugas memberi nomor dan menyerahkan surat.
+ *
+ * Camat menandatangani di aplikasi TTE (barcode/QR BSrE), bukan di situs ini. Setelah itu Petugas Pelayanan
+ * mengunggah PDF bertanda tangan dan menekan Kirim (TERBITKAN_SURAT), sehingga pemohon bisa mengunduhnya.
  */
 export const STATUS = [
   'DIAJUKAN', // menunggu verifikasi Admin Pelayanan
   'PERLU_REVISI', // Admin meminta warga memperbaiki berkas/isian
   'DIKEMBALIKAN_KE_ADMIN', // Kasi/Camat mengembalikan ke Admin untuk diperbaiki
   'MENUNGGU_PARAF_KASI',
-  'MENUNGGU_TTE_CAMAT',
+  'MENUNGGU_TTE_CAMAT', // Camat menandatangani di aplikasi TTE; petugas lalu mengunggah surat bertanda tangan
   'SIAP_DIAMBIL', // khusus layanan yang dokumen fisiknya diambil di kantor (legalisasi/legalisir)
   'SELESAI',
   'DITOLAK',
@@ -38,9 +41,11 @@ export type AksiWorkflow =
   | 'KASI_PARAF'
   | 'KASI_KEMBALIKAN'
   | 'KASI_TOLAK'
+  /** Hanya ada di riwayat lama (simulasi TTE di situs). Tidak lagi di tabel TRANSISI. */
   | 'CAMAT_TTE'
   | 'CAMAT_KEMBALIKAN'
   | 'CAMAT_TOLAK'
+  | 'TERBITKAN_SURAT'
   | 'SERAHKAN';
 
 export interface Transisi {
@@ -64,16 +69,19 @@ export const TRANSISI: readonly Transisi[] = [
   { aksi: 'KASI_KEMBALIKAN', role: 'KASI', dari: ['MENUNGGU_PARAF_KASI'], ke: 'DIKEMBALIKAN_KE_ADMIN', wajibCatatan: true },
   { aksi: 'KASI_TOLAK', role: 'KASI', dari: ['MENUNGGU_PARAF_KASI'], ke: 'DITOLAK', wajibCatatan: true },
 
-  { aksi: 'CAMAT_TTE', role: 'CAMAT', dari: ['MENUNGGU_TTE_CAMAT'], ke: 'AUTO_SELESAI', wajibCatatan: false },
   { aksi: 'CAMAT_KEMBALIKAN', role: 'CAMAT', dari: ['MENUNGGU_TTE_CAMAT'], ke: 'DIKEMBALIKAN_KE_ADMIN', wajibCatatan: true },
   { aksi: 'CAMAT_TOLAK', role: 'CAMAT', dari: ['MENUNGGU_TTE_CAMAT'], ke: 'DITOLAK', wajibCatatan: true },
+
+  // Petugas mengunggah surat yang sudah ditandatangani Camat di aplikasi TTE, lalu mengirimkannya ke pemohon.
+  { aksi: 'TERBITKAN_SURAT', role: 'ADMIN', dari: ['MENUNGGU_TTE_CAMAT'], ke: 'AUTO_SELESAI', wajibCatatan: false },
 
   { aksi: 'SERAHKAN', role: 'ADMIN', dari: ['SIAP_DIAMBIL'], ke: 'SELESAI', wajibCatatan: false },
 ];
 
 /** Status yang muncul di antrian kerja tiap role. */
 export const ANTRIAN_PER_ROLE: Record<Exclude<Role, 'WARGA'>, readonly StatusPengajuan[]> = {
-  ADMIN: ['DIAJUKAN', 'DIKEMBALIKAN_KE_ADMIN', 'SIAP_DIAMBIL'],
+  ADMIN: ['DIAJUKAN', 'DIKEMBALIKAN_KE_ADMIN', 'MENUNGGU_TTE_CAMAT', 'SIAP_DIAMBIL'],
   KASI: ['MENUNGGU_PARAF_KASI'],
+  // Camat tetap bisa melihat (dan mengembalikan/menolak) surat yang menunggu tanda tangannya.
   CAMAT: ['MENUNGGU_TTE_CAMAT'],
 };

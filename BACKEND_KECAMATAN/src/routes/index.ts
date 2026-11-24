@@ -11,6 +11,7 @@ import { berkasRoutes } from './berkas.routes.js';
 import { layananRoutes } from './layanan.routes.js';
 import { pengajuanRoutes } from './pengajuan.routes.js';
 import { petugasRoutes } from './petugas.routes.js';
+import { suratRoutes } from './surat.routes.js';
 
 /** Semua endpoint di bawah prefix /api/v1 */
 export const apiRoutes: FastifyPluginAsyncTypebox<{ container: Container }> = async (app, { container }) => {
@@ -27,7 +28,9 @@ export const apiRoutes: FastifyPluginAsyncTypebox<{ container: Container }> = as
   await app.register(authRoutes, { controller: new AuthController(services), guards, config });
   await app.register(berkasRoutes, { services, guards, config });
   await app.register(layananRoutes, { controller: new LayananController(services) });
-  await app.register(pengajuanRoutes, { controller: new PengajuanController(services), guards, config });
+  const pengajuan = new PengajuanController(services);
+  await app.register(pengajuanRoutes, { controller: pengajuan, guards, config });
+  await app.register(suratRoutes, { controller: pengajuan, guards });
   await app.register(beritaRoutes, { controller: new BeritaController(services), guards });
   await app.register(petugasRoutes, { services, guards });
 };

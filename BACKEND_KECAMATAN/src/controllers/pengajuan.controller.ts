@@ -1,7 +1,7 @@
 import type { Services } from '../container.js';
 import type { Halaman } from '../repositories/interfaces.js';
 import type { AntrianQuery, PagingQuery } from '../schemas/common.schema.js';
-import type { AjukanBody, KeputusanBody, LacakBody, RevisiBody, SerahkanBody, TanganiBody, VerifikasiBody } from '../schemas/pengajuan.schema.js';
+import type { AjukanBody, KeputusanBody, LacakBody, RevisiBody, SerahkanBody, TanganiBody, TerbitkanBody, VerifikasiBody } from '../schemas/pengajuan.schema.js';
 import type { User } from '../types/user.js';
 
 const paging = (q: PagingQuery | AntrianQuery) => ({ page: q.page ?? 1, limit: q.limit ?? 20 });
@@ -56,6 +56,19 @@ export class PengajuanController {
 
   async serahkan(user: User, id: string, body: SerahkanBody) {
     return { data: await this.s.pengajuan.serahkan(user, id, body.version, body.catatan) };
+  }
+
+  async unggahSurat(user: User, id: string, namaFile: string, mime: string, data: Buffer) {
+    return { data: await this.s.pengajuan.unggahSurat(user, id, namaFile, mime, data) };
+  }
+
+  async terbitkanSurat(user: User, id: string, body: TerbitkanBody) {
+    return { data: await this.s.pengajuan.terbitkanSurat(user, id, body.version, body.nomor_surat) };
+  }
+
+  /** Isi file mentah; rute yang mengatur header. */
+  async bacaSurat(user: User, id: string) {
+    return this.s.pengajuan.bacaSurat(user, id);
   }
 
   async tangani(user: User, id: string, body: TanganiBody) {

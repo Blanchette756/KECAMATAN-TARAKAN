@@ -70,7 +70,7 @@ describe('Otorisasi & IDOR', () => {
   it('warga tidak bisa memanggil endpoint petugas (403)', async () => {
     const tA = await login(ctx.app, EMAIL.warga1);
     const p = await ajukan(ctx, tA, 'LAYANAN-007', DATA_PENGANTAR);
-    for (const aksi of ['verifikasi', 'paraf-kasi', 'tte-camat', 'serahkan']) {
+    for (const aksi of ['verifikasi', 'paraf-kasi', 'tte-camat', 'terbitkan', 'serahkan']) {
       const res = await patch(ctx.app, tA, `/api/v1/pengajuan/${p.id_pengajuan}/${aksi}`, { aksi: 'SETUJUI', version: 1 });
       expect(res.statusCode, aksi).toBe(403);
     }

@@ -4,7 +4,7 @@ import type { JenisLayanan } from '../types/layanan.js';
 import type { PengajuanPelayanan } from '../types/pengajuan.js';
 import type { User } from '../types/user.js';
 import { conflict, forbidden, notFound, validationFailed } from '../utils/errors.js';
-import { newId, sha256, tahun } from '../utils/ids.js';
+import { newId, tahun } from '../utils/ids.js';
 import type { ServiceDeps } from './deps.js';
 
 /**
@@ -100,18 +100,18 @@ export class WorkflowService {
       case 'CAMAT_KEMBALIKAN':
         next.catatan_internal = catatanBersih;
         break;
-      case 'CAMAT_TTE': {
-        next.id_camat = user.id_user;
-        const th = tahun(waktu, config.timezone);
-        const urut = await repos.pengajuan.nextNomorSurat(th);
-        nomorDiambil = { tahun: th, urut };
-        next.nomor_surat = formatNomorSurat(layanan.kode, urut, th);
-        // Simulasi, bukan tanda tangan elektronik tersertifikasi BSrE.
-        next.qr_code_tte = `SIMULASI-TTE-${sha256(`${p.no_registrasi}|${next.nomor_surat}`).slice(0, 16).toUpperCase()}`;
-        if (ke === 'SELESAI') {
-          next.file_surat_selesai = `dummy://surat/${p.id_pengajuan}.pdf`;
-          next.tgl_selesai = iso;
+      case 'TERBITKAN_SURAT': {
+        // Camat menandatangani di aplikasi TTE; barcode tanda tangannya ada di dalam PDF, bukan di sini.
+        // Pemanggil sudah mengisi nomor_surat (ketikan petugas) dan file_surat_selesai (bila PDF diunggah).
+        // Nomor yang dikosongkan dibuat sistem.
+        next.qr_code_tte = null;
+        if (!next.nomor_surat) {
+          const th = tahun(waktu, config.timezone);
+          const urut = await repos.pengajuan.nextNomorSurat(th);
+          nomorDiambil = { tahun: th, urut };
+          next.nomor_surat = formatNomorSurat(layanan.kode, urut, th);
         }
+        if (ke === 'SELESAI') next.tgl_selesai = iso;
         break;
       }
       case 'SERAHKAN':

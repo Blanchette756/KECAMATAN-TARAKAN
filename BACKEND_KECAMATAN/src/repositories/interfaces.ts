@@ -5,6 +5,7 @@ import type { BerkasPengajuan, FileUnggahan } from '../types/berkas.js';
 import type { Berita, FotoBerita } from '../types/berita.js';
 import type { StatusPengajuan } from '../constants/workflow.js';
 import type { Seksi } from '../types/common.js';
+import type { SuratSelesai } from '../types/surat.js';
 
 /**
  * Kontrak akses data. Service hanya bergantung pada interface ini, dengan dua implementasi:
@@ -114,6 +115,14 @@ export interface FotoBeritaRepository {
   hapus(idBerita: string): Promise<boolean>;
 }
 
+/** Surat bertanda tangan (PDF dari aplikasi TTE), satu per pengajuan. Disimpan terpisah supaya data pengajuan tetap ringan. */
+export interface SuratRepository {
+  /** Simpan atau ganti surat pengajuan ini. */
+  simpan(s: SuratSelesai, isi: Buffer): Promise<void>;
+  findMeta(idPengajuan: string): Promise<SuratSelesai | null>;
+  baca(idPengajuan: string): Promise<{ info: SuratSelesai; data: Buffer } | null>;
+}
+
 /** File unggahan warga, isi dan metadatanya. */
 export interface FileRepository {
   create(f: FileUnggahan, isi: Buffer): Promise<void>;
@@ -148,4 +157,5 @@ export interface Repositories {
   berita: BeritaRepository;
   fotoBerita: FotoBeritaRepository;
   files: FileRepository;
+  surat: SuratRepository;
 }

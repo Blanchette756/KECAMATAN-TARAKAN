@@ -103,6 +103,15 @@ export const SerahkanBodySchema = Type.Object(
 );
 export type SerahkanBody = Static<typeof SerahkanBodySchema>;
 
+export const TerbitkanBodySchema = Type.Object(
+  {
+    version: VersionSchema,
+    nomor_surat: Type.Optional(Type.String({ maxLength: 80, description: 'Nomor yang tertera di surat. Kosong = dibuat sistem.' })),
+  },
+  { additionalProperties: false },
+);
+export type TerbitkanBody = Static<typeof TerbitkanBodySchema>;
+
 export const TanganiBodySchema = Type.Object(
   {
     version: VersionSchema,

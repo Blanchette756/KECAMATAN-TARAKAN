@@ -219,6 +219,23 @@ export const MIGRASI: readonly Migrasi[] = [
       ) ${OPSI_TABEL}`,
     ],
   },
+  {
+    versi: 7,
+    nama: 'surat bertanda tangan TTE',
+    // PDF yang sudah ditandatangani Camat di aplikasi TTE, diunggah petugas; satu per pengajuan, ikut terhapus
+    // bila pengajuannya dihapus. MEDIUMBLOB menampung sampai 16 MB (batas surat 10 MB).
+    sql: [
+      `CREATE TABLE IF NOT EXISTS surat_selesai (
+        id_pengajuan VARCHAR(50) NOT NULL PRIMARY KEY,
+        nama_file VARCHAR(200) NOT NULL,
+        ukuran_byte INT NOT NULL,
+        diunggah_oleh VARCHAR(40) NOT NULL,
+        diunggah_pada VARCHAR(30) NOT NULL,
+        isi MEDIUMBLOB NOT NULL,
+        CONSTRAINT fk_surat_pengajuan FOREIGN KEY (id_pengajuan) REFERENCES pengajuan (id_pengajuan) ON DELETE CASCADE
+      ) ${OPSI_TABEL}`,
+    ],
+  },
 ];
 
 /** Pasang migrasi yang belum jalan. GET_LOCK mencegah dua proses memasang bersamaan. */

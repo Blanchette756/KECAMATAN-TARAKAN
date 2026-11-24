@@ -205,14 +205,9 @@ describe('Nomor surat tidak loncat', () => {
     expect(await r.nextNomorSurat('2026')).toBe(3);
   });
 
-  it('TTE yang gagal disimpan karena bentrok versi tidak menghabiskan nomor surat', async () => {
+  it('kirim surat yang gagal disimpan karena bentrok versi tidak menghabiskan nomor surat', async () => {
     ctx = await buatApp();
-    const [tWarga, tAdmin, tKasi, tCamat] = await Promise.all([
-      login(ctx.app, EMAIL.warga1),
-      login(ctx.app, EMAIL.admin),
-      login(ctx.app, EMAIL.kasi),
-      login(ctx.app, EMAIL.camat),
-    ]);
+    const [tWarga, tAdmin, tKasi] = await Promise.all([login(ctx.app, EMAIL.warga1), login(ctx.app, EMAIL.admin), login(ctx.app, EMAIL.kasi)]);
     let p = await ajukan(ctx, tWarga, 'LAYANAN-007', DATA_PENGANTAR);
     p = (await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'verifikasi'), { aksi: 'SETUJUI', version: p.version })).json().data;
     p = (await patch(ctx.app, tKasi, url(p.id_pengajuan, 'paraf-kasi'), { aksi: 'SETUJUI', version: p.version })).json().data;
@@ -221,11 +216,11 @@ describe('Nomor surat tidak loncat', () => {
     const repo = ctx.c.repos.pengajuan;
     const asli = repo.updateIfVersion.bind(repo);
     repo.updateIfVersion = async () => false;
-    const gagal = await patch(ctx.app, tCamat, url(p.id_pengajuan, 'tte-camat'), { aksi: 'SETUJUI', version: p.version });
+    const gagal = await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'terbitkan'), { version: p.version });
     expect(gagal.statusCode).toBe(409);
     repo.updateIfVersion = asli;
 
-    const ulang = await patch(ctx.app, tCamat, url(p.id_pengajuan, 'tte-camat'), { aksi: 'SETUJUI', version: p.version });
+    const ulang = await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'terbitkan'), { version: p.version });
     expect(ulang.statusCode).toBe(200);
     expect(ulang.json().data.nomor_surat).toMatch(/\/0001\//);
   });

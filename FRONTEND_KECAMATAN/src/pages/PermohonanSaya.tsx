@@ -1,8 +1,23 @@
 import { useEffect, useState } from 'react';
-import { ambilLayanan, ApiError, detailPengajuan, keluarAkun, kirimRevisi, pengajuanSaya, unggahBerkas, type BerkasDetail, type BerkasKirim, type DetailLayananApi, type DetailPengajuan, type Ringkas } from '../api';
+import {
+  ambilLayanan,
+  ApiError,
+  detailPengajuan,
+  keluarAkun,
+  kirimRevisi,
+  pengajuanSaya,
+  unduhSurat,
+  unggahBerkas,
+  type BerkasDetail,
+  type BerkasKirim,
+  type DetailLayananApi,
+  type DetailPengajuan,
+  type Ringkas,
+  type SuratTtd,
+} from '../api';
 import { Icon } from '../components/Icon';
-import { PenampilDaftarBerkas } from '../components/PenampilBerkas';
-import { BarisData, berlaku, Galat, isianSama, isianUntukDikirim, jumlahTahapSelesai, Kartu, KartuIsian, KolomIsian, siapkanBerkas, StatusBadge, TahapPermohonan, TandaUnggah, tanggal, tanpaKunci, useCegahBukaFile, useKunciKirim, useSeretLepas, type ProsesUnggah } from '../components/portal';
+import { PenampilDaftarBerkas, suratSebagaiBerkas } from '../components/PenampilBerkas';
+import { BarisData, berlaku, Galat, isianSama, isianUntukDikirim, jumlahTahapSelesai, Kartu, KartuIsian, KolomIsian, siapkanBerkas, StatusBadge, TahapPermohonan, TandaUnggah, tanggal, tanpaKunci, ukuranFile, useCegahBukaFile, useKunciKirim, useSeretLepas, type ProsesUnggah } from '../components/portal';
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
 import { Button } from '../components/ui';
@@ -108,6 +123,7 @@ function Daftar() {
                   <h2 className="timeline__judul">{item.nama_layanan}</h2>
                   <p className="baris__meta">Diajukan {tanggal(item.tgl_pengajuan)} WITA</p>
                   {item.penangan && <p className="baris__meta">Ditangani: {item.penangan.nama_lengkap}</p>}
+                  {item.ada_surat && <p className="baris__meta">Surat bertanda tangan bisa diunduh</p>}
                 </div>
                 <div className="permohonan__progres">
                   <p className="baris__meta">{item.label_status}</p>
@@ -274,6 +290,44 @@ function Perbaikan({ data, onSelesai }: { data: DetailPengajuan; onSelesai: () =
   );
 }
 
+/** Surat bertanda tangan elektronik dari Camat, setelah dikirim petugas. */
+function KartuSurat({ surat }: { surat: SuratTtd }) {
+  const [lihat, setLihat] = useState(false);
+  const [mengunduh, setMengunduh] = useState(false);
+  const [galat, setGalat] = useState<string | null>(null);
+  const unduh = async () => {
+    if (mengunduh) return;
+    setMengunduh(true);
+    setGalat(null);
+    try {
+      await unduhSurat(surat);
+    } catch (error) {
+      setGalat(error instanceof ApiError ? error.message : 'Surat gagal diunduh. Coba lagi.');
+    } finally {
+      setMengunduh(false);
+    }
+  };
+  return (
+    <Kartu judul="Surat Anda">
+      <article className="dokumen">
+        <span className="dokumen__ikon">
+          <Icon name="file-text-sm" />
+        </span>
+        <div className="dokumen__teks">
+          <h3 className="baris__judul">{surat.nama_file}</h3>
+          <p className="baris__meta">TTE Camat · {ukuranFile(surat.ukuran_byte)}</p>
+        </div>
+        <button type="button" className="tautan-polos" onClick={() => setLihat(true)}>
+          Lihat
+        </button>
+      </article>
+      <Galat pesan={galat} />
+      <Button label={mengunduh ? 'Mengunduh…' : 'Unduh Surat'} disabled={mengunduh} onClick={unduh} />
+      {lihat && <PenampilDaftarBerkas daftar={[suratSebagaiBerkas(surat)]} indeksAwal={0} onTutup={() => setLihat(false)} />}
+    </Kartu>
+  );
+}
+
 function Detail({ id }: { id: string }) {
   const [data, setData] = useState<DetailPengajuan | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
@@ -297,6 +351,9 @@ function Detail({ id }: { id: string }) {
 
   const status = data.status_pengajuan;
   const siap = status === 'SIAP_DIAMBIL' || status === 'SELESAI';
+  // Layanan unduh daring: surat diterima lewat situs, tidak perlu datang ke kantor.
+  const daring = data.mode_penyerahan === 'UNDUH';
+  const surat = data.surat ?? null;
   // Hanya berkas yang benar-benar punya file (data contoh tidak punya) yang bisa dibuka di penampil.
   const adaFile = data.berkas.filter((berkas) => berkas.file_url);
   const jumlahPerbaikan = data.berkas.filter((berkas) => berkas.status_berkas === 'PERLU_PERBAIKAN').length;
@@ -334,12 +391,25 @@ function Detail({ id }: { id: string }) {
               <span>Berkas Anda sedang diproses. Surat selesai paling lambat 1 hari kerja setelah berkas lengkap.</span>
             </div>
           )}
-          {siap && (
-            <div className="pemberitahuan pemberitahuan--hijau">
-              <strong>{status === 'SELESAI' ? 'Surat sudah diambil' : 'Surat Anda sudah selesai dan siap diambil'}</strong>
-              <span>Tunjukkan kode {data.no_registrasi} kepada petugas. Bawa dokumen asli dan KTP saat mengambil surat.</span>
-            </div>
-          )}
+          {siap &&
+            (daring ? (
+              <div className="pemberitahuan pemberitahuan--hijau">
+                <strong>Surat Anda sudah terbit</strong>
+                <span>Surat sudah ditandatangani elektronik oleh Camat. Unduh suratnya di bagian Surat Anda.</span>
+              </div>
+            ) : (
+              <div className="pemberitahuan pemberitahuan--hijau">
+                <strong>{status === 'SELESAI' ? 'Surat sudah diambil' : 'Surat Anda sudah selesai dan siap diambil'}</strong>
+                <span>
+                  {surat ? 'Salinan PDF bertanda tangan bisa diunduh di bagian Surat Anda. ' : ''}
+                  {status === 'SELESAI'
+                    ? surat
+                      ? ''
+                      : 'Dokumen sudah diserahkan oleh petugas kecamatan.'
+                    : `Dokumen asli tetap diambil di kantor kecamatan: tunjukkan kode ${data.no_registrasi} kepada petugas, bawa dokumen asli dan KTP.`}
+                </span>
+              </div>
+            ))}
           {status === 'DITOLAK' && (
             <div className="pemberitahuan pemberitahuan--merah">
               <strong>Permohonan ditolak</strong>
@@ -352,7 +422,8 @@ function Detail({ id }: { id: string }) {
           <KartuIsian data={data} judul="Isian permohonan Anda" />
         </div>
         <aside className="portal__samping">
-          {siap && (
+          {surat && <KartuSurat surat={surat} />}
+          {siap && !daring && (
             <Kartu>
               <div className="kode-ambil">
                 <p className="baris__meta">Kode pengambilan</p>
@@ -379,17 +450,19 @@ function Detail({ id }: { id: string }) {
             ))}
           </Kartu>
           {lihat !== null && <PenampilDaftarBerkas daftar={adaFile} indeksAwal={lihat} onTutup={() => setLihat(null)} />}
-          <Kartu judul="Pengambilan surat">
-            <dl>
-              <BarisData label="Lokasi" nilai="Kantor Kecamatan Tarakan Timur" />
-              <BarisData label="Alamat" nilai={ALAMAT_SINGKAT} />
-              <BarisData label="Jam" nilai={JAM_PELAYANAN} />
-              <BarisData label="Bawa" nilai="Dokumen asli & KTP" />
-            </dl>
-            <a className="baris__meta" href={TAUTAN_WA} target="_blank" rel="noreferrer">
-              Ada pertanyaan? WhatsApp {WHATSAPP}
-            </a>
-          </Kartu>
+          {!daring && (
+            <Kartu judul="Pengambilan surat">
+              <dl>
+                <BarisData label="Lokasi" nilai="Kantor Kecamatan Tarakan Timur" />
+                <BarisData label="Alamat" nilai={ALAMAT_SINGKAT} />
+                <BarisData label="Jam" nilai={JAM_PELAYANAN} />
+                <BarisData label="Bawa" nilai="Dokumen asli & KTP" />
+              </dl>
+              <a className="baris__meta" href={TAUTAN_WA} target="_blank" rel="noreferrer">
+                Ada pertanyaan? WhatsApp {WHATSAPP}
+              </a>
+            </Kartu>
+          )}
         </aside>
       </div>
     </>

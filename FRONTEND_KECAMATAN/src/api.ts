@@ -137,13 +137,13 @@ export interface HasilUnggah {
 }
 
 /**
- * Unggah satu file. Memakai XMLHttpRequest (bukan fetch) karena hanya itu yang melaporkan kemajuan unggah,
- * supaya warga di jaringan HP yang lambat melihat persentasenya.
+ * Kirim isi file apa adanya sebagai body. Memakai XMLHttpRequest (bukan fetch) karena hanya itu yang melaporkan
+ * kemajuan unggah, supaya pengguna di jaringan HP yang lambat melihat persentasenya.
  */
-export function unggahBerkas(file: File, onKemajuan?: (persen: number) => void): Promise<HasilUnggah> {
+function unggahXhr<T>(path: string, file: File, onKemajuan?: (persen: number) => void): Promise<T> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${API_URL}/berkas/unggah?nama_file=${encodeURIComponent(file.name)}`);
+    xhr.open('POST', `${API_URL}${path}`);
     for (const [kunci, nilai] of Object.entries(izin())) xhr.setRequestHeader(kunci, nilai);
     xhr.setRequestHeader('content-type', file.type);
     xhr.responseType = 'json';
@@ -152,7 +152,7 @@ export function unggahBerkas(file: File, onKemajuan?: (persen: number) => void):
     };
     xhr.onload = () => {
       tanganiSesiHabis(xhr.status);
-      const body = (xhr.response ?? null) as Respons<HasilUnggah> & { error?: { message?: string; details?: unknown } } | null;
+      const body = (xhr.response ?? null) as Respons<T> & { error?: { message?: string; details?: unknown } } | null;
       if (xhr.status >= 200 && xhr.status < 300 && body?.data) {
         onKemajuan?.(100);
         resolve(body.data);
@@ -164,6 +164,10 @@ export function unggahBerkas(file: File, onKemajuan?: (persen: number) => void):
     xhr.send(file);
   });
 }
+
+/** Unggah satu berkas persyaratan (warga). */
+export const unggahBerkas = (file: File, onKemajuan?: (persen: number) => void) =>
+  unggahXhr<HasilUnggah>(`/berkas/unggah?nama_file=${encodeURIComponent(file.name)}`, file, onKemajuan);
 
 export interface BerkasDetail {
   id_berkas: string;
@@ -190,12 +194,27 @@ export interface Ringkas {
   tgl_selesai?: string | null;
   nomor_surat?: string | null;
   version: number;
+  /** Surat bertanda tangan sudah dikirim dan bisa diunduh pemohon. Opsional: backend lama belum mengirimnya. */
+  ada_surat?: boolean;
   pemohon?: { nama_lengkap: string };
   /** Petugas Pelayanan yang menangani; null = belum ada. `id_user` hanya dikirim ke petugas, warga hanya menerima nama. */
   penangan?: { id_user?: string; nama_lengkap: string } | null;
 }
 
+/** Surat yang sudah ditandatangani Camat di aplikasi TTE (PDF berbarcode), diunggah petugas. */
+export interface SuratTtd {
+  nama_file: string;
+  ukuran_byte: number;
+  diunggah_pada: string;
+  /** Alamat isi PDF (butuh token), mis. /api/v1/pengajuan/PGJ-…/surat */
+  file_url: string;
+}
+
 export interface DetailPengajuan extends Omit<Ringkas, 'pemohon'> {
+  /** UNDUH = surat diterima daring; AMBIL_DI_KANTOR = dokumen diambil di kantor (salinan PDF boleh ada). */
+  mode_penyerahan?: 'UNDUH' | 'AMBIL_DI_KANTOR';
+  /** Petugas: sejak diunggah. Pemohon: setelah petugas mengirimnya. Opsional untuk backend lama. */
+  surat?: SuratTtd | null;
   catatan_revisi: string | null;
   alasan_penolakan: string | null;
   nomor_surat: string | null;
@@ -292,6 +311,12 @@ export async function ambilAntrian(semua: boolean): Promise<Ringkas[]> {
 }
 export const aksiPengajuan = (id: string, aksi: 'verifikasi' | 'paraf-kasi' | 'tte-camat' | 'serahkan', data: Record<string, unknown>) =>
   kirimJson<DetailPengajuan>('PATCH', `/pengajuan/${id}/${aksi}`, data);
+/** Petugas Pelayanan: unggah/ganti PDF yang sudah ditandatangani Camat di aplikasi TTE. Status belum berubah. */
+export const unggahSuratTtd = (id: string, file: File, onKemajuan?: (persen: number) => void) =>
+  unggahXhr<DetailPengajuan>(`/pengajuan/${id}/surat?nama_file=${encodeURIComponent(file.name)}`, file, onKemajuan);
+/** Petugas Pelayanan: kirim surat ke pemohon. `nomor_surat` kosong = dibuat sistem. */
+export const terbitkanSurat = (id: string, version: number, nomor_surat?: string) =>
+  kirimJson<DetailPengajuan>('PATCH', `/pengajuan/${id}/terbitkan`, { version, ...(nomor_surat ? { nomor_surat } : {}) });
 /** Petugas Pelayanan: catat berkas atas nama saya, atau ambil alih dari petugas lain. */
 export const tanganiPengajuan = (id: string, version: number, ambil_alih = false) =>
   kirimJson<DetailPengajuan>('PATCH', `/pengajuan/${id}/tangani`, { version, ambil_alih });
@@ -301,4 +326,20 @@ export async function ambilFileBerkas(fileUrl: string) {
   const res = await fetch(`${import.meta.env.VITE_API_URL ?? ''}${fileUrl}`, { headers: izin() });
   if (!res.ok) throw new ApiError('Berkas tidak dapat dibuka.', res.status);
   return URL.createObjectURL(await res.blob());
+}
+
+/**
+ * Unduh surat bertanda tangan ke perangkat. Lewat blob karena butuh token; tautan download di halaman yang sama
+ * (bukan tab baru) supaya tidak diblokir browser HP.
+ */
+export async function unduhSurat(surat: SuratTtd) {
+  const url = await ambilFileBerkas(surat.file_url);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = surat.nama_file;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Beri waktu browser memulai unduhan sebelum alamat blob dilepas.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

@@ -16,6 +16,32 @@ export function contohBerkas(layanan: JenisLayanan, data: Record<string, unknown
     }));
 }
 
+/**
+ * PDF satu halaman berisi teks, pengganti surat bertanda tangan TTE pada data contoh. Offset xref dihitung dari
+ * isinya, jadi PDF ini sah dan bisa dibuka penampil PDF biasa.
+ */
+export function contohPdf(teks: string): Buffer {
+  const aman = teks.replace(/[\\()]/g, (k) => `\\${k}`);
+  const isi = `BT /F1 14 Tf 72 760 Td (${aman}) Tj ET`;
+  const objek = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${isi.length} >>\nstream\n${isi}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offset: number[] = [];
+  objek.forEach((o, i) => {
+    offset.push(pdf.length);
+    pdf += `${i + 1} 0 obj\n${o}\nendobj\n`;
+  });
+  const awalXref = pdf.length;
+  pdf += `xref\n0 ${objek.length + 1}\n0000000000 65535 f \n${offset.map((n) => `${String(n).padStart(10, '0')} 00000 n \n`).join('')}`;
+  pdf += `trailer\n<< /Size ${objek.length + 1} /Root 1 0 R >>\nstartxref\n${awalXref}\n%%EOF\n`;
+  return Buffer.from(pdf, 'latin1');
+}
+
 export interface ContohLacak {
   no_registrasi: string;
   last_4_digit_hp: string;
@@ -34,13 +60,13 @@ export async function seedDemoPengajuan(c: Container): Promise<ContohLacak[]> {
     if (!u) throw new Error(`Akun dummy ${email} tidak ada di data/users.json`);
     return u;
   };
-  const [w1, w2, w3, admin, kasi, camat] = await Promise.all([
+  // Camat tidak beraksi di situs: tanda tangannya di aplikasi TTE, petugas yang mengunggah surat.
+  const [w1, w2, w3, admin, kasi] = await Promise.all([
     ambil('warga1@example.com'),
     ambil('warga2@example.com'),
     ambil('warga3@example.com'),
     ambil('admin@example.com'),
     ambil('kasi.tapem@example.com'),
-    ambil('camat@example.com'),
   ]);
 
   const ajukan = async (warga: User, idLayanan: string, data: Record<string, unknown>) => {
@@ -58,11 +84,12 @@ export async function seedDemoPengajuan(c: Container): Promise<ContohLacak[]> {
   const a = await ajukan(w1, 'LAYANAN-002', { nama_calon_pasangan: 'Calon Dummy', tanggal_rencana_nikah: '2026-12-12', status_perkawinan: 'BELUM_KAWIN' });
   await catat(w1, a.id_pengajuan);
 
-  // 2. Sudah ditandatangani, siap diambil
+  // 2. Sudah ditandatangani, siap diambil, dan salinan PDF-nya bisa diunduh pemohon
   let b = await ajukan(w1, 'LAYANAN-007', { perihal: 'Pengantar keperluan administrasi bank', ditujukan_kepada: 'Bank Contoh Cabang Tarakan' });
   b = await services.pengajuan.verifikasi(admin, b.id_pengajuan, { aksi: 'SETUJUI', version: b.version });
   b = await services.pengajuan.parafKasi(kasi, b.id_pengajuan, { aksi: 'SETUJUI', version: b.version });
-  b = await services.pengajuan.tteCamat(camat, b.id_pengajuan, { aksi: 'SETUJUI', version: b.version });
+  b = await services.pengajuan.unggahSurat(admin, b.id_pengajuan, 'surat-pengantar-ttd.pdf', 'application/pdf', contohPdf('CONTOH Surat Pengantar - bukan surat resmi'));
+  b = await services.pengajuan.terbitkanSurat(admin, b.id_pengajuan, b.version);
   await catat(w1, b.id_pengajuan);
 
   // 3. Perlu revisi
@@ -80,7 +107,7 @@ export async function seedDemoPengajuan(c: Container): Promise<ContohLacak[]> {
   let d = await ajukan(w2, 'LAYANAN-009', { jenis_dokumen: 'Ijazah SMA', jumlah_lembar: 3 });
   d = await services.pengajuan.verifikasi(admin, d.id_pengajuan, { aksi: 'SETUJUI', version: d.version });
   d = await services.pengajuan.parafKasi(kasi, d.id_pengajuan, { aksi: 'SETUJUI', version: d.version });
-  d = await services.pengajuan.tteCamat(camat, d.id_pengajuan, { aksi: 'SETUJUI', version: d.version });
+  d = await services.pengajuan.terbitkanSurat(admin, d.id_pengajuan, d.version);
   await catat(w2, d.id_pengajuan);
 
   // 5. Menunggu paraf Kasi

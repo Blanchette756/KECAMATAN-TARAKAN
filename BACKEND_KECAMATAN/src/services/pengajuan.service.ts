@@ -5,6 +5,7 @@ import type { Paging } from '../repositories/interfaces.js';
 import type { BerkasInput, BerkasPengajuan, FileUnggahan, MimeDiizinkan } from '../types/berkas.js';
 import type { JenisLayanan } from '../types/layanan.js';
 import type { PengajuanPelayanan } from '../types/pengajuan.js';
+import { AWALAN_SURAT, BATAS_SURAT_BYTE, MIME_SURAT, type SuratSelesai } from '../types/surat.js';
 import { profilLengkap, type User } from '../types/user.js';
 import { AppError, badRequest, conflict, forbidden, notFound, validationFailed } from '../utils/errors.js';
 import { newId } from '../utils/ids.js';
@@ -129,12 +130,13 @@ export class PengajuanService {
 
   async detailUntuk(user: User, p: PengajuanPelayanan) {
     const { repos } = this.deps;
-    const [layanan, pemohon, berkas, riwayat, penangan] = await Promise.all([
+    const [layanan, pemohon, berkas, riwayat, penangan, surat] = await Promise.all([
       this.layananAtauGagal(p.id_layanan),
       repos.users.findById(p.id_user),
       repos.berkas.listByPengajuan(p.id_pengajuan),
       repos.riwayat.listByPengajuan(p.id_pengajuan),
       p.id_penangan ? repos.users.findById(p.id_penangan) : Promise.resolve(null),
+      this.suratUntuk(user, p),
     ]);
     if (user.role !== 'WARGA') {
       // Catat audit setiap kali petugas menerima data pribadi pemohon, termasuk lewat respons aksi.
@@ -147,7 +149,16 @@ export class PengajuanService {
         target_id: p.id_pengajuan,
       });
     }
-    return detailPengajuan(p, layanan, pemohon, berkas, riwayat, user.role === 'WARGA' ? 'PEMOHON' : 'PETUGAS', penangan);
+    return detailPengajuan(p, layanan, pemohon, berkas, riwayat, user.role === 'WARGA' ? 'PEMOHON' : 'PETUGAS', penangan, surat);
+  }
+
+  /**
+   * Surat bertanda tangan yang boleh dilihat user ini. Petugas melihatnya sejak diunggah (untuk diperiksa sebelum
+   * dikirim); pemohon baru melihatnya setelah petugas menekan Kirim.
+   */
+  private async suratUntuk(user: User, p: PengajuanPelayanan): Promise<SuratSelesai | null> {
+    if (user.role === 'WARGA' && p.file_surat_selesai === null) return null;
+    return this.deps.repos.surat.findMeta(p.id_pengajuan);
   }
 
   // Warga
@@ -334,7 +345,9 @@ export class PengajuanService {
     const riwayat = (await repos.riwayat.listByPengajuan(p.id_pengajuan)).sort((a, b) => a.waktu.localeCompare(b.waktu));
     const pesan: Record<string, string> = {
       PERLU_REVISI: 'Ada berkas yang perlu diperbaiki. Silakan login untuk melihat catatan petugas.',
-      SIAP_DIAMBIL: 'Dokumen siap diambil di kantor kecamatan. Bawa dokumen asli dan KTP.',
+      SIAP_DIAMBIL: p.file_surat_selesai
+        ? 'Surat sudah ditandatangani dan dapat diunduh setelah login. Dokumen juga siap diambil di kantor kecamatan (bawa dokumen asli dan KTP).'
+        : 'Dokumen siap diambil di kantor kecamatan. Bawa dokumen asli dan KTP.',
       SELESAI: layanan.mode_penyerahan === 'UNDUH' ? 'Surat dapat diunduh setelah login.' : 'Dokumen telah diserahkan.',
       DITOLAK: 'Pengajuan ditolak. Silakan login untuk melihat alasannya.',
     };
@@ -425,10 +438,12 @@ export class PengajuanService {
     return this.detailUntuk(user, hasil);
   }
 
-  private async keputusan(user: User, id: string, input: InputKeputusan, aksiMap: Record<InputKeputusan['aksi'], AksiWorkflow>) {
+  private async keputusan(user: User, id: string, input: InputKeputusan, aksiMap: Partial<Record<InputKeputusan['aksi'], AksiWorkflow>>) {
+    const aksi = aksiMap[input.aksi];
+    if (!aksi) throw badRequest(`Aksi ${input.aksi} tidak tersedia di sini`);
     const p = await this.ambilDenganAkses(user, id);
     const layanan = await this.layananAtauGagal(p.id_layanan);
-    const hasil = await this.workflow.jalankan(user, p, layanan, aksiMap[input.aksi], input.catatan ?? null, input.version);
+    const hasil = await this.workflow.jalankan(user, p, layanan, aksi, input.catatan ?? null, input.version);
     return this.detailUntuk(user, hasil);
   }
 
@@ -436,8 +451,87 @@ export class PengajuanService {
     return this.keputusan(user, id, input, { SETUJUI: 'KASI_PARAF', KEMBALIKAN: 'KASI_KEMBALIKAN', TOLAK: 'KASI_TOLAK' });
   }
 
+  /**
+   * Camat hanya bisa mengembalikan atau menolak di situs. Tanda tangan dilakukan di aplikasi TTE (barcode),
+   * lalu Petugas Pelayanan mengunggah surat bertanda tangan lewat unggahSurat() dan terbitkanSurat().
+   */
   async tteCamat(user: User, id: string, input: InputKeputusan) {
-    return this.keputusan(user, id, input, { SETUJUI: 'CAMAT_TTE', KEMBALIKAN: 'CAMAT_KEMBALIKAN', TOLAK: 'CAMAT_TOLAK' });
+    if (input.aksi === 'SETUJUI') {
+      throw conflict(
+        'TTE_DI_APLIKASI',
+        'Tanda tangan dilakukan di aplikasi TTE. Setelah surat ditandatangani, petugas pelayanan mengunggahnya dan mengirimkan ke pemohon.',
+      );
+    }
+    return this.keputusan(user, id, input, { KEMBALIKAN: 'CAMAT_KEMBALIKAN', TOLAK: 'CAMAT_TOLAK' });
+  }
+
+  /** Petugas lain yang memegang berkas harus diambil alih dulu, sama seperti aksi workflow lain. */
+  private pastikanBukanMilikLain(user: User, p: PengajuanPelayanan) {
+    if (p.id_penangan !== null && p.id_penangan !== user.id_user) {
+      throw conflict('DITANGANI_PETUGAS_LAIN', 'Berkas ini sedang ditangani petugas lain. Ambil alih dulu bila Anda yang akan memprosesnya.', {
+        id_penangan: p.id_penangan,
+      });
+    }
+  }
+
+  /**
+   * Petugas Pelayanan mengunggah PDF yang sudah ditandatangani Camat di aplikasi TTE. Unggahan baru menggantikan
+   * yang lama. Status dan versi pengajuan tidak berubah; pemohon belum melihat surat ini sampai terbitkanSurat().
+   */
+  async unggahSurat(user: User, id: string, namaFile: string, mime: string, data: Buffer) {
+    const { repos, now } = this.deps;
+    if (user.role !== 'ADMIN') throw forbidden('Hanya Petugas Pelayanan yang dapat mengunggah surat');
+    const p = await this.ambilDenganAkses(user, id);
+    if (p.status_pengajuan !== 'MENUNGGU_TTE_CAMAT') {
+      throw conflict('TRANSISI_TIDAK_VALID', 'Surat hanya bisa diunggah saat berkas menunggu tanda tangan Camat', { status_saat_ini: p.status_pengajuan });
+    }
+    this.pastikanBukanMilikLain(user, p);
+    if (mime !== MIME_SURAT) throw badRequest('Surat harus berformat PDF');
+    if (data.length === 0 || data.subarray(0, 5).toString('latin1') !== '%PDF-') throw validationFailed('Isi file bukan PDF yang sah');
+    if (data.length > BATAS_SURAT_BYTE) throw validationFailed('Ukuran surat maksimal 10 MB');
+    const nama = rapikanNamaFile(namaFile);
+    await repos.surat.simpan(
+      {
+        id_pengajuan: p.id_pengajuan,
+        nama_file: nama.toLowerCase().endsWith('.pdf') ? nama : `${nama}.pdf`,
+        ukuran_byte: data.length,
+        diunggah_oleh: user.id_user,
+        diunggah_pada: now().toISOString(),
+      },
+      data,
+    );
+    await repos.audit.add({ id_log: newId('LOG'), waktu: now().toISOString(), id_user: user.id_user, role: user.role, aksi: 'UNGGAH_SURAT', target_id: p.id_pengajuan });
+    return this.detailUntuk(user, p);
+  }
+
+  /**
+   * Kirim surat bertanda tangan ke pemohon. Layanan yang diunduh daring wajib punya PDF; layanan yang diambil di kantor
+   * boleh tanpa PDF (dokumen fisik). Bila PDF ada, pemohon bisa mengunduhnya di Permohonan Saya.
+   * `nomorSurat` diketik petugas sesuai nomor di surat; kosong = dibuat sistem.
+   */
+  async terbitkanSurat(user: User, id: string, version: number, nomorSurat?: string) {
+    const p = await this.ambilDenganAkses(user, id);
+    const layanan = await this.layananAtauGagal(p.id_layanan);
+    this.workflow.periksa(user, p, 'TERBITKAN_SURAT', null, version);
+    const surat = await this.deps.repos.surat.findMeta(p.id_pengajuan);
+    if (!surat && layanan.mode_penyerahan === 'UNDUH') throw validationFailed('Unggah dulu surat yang sudah ditandatangani Camat (PDF).');
+    const hasil = await this.workflow.jalankan(
+      user,
+      { ...p, nomor_surat: nomorSurat?.trim() || null, file_surat_selesai: surat ? `${AWALAN_SURAT}${p.id_pengajuan}` : null },
+      layanan,
+      'TERBITKAN_SURAT',
+      null,
+      version,
+    );
+    return this.detailUntuk(user, hasil);
+  }
+
+  /** Isi PDF surat, dengan aturan lihat yang sama seperti di detail (pemohon hanya setelah dikirim). */
+  async bacaSurat(user: User, id: string) {
+    const p = await this.ambilDenganAkses(user, id);
+    const surat = (await this.suratUntuk(user, p)) ? await this.deps.repos.surat.baca(p.id_pengajuan) : null;
+    if (!surat) throw notFound('Surat belum tersedia');
+    return surat;
   }
 
   /** `catatan` (mis. "Diambil oleh: …" jika dikuasakan) masuk riwayat dan hanya terlihat oleh petugas. */

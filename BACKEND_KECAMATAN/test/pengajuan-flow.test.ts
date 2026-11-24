@@ -142,7 +142,7 @@ describe('Pengajuan: alur lengkap state machine', () => {
     expect(p.berkas).toHaveLength(3);
     expect(p.berkas.find((b: { id_syarat: string }) => b.id_syarat === 'SYR-007-01').nama_file).toBe('ktp-baru.jpg');
 
-    // Admin setujui → Kasi paraf → Camat TTE
+    // Admin setujui → Kasi paraf → (Camat tanda tangan di aplikasi TTE) → Admin kirim surat
     res = await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'verifikasi'), { aksi: 'SETUJUI', version: p.version });
     p = res.json().data;
     expect(p.status_pengajuan).toBe('MENUNGGU_PARAF_KASI');
@@ -152,12 +152,14 @@ describe('Pengajuan: alur lengkap state machine', () => {
     p = res.json().data;
     expect(p.status_pengajuan).toBe('MENUNGGU_TTE_CAMAT');
 
-    res = await patch(ctx.app, tCamat, url(p.id_pengajuan, 'tte-camat'), { aksi: 'SETUJUI', version: p.version });
+    res = await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'terbitkan'), { version: p.version });
+    expect(res.statusCode).toBe(200);
     p = res.json().data;
-    // Semua layanan diambil di kantor, jadi setelah TTE statusnya SIAP_DIAMBIL.
+    // Semua layanan diambil di kantor, jadi setelah surat dikirim statusnya SIAP_DIAMBIL.
+    // Nomor surat dikosongkan petugas, jadi dibuat sistem.
     expect(p.status_pengajuan).toBe('SIAP_DIAMBIL');
     expect(p.nomor_surat).toMatch(/^DUMMY\/SP\/0001\/CTT\/\d{4}$/);
-    expect(p.qr_code_tte).toMatch(/^SIMULASI-TTE-/);
+    expect(p.qr_code_tte).toBeNull();
     expect(p.riwayat.map((r: { ke: string }) => r.ke)).toEqual([
       'DIAJUKAN',
       'PERLU_REVISI',
@@ -167,18 +169,19 @@ describe('Pengajuan: alur lengkap state machine', () => {
       'SIAP_DIAMBIL',
     ]);
 
-    // Sudah melewati Camat: tidak bisa ditandatangani lagi
-    res = await patch(ctx.app, tCamat, url(p.id_pengajuan, 'tte-camat'), { aksi: 'SETUJUI', version: p.version });
+    // Surat sudah dikirim: tidak bisa dikirim lagi
+    res = await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'terbitkan'), { version: p.version });
     expect(res.statusCode).toBe(409);
   });
 
-  it('AMBIL_DI_KANTOR (legalisir): TTE → SIAP_DIAMBIL → serahkan → SELESAI', async () => {
+  it('AMBIL_DI_KANTOR (legalisir): kirim tanpa PDF → SIAP_DIAMBIL → serahkan → SELESAI', async () => {
     let p = await ajukan(ctx, tWarga, 'LAYANAN-009', DATA_LEGALISIR);
     p = (await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'verifikasi'), { aksi: 'SETUJUI', version: p.version })).json().data;
     p = (await patch(ctx.app, tKasi, url(p.id_pengajuan, 'paraf-kasi'), { aksi: 'SETUJUI', version: p.version })).json().data;
-    p = (await patch(ctx.app, tCamat, url(p.id_pengajuan, 'tte-camat'), { aksi: 'SETUJUI', version: p.version })).json().data;
+    p = (await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'terbitkan'), { version: p.version })).json().data;
     expect(p.status_pengajuan).toBe('SIAP_DIAMBIL');
     expect(p.file_surat_selesai).toBeNull();
+    expect(p.surat).toBeNull();
 
     const res = await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'serahkan'), { version: p.version, catatan: 'Diambil oleh: Siti (dikuasakan)' });
     expect(res.statusCode).toBe(200);
@@ -230,9 +233,9 @@ describe('Pengajuan: alur lengkap state machine', () => {
     expect(res.json().data.alasan_penolakan).toBe('Bukan wilayah Tarakan Timur');
   });
 
-  it('melompati tahap ditolak (Camat TTE saat masih DIAJUKAN → 409)', async () => {
+  it('melompati tahap ditolak (kirim surat saat masih DIAJUKAN → 409)', async () => {
     const p = await ajukan(ctx, tWarga, 'LAYANAN-007', DATA_PENGANTAR);
-    const res = await patch(ctx.app, tCamat, url(p.id_pengajuan, 'tte-camat'), { aksi: 'SETUJUI', version: p.version });
+    const res = await patch(ctx.app, tAdmin, url(p.id_pengajuan, 'terbitkan'), { version: p.version });
     expect(res.statusCode).toBe(409);
     expect(res.json().error.code).toBe('TRANSISI_TIDAK_VALID');
   });

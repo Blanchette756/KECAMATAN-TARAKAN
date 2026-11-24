@@ -5,6 +5,7 @@ import { MemoryMasterRepository } from '../layanan.repository.js';
 import { MysqlBerkasRepository } from './berkas.repository.js';
 import { MysqlAuditRepository, MysqlRiwayatRepository, MysqlSesiRepository } from './log.repository.js';
 import { MysqlPengajuanRepository } from './pengajuan.repository.js';
+import { MysqlSuratRepository } from './surat.repository.js';
 import { MysqlBeritaRepository, MysqlFileRepository, MysqlFotoBeritaRepository, MysqlUserRepository } from './user-berita-file.repository.js';
 
 /** Repository MySQL. Data master tetap dibaca dari folder data/ karena ikut di-commit bersama kode. */
@@ -20,5 +21,6 @@ export function createMysqlRepositories(db: Db, store: MemoryStore, config: { au
     berita: new MysqlBeritaRepository(db),
     fotoBerita: new MysqlFotoBeritaRepository(db),
     files: new MysqlFileRepository(db),
+    surat: new MysqlSuratRepository(db),
   };
 }

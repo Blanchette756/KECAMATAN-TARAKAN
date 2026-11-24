@@ -1,6 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
-import { ambilFileBerkas, type BerkasDetail } from '../api';
+import { ambilFileBerkas, type BerkasDetail, type SuratTtd } from '../api';
 import { Icon } from './Icon';
+
+/**
+ * Surat bertanda tangan dalam bentuk berkas, supaya bisa dibuka di penampil yang sama. id memuat waktu unggah,
+ * jadi isi baru diambil ulang setelah petugas mengganti suratnya.
+ */
+export const suratSebagaiBerkas = (surat: SuratTtd): BerkasDetail => ({
+  id_berkas: `surat-${surat.diunggah_pada}`,
+  id_syarat: 'SURAT',
+  nama_syarat: 'Surat bertanda tangan',
+  nama_file: surat.nama_file,
+  mime_type: 'application/pdf',
+  ukuran_byte: surat.ukuran_byte,
+  file_url: surat.file_url,
+  status_berkas: 'VALID',
+  catatan_admin: null,
+});
 
 /**
  * Isi berkas butuh token login, jadi diambil lewat fetch lalu ditampilkan sebagai URL blob.

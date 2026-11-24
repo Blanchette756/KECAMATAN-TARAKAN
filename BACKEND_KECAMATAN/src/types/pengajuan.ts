@@ -17,10 +17,11 @@ export interface PengajuanPelayanan {
   /** Catatan antar-petugas (alasan dikembalikan ke admin). Tidak ditampilkan ke warga. */
   catatan_internal: string | null;
   alasan_penolakan: string | null;
-  /** Nomor surat resmi, diberikan setelah Camat menandatangani. */
+  /** Nomor surat resmi, diisi petugas saat mengirim surat bertanda tangan (dibuat sistem bila dikosongkan). */
   nomor_surat: string | null;
-  /** Simulasi, bukan TTE BSrE yang sah secara hukum. */
+  /** Hanya berkas lama (simulasi TTE di situs). Barcode TTE asli ada di dalam PDF surat. */
   qr_code_tte: string | null;
+  /** `surat://<id_pengajuan>` bila surat bertanda tangan sudah dikirim ke pemohon; null bila belum/tidak ada. */
   file_surat_selesai: string | null;
   id_verifikator: string | null;
   id_kasi: string | null;
@@ -54,7 +55,7 @@ export interface AuditLog {
   waktu: string;
   id_user: string;
   role: Role;
-  aksi: 'LIHAT_PENGAJUAN' | 'LOGIN' | 'BERITA_TAMBAH' | 'BERITA_UBAH' | 'BERITA_HAPUS' | 'AKUN_TAMBAH' | 'AKUN_UBAH' | 'GANTI_PASSWORD' | 'TANGANI_PENGAJUAN' | 'AMBIL_ALIH_PENGAJUAN';
+  aksi: 'LIHAT_PENGAJUAN' | 'LOGIN' | 'BERITA_TAMBAH' | 'BERITA_UBAH' | 'BERITA_HAPUS' | 'AKUN_TAMBAH' | 'AKUN_UBAH' | 'GANTI_PASSWORD' | 'TANGANI_PENGAJUAN' | 'AMBIL_ALIH_PENGAJUAN' | 'UNGGAH_SURAT';
   target_id: string | null;
 }
 

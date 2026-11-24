@@ -74,7 +74,8 @@ export class StatistikService {
         if (kini.dari === 'MENUNGGU_TTE_CAMAT') tahap.tte_camat.push(menit);
       }
       const awal = list[0];
-      const terbit = list.find((r) => r.aksi === 'CAMAT_TTE');
+      // CAMAT_TTE hanya ada di riwayat lama (simulasi TTE di situs).
+      const terbit = list.find((r) => r.aksi === 'TERBITKAN_SURAT' || r.aksi === 'CAMAT_TTE');
       if (awal && terbit) tahap.total_hingga_terbit.push(menitAntara(awal.waktu, terbit.waktu));
     }
 

@@ -12,7 +12,9 @@ import {
   simpanBerita,
   tambahAkunPetugas,
   tanganiPengajuan,
+  terbitkanSurat,
   ubahAkunPetugas,
+  unggahSuratTtd,
   type AkunPetugas,
   type BerkasDetail,
   type PeranPetugas,
@@ -25,8 +27,23 @@ import {
   urlFotoBerita,
 } from '../api';
 import { Icon, type IconName } from '../components/Icon';
-import { MediaBerkas, PenampilBerkas, useUrlBerkas } from '../components/PenampilBerkas';
-import { BarisData, BarisIsian, Galat, Kartu, KartuIsian, Riwayat, siapkanFotoBerita, tanggal, ukuranFile, useIsianFormulir, useKunciKirim } from '../components/portal';
+import { MediaBerkas, PenampilBerkas, PenampilDaftarBerkas, suratSebagaiBerkas, useUrlBerkas } from '../components/PenampilBerkas';
+import {
+  BarisData,
+  BarisIsian,
+  Galat,
+  Kartu,
+  KartuIsian,
+  Riwayat,
+  siapkanFotoBerita,
+  TandaUnggah,
+  tanggal,
+  ukuranFile,
+  useIsianFormulir,
+  useKunciKirim,
+  useSeretLepas,
+  type ProsesUnggah,
+} from '../components/portal';
 import { Button, KolomPassword, Logo, SelectField } from '../components/ui';
 import { tanggalBerita } from '../data/berita';
 import { LAYANAN } from '../data/layanan';
@@ -207,7 +224,7 @@ function Dashboard({ data, tab, setTab, saya }: { data: Ringkas[]; tab: string; 
     { label: 'Perlu diperiksa', angka: hitung('Perlu Diperiksa'), ket: 'Prioritas petugas', ikon: 'file-text-sm' },
     { label: 'Perlu perbaikan', angka: hitung('Perlu Perbaikan'), ket: 'Menunggu pemohon', ikon: 'alert-20' },
     { label: 'Menunggu paraf Kasi', angka: hitung('Menunggu Paraf'), ket: 'Kasi Tata Pemerintahan', ikon: 'nav-clipboard' },
-    { label: 'Menunggu TTD Camat', angka: hitung('Menunggu TTD'), ket: 'Camat', ikon: 'nav-pen' },
+    { label: 'Menunggu TTD Camat', angka: hitung('Menunggu TTD'), ket: 'Unggah surat setelah ditandatangani', ikon: 'nav-pen' },
   ];
 
   return (
@@ -315,6 +332,7 @@ function Dashboard({ data, tab, setTab, saya }: { data: Ringkas[]; tab: string; 
                 const bolehProses = !item.penangan || item.penangan.id_user === saya;
                 const periksa = bolehProses && ['DIAJUKAN', 'DIKEMBALIKAN_KE_ADMIN'].includes(item.status_pengajuan);
                 const finalisasi = bolehProses && item.status_pengajuan === 'SIAP_DIAMBIL';
+                const kirimSurat = bolehProses && item.status_pengajuan === 'MENUNGGU_TTE_CAMAT';
                 return (
                   <tr key={item.id_pengajuan}>
                     <td className="tabel-admin__kode">{item.no_registrasi}</td>
@@ -328,7 +346,12 @@ function Dashboard({ data, tab, setTab, saya }: { data: Ringkas[]; tab: string; 
                     </td>
                     <td className={item.penangan ? undefined : 'baris__meta'}>{item.penangan ? (item.penangan.id_user === saya ? 'Saya' : item.penangan.nama_lengkap) : '–'}</td>
                     <td>
-                      <Button label={periksa ? 'Periksa' : finalisasi ? 'Finalisasi' : 'Lihat'} style={periksa || finalisasi ? 'primary' : 'secondary'} size="small" href={`/admin?id=${item.id_pengajuan}`} />
+                      <Button
+                        label={periksa ? 'Periksa' : finalisasi ? 'Finalisasi' : kirimSurat ? 'Unggah Surat' : 'Lihat'}
+                        style={periksa || finalisasi || kirimSurat ? 'primary' : 'secondary'}
+                        size="small"
+                        href={`/admin?id=${item.id_pengajuan}`}
+                      />
                     </td>
                   </tr>
                 );
@@ -614,6 +637,7 @@ function Finalisasi({ data, saya, onDitangani }: { data: DetailPengajuan; saya: 
   const terkunci = dipegangLain(data, saya);
   const [cek, setCek] = useState<boolean[]>([false, false, false, false]);
   const [pengambil, setPengambil] = useState('');
+  const [lihatSurat, setLihatSurat] = useState(false);
   const [galat, setGalat] = useState<string | null>(null);
   const { mengirim, mulai: mulaiKirim, lepas: lepasKirim } = useKunciKirim();
   const tandai = (i: number) => setCek(cek.map((nilai, urutan) => (urutan === i ? !nilai : nilai)));
@@ -647,11 +671,19 @@ function Finalisasi({ data, saya, onDitangani }: { data: DetailPengajuan; saya: 
       <div className="admin__dua">
         <div className="admin__kiri">
           <Kartu judul="1. Finalisasi surat">
-            <p className="tile__desc">Surat sudah ditandatangani Camat. Nomor registrasi dibuat otomatis oleh sistem, lalu bubuhkan stempel.</p>
+            <p className="tile__desc">Surat sudah ditandatangani Camat. Bubuhkan stempel sebelum diserahkan.</p>
             <label className="field">
-              <span className="field__label">Nomor registrasi *</span>
+              <span className="field__label">Nomor surat</span>
               <input className="field__input" readOnly value={data.nomor_surat ?? ''} />
             </label>
+            {data.surat && (
+              <p className="baris__meta">
+                Salinan PDF bertanda tangan sudah dikirim ke pemohon ({data.surat.nama_file}).{' '}
+                <button type="button" className="tautan-polos" onClick={() => setLihatSurat(true)}>
+                  Lihat surat
+                </button>
+              </p>
+            )}
             {kotakCek(0, 'Stempel kecamatan sudah dibubuhkan')}
           </Kartu>
           <Kartu judul="2. Penyerahan kepada pemohon">
@@ -686,6 +718,189 @@ function Finalisasi({ data, saya, onDitangani }: { data: DetailPengajuan; saya: 
           </Kartu>
         </aside>
       </div>
+      {lihatSurat && data.surat && <PenampilDaftarBerkas daftar={[suratSebagaiBerkas(data.surat)]} indeksAwal={0} onTutup={() => setLihatSurat(false)} />}
+    </>
+  );
+}
+
+const BATAS_SURAT = 10 * 1024 * 1024;
+
+/**
+ * Berkas sudah diparaf Kasi. Camat menandatangani di aplikasi TTE (barcode tanda tangan elektronik), bukan di situs ini.
+ * Petugas mengunggah PDF hasilnya, memeriksanya, lalu mengirimkannya ke pemohon.
+ */
+function KirimSurat({ data, saya, onBerubah, onDitangani }: { data: DetailPengajuan; saya: string; onBerubah: () => void; onDitangani: () => void }) {
+  const terkunci = dipegangLain(data, saya);
+  const wajibPdf = data.mode_penyerahan === 'UNDUH';
+  const surat = data.surat ?? null;
+  const [nomor, setNomor] = useState(data.nomor_surat ?? '');
+  const [yakin, setYakin] = useState(false);
+  const [proses, setProses] = useState<ProsesUnggah | null>(null);
+  const [lihat, setLihat] = useState(false);
+  const [galat, setGalat] = useState<string | null>(null);
+  const { mengirim, mulai: mulaiKirim, lepas: lepasKirim } = useKunciKirim();
+  const paraf = [...data.riwayat].reverse().find((r) => r.aksi === 'KASI_PARAF');
+
+  const pilih = async (asli: File) => {
+    if (proses || terkunci) return;
+    setGalat(null);
+    if (asli.type !== 'application/pdf' && !asli.name.toLowerCase().endsWith('.pdf')) return setGalat('Surat harus berupa file PDF dari aplikasi TTE.');
+    if (asli.size > BATAS_SURAT) return setGalat(`Ukuran surat ${ukuranFile(asli.size)}, padahal maksimal 10 MB.`);
+    // Sebagian komputer tidak mengisi tipe file PDF; isinya tetap diperiksa server.
+    const file = asli.type === 'application/pdf' ? asli : new File([asli], asli.name, { type: 'application/pdf' });
+    setProses({ nama: file.name, persen: 0 });
+    try {
+      await unggahSuratTtd(data.id_pengajuan, file, (persen) => setProses({ nama: file.name, persen }));
+      // Surat berganti: periksa ulang sebelum dikirim.
+      setYakin(false);
+      onBerubah();
+    } catch (error) {
+      setGalat(error instanceof ApiError ? error.message : 'Unggah surat gagal.');
+    } finally {
+      setProses(null);
+    }
+  };
+  const { diAtas, props: seret } = useSeretLepas(pilih);
+
+  const kirim = async () => {
+    if (!mulaiKirim()) return;
+    setGalat(null);
+    try {
+      await terbitkanSurat(data.id_pengajuan, data.version, nomor.trim() || undefined);
+      window.location.assign('/admin');
+    } catch (error) {
+      setGalat(error instanceof ApiError ? error.message : 'Gagal mengirim surat.');
+      lepasKirim();
+    }
+  };
+
+  const masukan = (
+    <input
+      type="file"
+      hidden
+      accept=".pdf,application/pdf"
+      disabled={terkunci}
+      onChange={(event) => {
+        const pilihan = event.target.files?.[0];
+        event.target.value = '';
+        if (pilihan) pilih(pilihan);
+      }}
+    />
+  );
+  const akibat = wajibPdf
+    ? 'Status menjadi Selesai dan pemohon langsung bisa mengunduh surat di Permohonan Saya.'
+    : surat
+      ? 'Status menjadi Siap Diambil. Pemohon bisa mengunduh salinan PDF-nya dan mengambil dokumen asli di kantor.'
+      : 'Status menjadi Siap Diambil. Pemohon mengambil dokumen di kantor kecamatan.';
+
+  return (
+    <>
+      <Topbar kecil={`Berkas Masuk › ${data.no_registrasi}`} judul="Kirim Surat Bertanda Tangan" kanan={<Badge status={data.status_pengajuan} />} />
+      <div className="admin__dua">
+        <div className="admin__kiri">
+          <Kartu judul="1. Tanda tangan Camat">
+            {paraf && (
+              <p className="pemberitahuan pemberitahuan--hijau pemberitahuan--kecil">
+                Sudah diperiksa dan diparaf Kasi Tata Pemerintahan, {tanggal(paraf.waktu)} WITA
+                {paraf.catatan ? `. Catatan: ${paraf.catatan}` : ''}
+              </p>
+            )}
+            <p className="tile__desc">
+              Camat menandatangani surat ini di aplikasi TTE (barcode tanda tangan elektronik). Setelah ditandatangani, unduh PDF-nya dari aplikasi tersebut, lalu unggah di langkah 2.
+            </p>
+          </Kartu>
+          <Kartu judul="2. Unggah surat bertanda tangan">
+            <div className={`slot${surat ? ' slot--terisi' : ''}${diAtas ? ' slot--seret' : ''}`} {...(terkunci ? {} : seret)}>
+              <div className="slot__judul">
+                <p className="baris__judul">Surat bertanda tangan (PDF)</p>
+                <span className={wajibPdf ? 'syarat__tag syarat__tag--wajib' : 'baris__meta'}>{wajibPdf ? 'Wajib' : 'Opsional'}</span>
+              </div>
+              {proses ? (
+                <TandaUnggah proses={proses} />
+              ) : surat ? (
+                <div className="slot__file">
+                  <span className="dokumen__ikon">
+                    <Icon name="file-text-sm" />
+                  </span>
+                  <div className="dokumen__teks">
+                    <p className="baris__judul">{surat.nama_file}</p>
+                    <p className="baris__meta">
+                      PDF · {ukuranFile(surat.ukuran_byte)} · diunggah {tanggal(surat.diunggah_pada)} WITA
+                    </p>
+                  </div>
+                  <button type="button" className="tautan-polos" onClick={() => setLihat(true)}>
+                    Lihat
+                  </button>
+                  {!terkunci && (
+                    <label className="tautan-polos">
+                      Ganti
+                      {masukan}
+                    </label>
+                  )}
+                </div>
+              ) : (
+                <label className="slot__area">
+                  <Icon name="upload" />
+                  <span>
+                    Seret file ke sini atau <strong>pilih file</strong>
+                  </span>
+                  <span className="baris__meta">Hanya PDF dari aplikasi TTE · maks. 10 MB</span>
+                  {masukan}
+                </label>
+              )}
+            </div>
+            {!wajibPdf && (
+              <p className="baris__meta">Layanan ini diambil di kantor, jadi PDF boleh tidak diunggah. Bila diunggah, pemohon juga bisa mengunduh salinannya di Permohonan Saya.</p>
+            )}
+          </Kartu>
+          <Kartu judul="3. Kirim ke pemohon">
+            <label className="field">
+              <span className="field__label">Nomor surat</span>
+              <input
+                className="field__input"
+                maxLength={80}
+                placeholder="Sesuai nomor yang tertera di surat"
+                value={nomor}
+                disabled={terkunci}
+                onChange={(event) => setNomor(event.target.value)}
+              />
+              <span className="baris__meta">Kosongkan bila nomor dibuat otomatis oleh sistem.</span>
+            </label>
+            <label className="persetujuan">
+              <input type="checkbox" checked={yakin} disabled={terkunci} onChange={(event) => setYakin(event.target.checked)} />
+              <span>{surat ? 'Surat sudah saya periksa: nama pemohon, isi, dan barcode tanda tangan Camat sudah benar' : 'Surat sudah ditandatangani Camat'}</span>
+            </label>
+            <Galat pesan={galat} />
+            {terkunci && <p className="baris__meta">Berkas ini ditangani petugas lain. Ambil alih dulu bila Anda yang mengirim surat.</p>}
+            {wajibPdf && !surat && <p className="baris__meta">Unggah dulu surat bertanda tangan di langkah 2.</p>}
+            <div>
+              <Button
+                label={surat ? 'Kirim Surat ke Pemohon' : 'Tandai Sudah Ditandatangani'}
+                arrow
+                disabled={mengirim || terkunci || proses !== null || !yakin || (wajibPdf && !surat)}
+                onClick={kirim}
+              />
+            </div>
+            <p className="baris__meta">{akibat}</p>
+          </Kartu>
+        </div>
+        <aside className="admin__samping">
+          <KartuPenangan data={data} saya={saya} onDitangani={onDitangani} />
+          <Kartu judul="Ringkasan">
+            <dl>
+              <BarisData label="Pemohon" nilai={data.pemohon?.nama_lengkap} />
+              <BarisData label="Layanan" nilai={namaLayanan(data.id_layanan, data.nama_layanan)} />
+              <BarisData label="Kode" nilai={data.no_registrasi} />
+              <BarisData label="Diajukan" nilai={tanggal(data.tgl_pengajuan)} />
+              <BarisIsian data={data} />
+            </dl>
+          </Kartu>
+          <Kartu judul="Riwayat proses">
+            <Riwayat data={data} />
+          </Kartu>
+        </aside>
+      </div>
+      {lihat && surat && <PenampilDaftarBerkas daftar={[suratSebagaiBerkas(surat)]} indeksAwal={0} onTutup={() => setLihat(false)} />}
     </>
   );
 }
@@ -736,7 +951,13 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
         <textarea className="field__input periksa__catatan" value={catatan} onChange={(event) => setCatatan(event.target.value)} />
       </label>
       <Galat pesan={galat} />
-      <Button label={kasi ? 'Paraf & Teruskan ke Camat' : 'Tanda Tangani'} arrow disabled={mengirim} onClick={() => kirim('SETUJUI')} />
+      {kasi ? (
+        <Button label="Paraf & Teruskan ke Camat" arrow disabled={mengirim} onClick={() => kirim('SETUJUI')} />
+      ) : (
+        <p className="pemberitahuan pemberitahuan--kecil">
+          Tanda tangan dilakukan di aplikasi TTE (barcode). Setelah surat ditandatangani, petugas pelayanan mengunggahnya dan mengirimkan ke pemohon.
+        </p>
+      )}
       <Button label="Kembalikan ke Petugas" style="secondary" disabled={mengirim || !catatan.trim()} onClick={() => kirim('KEMBALIKAN')} />
       <button type="button" className="tautan-polos tautan-polos--bahaya" disabled={mengirim || !catatan.trim()} onClick={() => kirim('TOLAK')}>
         Tolak permohonan
@@ -744,7 +965,7 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
       <p className="baris__meta">
         {kasi
           ? 'Setelah diparaf, berkas diteruskan ke Camat untuk ditandatangani.'
-          : 'Setelah ditandatangani, berkas diteruskan ke petugas pelayanan untuk diberi nomor registrasi dan stempel.'}
+          : 'Bila ada yang perlu diperbaiki sebelum ditandatangani, kembalikan ke petugas dengan catatan.'}
       </p>
     </>
   );
@@ -753,7 +974,7 @@ function Persetujuan({ user, antrian, idAwal }: { user: Pengguna; antrian: Ringk
     <>
       <Topbar
         kecil={kasi ? 'Kasi Tata Pemerintahan › Menunggu Paraf' : 'Camat › Menunggu Tanda Tangan'}
-        judul={kasi ? 'Pemeriksaan Berkas & Paraf' : 'Tanda Tangan Surat'}
+        judul={kasi ? 'Pemeriksaan Berkas & Paraf' : 'Surat Menunggu Tanda Tangan'}
         kanan={<span className="pil pil--aksen">{kasi ? `${antrian.length} berkas menunggu paraf` : `${antrian.length} surat menunggu tanda tangan`}</span>}
       />
       <div className="persetujuan-admin">
@@ -906,6 +1127,8 @@ function DetailAdmin({ id, saya }: { id: string; saya: string }) {
       )}
       {data.status_pengajuan === 'SIAP_DIAMBIL' ? (
         <Finalisasi key={kunci} data={data} saya={saya} onDitangani={muatUlang} />
+      ) : data.status_pengajuan === 'MENUNGGU_TTE_CAMAT' ? (
+        <KirimSurat key={kunci} data={data} saya={saya} onBerubah={muat} onDitangani={muatUlang} />
       ) : (
         <Verifikasi key={kunci} data={data} saya={saya} onBerubah={muat} onDitangani={muatUlang} />
       )}

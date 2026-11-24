@@ -138,7 +138,7 @@ export const pengajuanRoutes: FastifyPluginAsyncTypebox<Opts> = async (app, { co
       onRequest: guards.wajibRole('CAMAT'),
       schema: {
         tags: ['Pengajuan – Petugas'],
-        summary: 'Camat: tanda tangan (SIMULASI TTE), KEMBALIKAN ke admin, atau TOLAK',
+        summary: 'Camat: KEMBALIKAN ke admin atau TOLAK. Tanda tangan dilakukan di aplikasi TTE (SETUJUI ditolak 409 TTE_DI_APLIKASI)',
         security: bearer,
         params: PengajuanIdParamSchema,
         body: KeputusanBodySchema,

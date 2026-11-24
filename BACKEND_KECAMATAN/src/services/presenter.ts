@@ -2,6 +2,7 @@ import { STATUS_LABEL } from '../constants/workflow.js';
 import type { BerkasPengajuan } from '../types/berkas.js';
 import type { JenisLayanan } from '../types/layanan.js';
 import type { PengajuanPelayanan, RiwayatStatus } from '../types/pengajuan.js';
+import type { SuratSelesai } from '../types/surat.js';
 import { profilLengkap, type User, type UserPublik } from '../types/user.js';
 import { maskHp, maskNik } from '../utils/mask.js';
 
@@ -48,6 +49,8 @@ export function ringkasPengajuan(
     // Untuk rekap/ekspor CSV di panel admin. Keduanya juga sudah terlihat di detail milik pemohon.
     tgl_selesai: p.tgl_selesai,
     nomor_surat: p.nomor_surat,
+    /** Surat bertanda tangan sudah dikirim dan bisa diunduh pemohon. */
+    ada_surat: p.file_surat_selesai !== null,
     version: p.version,
     ...(pemohon ? { pemohon: { nama_lengkap: pemohon.nama_lengkap } } : {}),
     penangan: keDataPenangan(penangan, sudutPandang === 'PETUGAS'),
@@ -75,6 +78,8 @@ export function detailPengajuan(
   riwayat: RiwayatStatus[],
   sudutPandang: 'PEMOHON' | 'PETUGAS',
   penangan: User | null = null,
+  /** Surat bertanda tangan yang boleh dilihat (lihat PengajuanService.suratUntuk). */
+  surat: SuratSelesai | null = null,
 ) {
   const untukPetugas = sudutPandang === 'PETUGAS';
   const syaratById = new Map(layanan.persyaratan.map((s) => [s.id_syarat, s]));
@@ -107,6 +112,14 @@ export function detailPengajuan(
         }
       : {}),
     penangan: keDataPenangan(penangan, untukPetugas),
+    surat: surat
+      ? {
+          nama_file: surat.nama_file,
+          ukuran_byte: surat.ukuran_byte,
+          diunggah_pada: surat.diunggah_pada,
+          file_url: `/api/v1/pengajuan/${p.id_pengajuan}/surat`,
+        }
+      : null,
     pemohon: pemohon
       ? {
           id_user: pemohon.id_user,

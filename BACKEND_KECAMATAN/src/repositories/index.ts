@@ -9,6 +9,7 @@ import { MemoryAuditRepository, MemoryRiwayatRepository, MemorySesiRepository } 
 import { FileBeritaRepository } from './berita.repository.js';
 import { MemoryFileRepository } from './file.repository.js';
 import { MemoryFotoBeritaRepository } from './foto-berita.repository.js';
+import { MemorySuratRepository } from './surat.repository.js';
 import { muatBerita } from '../database/berita-loader.js';
 
 /** Repository di memori (DB_DRIVER=memory). Versi MySQL ada di ./mysql/. */
@@ -24,5 +25,6 @@ export function createMemoryRepositories(store: MemoryStore, config: Pick<AppCon
     berita: new FileBeritaRepository(muatBerita(config.dataDir, config.beritaFile), config.beritaFile),
     fotoBerita: new MemoryFotoBeritaRepository(),
     files: new MemoryFileRepository(store),
+    surat: new MemorySuratRepository(),
   };
 }
